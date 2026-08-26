@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import SplashIntro from './components/SplashIntro';
+import CountdownIntro from './components/CountdownIntro';
 import TriviaGame from './components/TriviaGame';
 import GameOver from './components/GameOver';
 import PhaseLocked from './components/PhaseLocked';
@@ -13,7 +14,7 @@ export default function App() {
   const shuffleQuestions = import.meta.env.VITE_SHUFFLE_QUESTIONS === 'true';
   const timePerQuestion = parseInt(import.meta.env.VITE_TIME_PER_QUESTION || '45', 10);
 
-  const [gameState, setGameState] = useState('LOADING'); // LOADING | SPLASH | PLAYING | FINISHED | LOCKED | INVALID_TOKEN
+  const [gameState, setGameState] = useState('LOADING'); // LOADING | SPLASH | COUNTDOWN | PLAYING | FINISHED | LOCKED | INVALID_TOKEN
   const [currentUser, setCurrentUser] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [userScore, setUserScore] = useState(0);
@@ -52,6 +53,12 @@ export default function App() {
     initApp();
   }, [activePhase, shuffleQuestions]);
 
+  // Al presionar Comenzar, iniciar cuenta regresiva
+  const handleTriggerCountdown = () => {
+    setGameState('COUNTDOWN');
+  };
+
+  // Al finalizar cuenta regresiva, iniciar el juego
   const handleStartGame = () => {
     setGameState('PLAYING');
     setGameStartTime(Date.now());
@@ -122,7 +129,13 @@ export default function App() {
           <SplashIntro
             user={currentUser}
             totalQuestions={questions.length}
-            onStartGame={handleStartGame}
+            onStartGame={handleTriggerCountdown}
+          />
+        )}
+
+        {gameState === 'COUNTDOWN' && (
+          <CountdownIntro
+            onCountdownComplete={handleStartGame}
           />
         )}
 
