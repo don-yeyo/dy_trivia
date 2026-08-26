@@ -1,0 +1,23 @@
+{
+  "short_name": "DY Trivia",
+  "name": "Trivia Inocuidad 2026 - Don Yeyo",
+  "description": "Juego de trivia para evaluar el conocimiento en inocuidad alimentaria de Don Yeyo S.A.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0d2c5c",
+  "theme_color": "#0d2c5c",
+  "display": "standalone",
+  "orientation": "portrait"
+}

@@ -1,0 +1,336 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   SISTEMA DE DISEÑO UX/UI - DON YEYO S.A. | TRIVIA INOCUIDAD 2026
+   Tokens corporativos, Glassmorphism 3D, Microanimaciones Gaming
+   ========================================================================== */
+
+:root {
+  /* Paleta Corporativa Don Yeyo */
+  --dy-blue: #0d2c5c;
+  --dy-blue-dark: #071733;
+  --dy-blue-light: #184c99;
+  --dy-red: #e40521;
+  --dy-red-dark: #a80317;
+  --dy-red-light: #ff2b47;
+  --dy-gold: #ffb800;
+  --dy-gold-glow: rgba(255, 184, 0, 0.4);
+  
+  /* Sistema de Colores */
+  --bg-gradient: radial-gradient(circle at 50% 10%, #153970 0%, #0a1f42 50%, #051024 100%);
+  --surface-glass: rgba(255, 255, 255, 0.08);
+  --surface-glass-strong: rgba(255, 255, 255, 0.14);
+  --surface-glass-card: rgba(13, 44, 92, 0.55);
+  --border-glass: rgba(255, 255, 255, 0.18);
+  --border-glass-hover: rgba(255, 255, 255, 0.45);
+  
+  --text-main: #ffffff;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
+  
+  --success: #10b981;
+  --success-glow: rgba(16, 185, 129, 0.4);
+  --error: #ef4444;
+  --error-glow: rgba(239, 68, 68, 0.4);
+  --warning: #f59e0b;
+
+  /* Geometría y Sombras 3D */
+  --radius-sm: 10px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --radius-pill: 9999px;
+
+  --shadow-3d-btn: 0 8px 0 rgba(7, 23, 51, 0.8), 0 15px 25px rgba(0, 0, 0, 0.4);
+  --shadow-3d-btn-active: 0 2px 0 rgba(7, 23, 51, 0.8), 0 5px 10px rgba(0, 0, 0, 0.3);
+  --shadow-glass: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+
+  /* Transiciones y Easing Gaming */
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Reset básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg-gradient);
+  color: var(--text-main);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tipografía */
+h1, h2, h3, h4, .font-heading {
+  font-family: 'Outfit', 'Montserrat', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Clases de Utilidad y Glassmorphism */
+.glass-panel {
+  background: var(--surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-glass);
+}
+
+.glass-card {
+  background: var(--surface-glass-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+}
+
+/* Botón 3D Gaming Principal */
+.btn-3d-primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(135deg, var(--dy-red-light) 0%, var(--dy-red) 50%, var(--dy-red-dark) 100%);
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 16px 36px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 0 var(--dy-red-dark), 0 14px 25px rgba(228, 5, 33, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transform: translateY(0);
+  transition: all 0.15s var(--ease-bounce);
+}
+
+.btn-3d-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 var(--dy-red-dark), 0 18px 30px rgba(228, 5, 33, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  filter: brightness(1.08);
+}
+
+.btn-3d-primary:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 var(--dy-red-dark), 0 6px 12px rgba(228, 5, 33, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+/* Botón Opción 3D Estilo Vidrio Gaming */
+.option-btn-3d {
+  position: relative;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  transform: translateY(0);
+  box-shadow: 0 6px 0 rgba(7, 23, 51, 0.6), 0 12px 20px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  transition: all 0.2s var(--ease-bounce);
+}
+
+.option-btn-3d:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.01);
+  border-color: rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.08) 100%);
+  box-shadow: 0 9px 0 rgba(7, 23, 51, 0.7), 0 18px 25px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+.option-btn-3d:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 rgba(7, 23, 51, 0.8), 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.option-btn-3d .option-badge {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.option-btn-3d:hover:not(:disabled) .option-badge {
+  background: var(--dy-red);
+  border-color: #ffffff;
+  transform: scale(1.1) rotate(4deg);
+}
+
+/* Estados de selección en Opciones */
+.option-btn-3d.selected {
+  transform: translateY(2px) scale(0.99);
+  background: linear-gradient(135deg, rgba(255, 184, 0, 0.3) 0%, rgba(255, 184, 0, 0.1) 100%);
+  border-color: var(--dy-gold);
+  box-shadow: 0 0 25px var(--dy-gold-glow), 0 2px 0 #8c6500;
+}
+.option-btn-3d.selected .option-badge {
+  background: var(--dy-gold);
+  color: #0d2c5c;
+}
+
+.option-btn-3d.correct {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(16, 185, 129, 0.15) 100%) !important;
+  border-color: var(--success) !important;
+  box-shadow: 0 0 30px var(--success-glow), 0 4px 0 #065f46 !important;
+}
+.option-btn-3d.correct .option-badge {
+  background: var(--success) !important;
+  color: #ffffff !important;
+}
+
+.option-btn-3d.incorrect {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.35) 0%, rgba(239, 68, 68, 0.15) 100%) !important;
+  border-color: var(--error) !important;
+  box-shadow: 0 0 25px var(--error-glow), 0 4px 0 #7f1d1d !important;
+}
+.option-btn-3d.incorrect .option-badge {
+  background: var(--error) !important;
+  color: #ffffff !important;
+}
+
+/* Animaciones */
+@keyframes heartPulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(228, 5, 33, 0.2)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 30px rgba(228, 5, 33, 0.6)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(228, 5, 33, 0.2)); }
+}
+
+.animate-pulse-heart {
+  animation: heartPulse 2.4s infinite ease-in-out;
+}
+
+@keyframes swapIn {
+  0% {
+    opacity: 0;
+    transform: translateY(35px) scale(0.95);
+  }
+  70% {
+    transform: translateY(-4px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-swap-in {
+  animation: swapIn 0.45s var(--ease-bounce) forwards;
+}
+
+@keyframes swapOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+}
+
+.animate-swap-out {
+  animation: swapOut 0.3s ease-in forwards;
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounceIn 0.5s var(--ease-bounce) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Barra de Tiempo Animada */
+.timer-bar-container {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.timer-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.1s linear, background-color 0.4s ease;
+}
+
+/* Media Queries para Mobile */
+@media (max-width: 640px) {
+  .btn-3d-primary {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 1rem;
+  }
+
+  .option-btn-3d {
+    padding: 13px 15px;
+    font-size: 0.95rem;
+    gap: 12px;
+  }
+
+  .option-btn-3d .option-badge {
+    width: 32px;
+    height: 32px;
+    font-size: 0.95rem;
+  }
+}
