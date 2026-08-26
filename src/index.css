@@ -2,7 +2,7 @@
 
 /* ==========================================================================
    SISTEMA DE DISEÑO CASUAL GAMING CORPORATIVO - DON YEYO S.A.
-   Semana de la Inocuidad 2026 | Circular Donut Indicators & Anti-Cheat Safe
+   Semana de la Inocuidad 2026 | UI/UX Refined MSN Avatar & Spacing
    ========================================================================== */
 
 :root {
@@ -67,6 +67,11 @@ h1, h2, h3, h4, .font-heading {
   letter-spacing: -0.015em;
 }
 
+/* Margen inferior exacto para los titulares H1 en el main */
+.app-main h1 {
+  margin-bottom: 30px !important;
+}
+
 /* Contenedor Principal de la App */
 .app-layout {
   min-height: 100vh;
@@ -104,9 +109,7 @@ h1, h2, h3, h4, .font-heading {
   z-index: 10;
 }
 
-/* ==========================================================================
-   INDICADORES CIRCULARES TIPO DONA (EN LA MISMA LÍNEA)
-   ========================================================================== */
+/* Indicadores Circulares */
 .circular-status-bar {
   display: flex;
   align-items: center;
@@ -201,19 +204,19 @@ h1, h2, h3, h4, .font-heading {
   border-bottom: 1.5px solid #f1f5f9;
 }
 
+/* Avatar Circular con borde marcado e ícono de usuario estilo MSN */
 .user-avatar {
-  width: 58px;
-  height: 58px;
-  min-width: 58px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #E5353B 0%, #c92228 100%);
+  width: 62px;
+  height: 62px;
+  min-width: 62px;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  border: 3.5px solid #E5353B !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(229, 53, 59, 0.35);
+  color: #E5353B;
+  box-shadow: 0 4px 14px rgba(229, 53, 59, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 /* Caja de Ítems Instructivos */
@@ -232,7 +235,7 @@ h1, h2, h3, h4, .font-heading {
   display: flex;
   align-items: center;
   gap: 16px;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: #334155;
   line-height: 1.45;
 }
@@ -297,9 +300,7 @@ h1, h2, h3, h4, .font-heading {
   box-shadow: var(--dy-red-shadow-active);
 }
 
-/* ==========================================================================
-   BOTÓN DE OPCIÓN (SIN REVELAR RESPUESTAS CORRECTAS - ANTI TRAPA)
-   ========================================================================== */
+/* Botones de Opción */
 .casual-option-btn {
   position: relative;
   width: 100%;
@@ -333,7 +334,6 @@ h1, h2, h3, h4, .font-heading {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Badge de la letra (A, B, C, D, E) */
 .casual-option-badge {
   flex-shrink: 0;
   width: 46px;
@@ -358,7 +358,6 @@ h1, h2, h3, h4, .font-heading {
   border-color: var(--dy-red);
 }
 
-/* Estado de Selección Seguro (No revela si es correcta o errónea) */
 .casual-option-btn.selected {
   background: #eff6ff !important;
   border-color: #3b82f6 !important;
@@ -373,23 +372,7 @@ h1, h2, h3, h4, .font-heading {
   border-color: #2563eb !important;
 }
 
-/* Badge Flotante Header */
-.casual-header-badge {
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: var(--radius-btn);
-  color: #ffffff;
-  font-weight: 700;
-  padding: 8px 16px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-}
-
-/* ==========================================================================
-   ANIMACIONES (VIBRACIÓN, FADE Y TRANSICIÓN OUT)
-   ========================================================================== */
-
-/* Alerta de vibración suave en el temporizador al agotarse */
+/* Animaciones */
 @keyframes donutVibrate {
   0%, 100% { transform: translate(0, 0) rotate(0deg); }
   20% { transform: translate(-2px, 1px) rotate(-1.5deg); }
@@ -402,7 +385,6 @@ h1, h2, h3, h4, .font-heading {
   animation: donutVibrate 0.35s infinite ease-in-out;
 }
 
-/* Efecto Fade y Vibración al hacer out */
 @keyframes fadeOutVibrate {
   0% {
     opacity: 1;
@@ -489,10 +471,9 @@ h1, h2, h3, h4, .font-heading {
   }
 
   .user-avatar {
-    width: 50px;
-    height: 50px;
-    min-width: 50px;
-    font-size: 1.4rem;
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
   }
 
   .instructions-container {
@@ -503,7 +484,7 @@ h1, h2, h3, h4, .font-heading {
 
   .instruction-row {
     gap: 12px;
-    font-size: 0.88rem;
+    font-size: 0.95rem;
   }
 
   .btn-casual-primary {
