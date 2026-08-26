@@ -68,14 +68,14 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
               <Lock size={20} />
             </div>
             <span className="text-base text-slate-800">
-              <strong>Uso único:</strong> Cada fase permite un solo intento por participante.
+              <strong>Uso único:</strong> Cada trivia permite un solo intento por participante.
             </span>
           </div>
         </div>
       </div>
 
       {/* Botón Principal Protagonista Estilo Casual Gaming */}
-      <button 
+      <button
         onClick={handleStart}
         className="btn-casual-primary"
       >

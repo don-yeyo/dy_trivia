@@ -1,17 +1,17 @@
 import React from 'react';
 import { Lock, AlertTriangle, Calendar, Info, RotateCcw } from 'lucide-react';
 
-export default function PhaseLocked({ 
-  user, 
+export default function PhaseLocked({
+  user,
   playedDate = null,
   isTokenInvalid = false,
   onResetSession
 }) {
-  const formattedDate = playedDate 
+  const formattedDate = playedDate
     ? new Date(playedDate).toLocaleString('es-AR', {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-      })
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    })
     : null;
 
   const handleReset = () => {
@@ -63,7 +63,7 @@ export default function PhaseLocked({
             <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-base text-slate-700 flex items-start gap-3.5 leading-relaxed">
               <Info size={22} className="text-amber-500 shrink-0 mt-0.5" />
               <span>
-                Para garantizar la transparencia y equidad del concurso, cada fase permite un único intento por participante.
+                Para garantizar la transparencia y equidad del concurso, cads trivia permite un único intento por participante.
               </span>
             </div>
           </div>
