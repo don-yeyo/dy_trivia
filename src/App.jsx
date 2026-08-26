@@ -112,15 +112,11 @@ export default function App() {
     <div className="app-layout">
       {/* Header superior limpio */}
       <Header
-        score={userScore}
-        questionIndex={answersLog.length}
-        totalQuestions={questions.length}
         soundMuted={soundMuted}
         onToggleSound={handleToggleSound}
-        isGameActive={gameState === 'PLAYING'}
       />
 
-      {/* Contenido Principal con espaciado generoso */}
+      {/* Contenido Principal */}
       <main className="app-main">
         {gameState === 'LOADING' && (
           <div className="flex flex-col items-center gap-5 text-white py-16">
@@ -154,8 +150,6 @@ export default function App() {
         {gameState === 'FINISHED' && (
           <GameOver
             user={currentUser}
-            score={userScore}
-            correctCount={correctAnswersCount}
             totalQuestions={questions.length}
             totalTime={totalElapsedTime}
           />
@@ -177,25 +171,16 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer corporativo Don Yeyo */}
-      <footer className="app-footer">
-        <div className="flex items-center gap-2 font-medium">
-          <span className="font-bold text-white tracking-wide">Don Yeyo S.A.</span>
-          <span className="text-slate-400">&bull;</span>
-          <span>Semana de la Inocuidad 2026</span>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsAdminModalOpen(true)}
-            className="flex items-center gap-1.5 text-slate-200 hover:text-white transition-colors cursor-pointer bg-white/15 hover:bg-white/25 px-3.5 py-1.5 rounded-full backdrop-blur-md font-medium text-xs shadow-sm"
-            title="Ver Enlaces de Participantes (RRHH)"
-          >
-            <KeyRound size={13} className="text-yellow-300" />
-            <span className="hidden sm:inline">Enlaces RRHH</span>
-          </button>
-          <span className="opacity-75 font-semibold">v1.1.0</span>
-        </div>
+      {/* Footer limpio sin textos innecesarios */}
+      <footer className="app-footer justify-end">
+        <button
+          onClick={() => setIsAdminModalOpen(true)}
+          className="flex items-center gap-1.5 text-slate-200 hover:text-white transition-colors cursor-pointer bg-white/15 hover:bg-white/25 px-3.5 py-1.5 rounded-full backdrop-blur-md font-medium text-xs shadow-sm ml-auto"
+          title="Ver Enlaces de Participantes (RRHH)"
+        >
+          <KeyRound size={13} className="text-yellow-300" />
+          <span>Enlaces RRHH</span>
+        </button>
       </footer>
 
       {/* Modal de enlaces para RRHH / Pruebas */}

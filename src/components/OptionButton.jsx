@@ -6,24 +6,17 @@ export default function OptionButton({
   index = 0,
   option,
   isSelected = false,
-  isCorrect = false,
-  isIncorrect = false,
   isDisabled = false,
   onClick
 }) {
   const letter = OPTION_LETTERS[index] || (index + 1);
-
-  let stateClasses = '';
-  if (isSelected) stateClasses += ' selected';
-  if (isCorrect) stateClasses += ' correct';
-  if (isIncorrect) stateClasses += ' incorrect';
 
   return (
     <button
       type="button"
       onClick={() => onClick(option.id)}
       disabled={isDisabled}
-      className={`casual-option-btn ${stateClasses}`}
+      className={`casual-option-btn ${isSelected ? 'selected' : ''}`}
     >
       <div className="casual-option-badge">
         {letter}

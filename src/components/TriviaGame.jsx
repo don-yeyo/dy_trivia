@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import OptionButton from './OptionButton';
 import { sounds } from '../services/soundEffects';
-import { HelpCircle, Zap } from 'lucide-react';
+import { Zap, Clock, HelpCircle } from 'lucide-react';
 
 export default function TriviaGame({
   questions = [],
@@ -13,20 +13,23 @@ export default function TriviaGame({
   const [selectedOptionId, setSelectedOptionId] = useState(null);
   const [isAnswerLocked, setIsAnswerLocked] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(timePerQuestion > 0 ? timePerQuestion : null);
+  const [timeLeft, setTimeLeft] = useState(timePerQuestion > 0 ? timePerQuestion : 45);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
-  const [showFeedback, setShowFeedback] = useState(false);
 
   const timerRef = useRef(null);
   const currentQuestion = questions[currentIndex];
 
+  // Geometría del círculo SVG
+  const radius = 34;
+  const circumference = 2 * Math.PI * radius; // ~213.63
+
+  // Iniciar temporizador por pregunta
   useEffect(() => {
     if (timePerQuestion > 0) {
       setTimeLeft(timePerQuestion);
       setQuestionStartTime(Date.now());
       setIsAnswerLocked(false);
       setSelectedOptionId(null);
-      setShowFeedback(false);
 
       if (timerRef.current) clearInterval(timerRef.current);
 
@@ -47,11 +50,11 @@ export default function TriviaGame({
     };
   }, [currentIndex, timePerQuestion]);
 
+  // Manejo de tiempo agotado
   const handleTimeExpired = () => {
     if (isAnswerLocked) return;
     setIsAnswerLocked(true);
-    sounds.playIncorrect();
-    setShowFeedback(true);
+    sounds.playSelect();
 
     onAnswerSubmit({
       questionId: currentQuestion.id,
@@ -62,11 +65,13 @@ export default function TriviaGame({
       timeSpent: timePerQuestion
     });
 
+    setIsAnimatingOut(true);
     setTimeout(() => {
       goToNextQuestion();
-    }, 1800);
+    }, 450);
   };
 
+  // Manejo de selección de opción (SIN REVELAR RESPUESTA CORRECTA)
   const handleOptionSelect = (optionId) => {
     if (isAnswerLocked) return;
 
@@ -78,16 +83,12 @@ export default function TriviaGame({
     const isCorrect = optionId === currentQuestion.correctOptionId;
     const timeSpent = Math.max(1, Math.round((Date.now() - questionStartTime) / 1000));
     
+    // Cálculo interno de puntos (guardado en silencio sin mostrar en pantalla)
     let pointsEarned = 0;
     if (isCorrect) {
       const speedBonus = timePerQuestion > 0 ? Math.round((timeLeft / timePerQuestion) * 50) : 0;
       pointsEarned = currentQuestion.points + speedBonus;
-      setTimeout(() => sounds.playCorrect(), 150);
-    } else {
-      setTimeout(() => sounds.playIncorrect(), 150);
     }
-
-    setShowFeedback(true);
 
     onAnswerSubmit({
       questionId: currentQuestion.id,
@@ -98,75 +99,117 @@ export default function TriviaGame({
       timeSpent
     });
 
+    // Transición suave con fade y vibración out
+    setIsAnimatingOut(true);
     setTimeout(() => {
       goToNextQuestion();
-    }, 1600);
+    }, 400);
   };
 
   const goToNextQuestion = () => {
-    setIsAnimatingOut(true);
-    setTimeout(() => {
-      if (currentIndex + 1 < questions.length) {
-        setCurrentIndex(prev => prev + 1);
-        setIsAnimatingOut(false);
-      } else {
-        onFinishGame();
-      }
-    }, 250);
+    if (currentIndex + 1 < questions.length) {
+      setCurrentIndex(prev => prev + 1);
+      setIsAnimatingOut(false);
+    } else {
+      onFinishGame();
+    }
   };
 
   if (!currentQuestion) return null;
 
-  const progressPercent = ((currentIndex + 1) / questions.length) * 100;
-  const timeBarPercent = timePerQuestion > 0 ? (timeLeft / timePerQuestion) * 100 : 100;
+  // Cálculos para arcos de dona SVG
+  const totalQuestions = questions.length;
+  const currentStep = currentIndex + 1;
+  const progressRatio = currentStep / totalQuestions;
+  const progressDashoffset = circumference - (progressRatio * circumference);
+
+  const timeRatio = timePerQuestion > 0 ? timeLeft / timePerQuestion : 1;
+  const timeDashoffset = circumference - (timeRatio * circumference);
+
+  const isLowTime = timeLeft <= 10;
 
   return (
-    <div className={`w-full max-w-2xl mx-auto flex-1 flex flex-col justify-between z-10 py-2 sm:py-6 ${
-      isAnimatingOut ? 'animate-casual-out' : 'animate-casual-in'
+    <div className={`w-full flex-1 flex flex-col justify-between z-10 ${
+      isAnimatingOut ? 'animate-fade-vibrate-out' : 'animate-casual-in'
     }`}>
-      {/* Progreso & Temporizador Casual */}
-      <div className="w-full mb-6">
-        <div className="flex justify-between items-center text-xs sm:text-sm text-white mb-2 font-semibold tracking-wide">
-          <span>Pregunta {currentIndex + 1} de {questions.length}</span>
-          <span className="text-yellow-300 font-bold">{Math.round(progressPercent)}%</span>
-        </div>
-        <div className="h-2.5 w-full bg-white/20 rounded-full overflow-hidden mb-3 shadow-inner">
-          <div 
-            className="h-full bg-gradient-to-r from-red-500 to-yellow-400 rounded-full transition-all duration-300 ease-out"
-            style={{ width: `${progressPercent}%` }}
-          />
+      {/* Indicadores Circulares Tipo Dona en la Misma Línea */}
+      <div className="circular-status-bar">
+        {/* Dona 1: Avance Circular con texto "X de N" adentro */}
+        <div className="donut-card">
+          <div className="donut-container">
+            <svg className="donut-svg" viewBox="0 0 80 80">
+              <circle
+                className="donut-bg-ring"
+                cx="40"
+                cy="40"
+                r={radius}
+              />
+              <circle
+                className="donut-progress-ring"
+                cx="40"
+                cy="40"
+                r={radius}
+                stroke="#E5353B"
+                strokeDasharray={circumference}
+                strokeDashoffset={progressDashoffset}
+              />
+            </svg>
+            <div className="donut-center-content">
+              <span className="font-extrabold text-sm sm:text-base text-white leading-none">
+                {currentStep} de {totalQuestions}
+              </span>
+            </div>
+          </div>
+          <span className="donut-label-title">Preguntas</span>
         </div>
 
-        {/* Barra de tiempo por pregunta */}
+        {/* Dona 2: Tiempo Restante Circular con cuenta regresiva en segundos y vibración */}
         {timePerQuestion > 0 && (
-          <div className="casual-timer-track h-2.5 shadow-inner">
-            <div 
-              className={`casual-timer-fill ${
-                timeLeft <= 10 ? 'bg-red-500 shadow-md shadow-red-500/50' : timeLeft <= 20 ? 'bg-yellow-400' : 'bg-emerald-400'
-              }`}
-              style={{ width: `${timeBarPercent}%` }}
-            />
+          <div className={`donut-card ${isLowTime ? 'animate-donut-vibrate' : ''}`}>
+            <div className={`donut-container ${isLowTime ? 'border-2 border-red-500/80 shadow-lg shadow-red-500/40' : ''}`}>
+              <svg className="donut-svg" viewBox="0 0 80 80">
+                <circle
+                  className="donut-bg-ring"
+                  cx="40"
+                  cy="40"
+                  r={radius}
+                />
+                <circle
+                  className="donut-progress-ring"
+                  cx="40"
+                  cy="40"
+                  r={radius}
+                  stroke={isLowTime ? '#ef4444' : timeLeft <= 20 ? '#f59e0b' : '#10b981'}
+                  strokeDasharray={circumference}
+                  strokeDashoffset={timeDashoffset}
+                />
+              </svg>
+              <div className="donut-center-content">
+                <span className={`font-black text-base sm:text-lg leading-none ${isLowTime ? 'text-red-400 font-extrabold' : 'text-white'}`}>
+                  {timeLeft}s
+                </span>
+              </div>
+            </div>
+            <span className={`donut-label-title ${isLowTime ? 'text-red-400' : ''}`}>Tiempo</span>
           </div>
         )}
       </div>
 
-      {/* Tarjeta de la Pregunta (Paddings generosos y tipografía amplia) */}
-      <div className="casual-card p-6 sm:p-9 w-full mb-6 text-left shadow-2xl">
+      {/* Tarjeta de la Pregunta */}
+      <div className="casual-card text-left">
         <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wider mb-3">
           <Zap size={16} className="text-red-500" />
-          <span>Valor: {currentQuestion.points} pts</span>
+          <span>Pregunta {currentStep}</span>
         </div>
         <h2 className="text-xl sm:text-2xl font-bold text-slate-800 leading-snug">
           {currentQuestion.question}
         </h2>
       </div>
 
-      {/* Opciones de Respuesta Casual con espacio amplio */}
-      <div className="space-y-3.5 sm:space-y-4 mb-6">
+      {/* Opciones de Respuesta Casual (Sin revelar respuestas correctas) */}
+      <div className="space-y-4 mb-4">
         {currentQuestion.options.map((option, idx) => {
           const isSelected = selectedOptionId === option.id;
-          const isCorrect = showFeedback && option.id === currentQuestion.correctOptionId;
-          const isIncorrect = showFeedback && isSelected && !isCorrect;
 
           return (
             <OptionButton
@@ -174,25 +217,12 @@ export default function TriviaGame({
               index={idx}
               option={option}
               isSelected={isSelected}
-              isCorrect={isCorrect}
-              isIncorrect={isIncorrect}
               isDisabled={isAnswerLocked}
               onClick={handleOptionSelect}
             />
           );
         })}
       </div>
-
-      {/* Explicación pedagógica de inocuidad */}
-      {showFeedback && currentQuestion.explanation && (
-        <div className="casual-card p-5 text-sm sm:text-base text-slate-700 flex items-start gap-3 animate-casual-in mb-2 shadow-lg">
-          <HelpCircle size={20} className="text-red-500 shrink-0 mt-0.5" />
-          <div>
-            <span className="font-bold text-slate-900 block mb-1">Fundamento de Inocuidad:</span>
-            <p className="leading-relaxed">{currentQuestion.explanation}</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
