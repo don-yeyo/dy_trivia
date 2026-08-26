@@ -23,15 +23,12 @@ export default function OptionButton({
       type="button"
       onClick={() => onClick(option.id)}
       disabled={isDisabled}
-      className={`option-btn-3d ${stateClasses}`}
-      style={{
-        animationDelay: `${index * 80}ms`
-      }}
+      className={`casual-option-btn ${stateClasses}`}
     >
-      <div className="option-badge">
+      <div className="casual-option-badge">
         {letter}
       </div>
-      <span className="flex-1 text-left select-none">
+      <span className="flex-1 text-left font-semibold select-none leading-snug">
         {option.text}
       </span>
     </button>

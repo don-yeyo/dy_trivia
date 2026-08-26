@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import OptionButton from './OptionButton';
 import { sounds } from '../services/soundEffects';
-import { HelpCircle, Clock, Zap, CheckCircle2, AlertCircle } from 'lucide-react';
+import { HelpCircle, Zap } from 'lucide-react';
 
 export default function TriviaGame({
   questions = [],
   timePerQuestion = 45,
-  maxTotalTime = 600,
   onFinishGame,
   onAnswerSubmit
 }) {
@@ -21,7 +20,6 @@ export default function TriviaGame({
   const timerRef = useRef(null);
   const currentQuestion = questions[currentIndex];
 
-  // Iniciar / Resetear temporizador por pregunta
   useEffect(() => {
     if (timePerQuestion > 0) {
       setTimeLeft(timePerQuestion);
@@ -49,30 +47,26 @@ export default function TriviaGame({
     };
   }, [currentIndex, timePerQuestion]);
 
-  // Manejo de tiempo expirado
   const handleTimeExpired = () => {
     if (isAnswerLocked) return;
     setIsAnswerLocked(true);
     sounds.playIncorrect();
     setShowFeedback(true);
 
-    const timeSpent = timePerQuestion;
     onAnswerSubmit({
       questionId: currentQuestion.id,
       questionText: currentQuestion.question,
       selectedOptionId: null,
       isCorrect: false,
       pointsEarned: 0,
-      timeSpent
+      timeSpent: timePerQuestion
     });
 
-    // Avanzar tras breve pausa para ver la respuesta correcta
     setTimeout(() => {
       goToNextQuestion();
     }, 1800);
   };
 
-  // Manejo de selección de opción
   const handleOptionSelect = (optionId) => {
     if (isAnswerLocked) return;
 
@@ -84,14 +78,13 @@ export default function TriviaGame({
     const isCorrect = optionId === currentQuestion.correctOptionId;
     const timeSpent = Math.max(1, Math.round((Date.now() - questionStartTime) / 1000));
     
-    // Bonificación de puntos por rapidez
     let pointsEarned = 0;
     if (isCorrect) {
       const speedBonus = timePerQuestion > 0 ? Math.round((timeLeft / timePerQuestion) * 50) : 0;
       pointsEarned = currentQuestion.points + speedBonus;
-      setTimeout(() => sounds.playCorrect(), 200);
+      setTimeout(() => sounds.playCorrect(), 150);
     } else {
-      setTimeout(() => sounds.playIncorrect(), 200);
+      setTimeout(() => sounds.playIncorrect(), 150);
     }
 
     setShowFeedback(true);
@@ -105,7 +98,6 @@ export default function TriviaGame({
       timeSpent
     });
 
-    // Transición con animación swap out a la siguiente pregunta
     setTimeout(() => {
       goToNextQuestion();
     }, 1600);
@@ -120,7 +112,7 @@ export default function TriviaGame({
       } else {
         onFinishGame();
       }
-    }, 300);
+    }, 250);
   };
 
   if (!currentQuestion) return null;
@@ -129,50 +121,48 @@ export default function TriviaGame({
   const timeBarPercent = timePerQuestion > 0 ? (timeLeft / timePerQuestion) * 100 : 100;
 
   return (
-    <div className={`w-full max-w-2xl mx-auto px-4 py-4 flex-1 flex flex-col justify-between z-10 ${
-      isAnimatingOut ? 'animate-swap-out' : 'animate-swap-in'
+    <div className={`w-full max-w-xl mx-auto px-4 py-4 flex-1 flex flex-col justify-between z-10 ${
+      isAnimatingOut ? 'animate-casual-out' : 'animate-casual-in'
     }`}>
-      {/* Barra de Progreso Global de Preguntas */}
-      <div className="w-full mb-3">
-        <div className="flex justify-between items-center text-xs text-gray-300 mb-1.5 font-semibold">
+      {/* Progreso & Temporizador Casual */}
+      <div className="w-full mb-4">
+        <div className="flex justify-between items-center text-xs text-white/90 mb-1.5 font-semibold">
           <span>Pregunta {currentIndex + 1} de {questions.length}</span>
-          <span className="text-yellow-400 font-bold">{Math.round(progressPercent)}% completado</span>
+          <span className="text-yellow-300 font-bold">{Math.round(progressPercent)}%</span>
         </div>
-        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+        <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden mb-2.5">
           <div 
-            className="h-full bg-gradient-to-r from-red-600 via-red-500 to-yellow-400 rounded-full transition-all duration-300 ease-out"
+            className="h-full bg-gradient-to-r from-red-500 to-yellow-400 rounded-full transition-all duration-300 ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-      </div>
 
-      {/* Temporizador de Pregunta */}
-      {timePerQuestion > 0 && (
-        <div className="w-full mb-4">
-          <div className="timer-bar-container">
+        {/* Barra de tiempo por pregunta */}
+        {timePerQuestion > 0 && (
+          <div className="casual-timer-track">
             <div 
-              className={`timer-bar-fill ${
-                timeLeft <= 10 ? 'bg-red-500 shadow-lg shadow-red-500/50' : timeLeft <= 20 ? 'bg-yellow-400' : 'bg-emerald-400'
+              className={`casual-timer-fill ${
+                timeLeft <= 10 ? 'bg-red-500 shadow-md shadow-red-500/50' : timeLeft <= 20 ? 'bg-yellow-400' : 'bg-emerald-400'
               }`}
               style={{ width: `${timeBarPercent}%` }}
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Tarjeta Glassmorphic de la Pregunta */}
-      <div className="glass-panel p-6 sm:p-8 rounded-3xl mb-6 shadow-2xl relative border-t border-white/30">
-        <div className="flex items-center gap-2 text-xs font-bold text-blue-200 uppercase tracking-wider mb-2">
-          <Zap size={15} className="text-yellow-400" />
+      {/* Tarjeta de la Pregunta (Limpia, Blanca, Soft Shadows) */}
+      <div className="casual-card p-6 sm:p-7 w-full mb-4 text-left">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-red-600 uppercase tracking-wider mb-2">
+          <Zap size={14} className="text-red-500" />
           <span>Valor: {currentQuestion.points} pts</span>
         </div>
-        <h2 className="text-lg sm:text-2xl font-bold text-white leading-snug">
+        <h2 className="text-lg sm:text-xl font-bold text-slate-800 leading-snug">
           {currentQuestion.question}
         </h2>
       </div>
 
-      {/* Opciones de Respuesta 3D Glass */}
-      <div className="space-y-3 mb-6">
+      {/* Opciones de Respuesta Casual */}
+      <div className="space-y-2.5 mb-4">
         {currentQuestion.options.map((option, idx) => {
           const isSelected = selectedOptionId === option.id;
           const isCorrect = showFeedback && option.id === currentQuestion.correctOptionId;
@@ -193,12 +183,12 @@ export default function TriviaGame({
         })}
       </div>
 
-      {/* Explicación formativa en caso de respuesta */}
+      {/* Explicación pedagógica de inocuidad */}
       {showFeedback && currentQuestion.explanation && (
-        <div className="glass-card p-4 rounded-xl border border-white/20 animate-fade-in text-xs sm:text-sm text-gray-200 flex items-start gap-2.5">
-          <HelpCircle size={18} className="text-blue-300 shrink-0 mt-0.5" />
+        <div className="casual-card p-4 text-xs sm:text-sm text-slate-700 flex items-start gap-2.5 animate-casual-in mb-2">
+          <HelpCircle size={17} className="text-red-500 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold text-white block mb-0.5">Fundamento de Inocuidad:</span>
+            <span className="font-bold text-slate-900 block mb-0.5">Fundamento de Inocuidad:</span>
             {currentQuestion.explanation}
           </div>
         </div>

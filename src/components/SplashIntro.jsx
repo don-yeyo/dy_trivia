@@ -1,75 +1,88 @@
 import React from 'react';
-import { Play, Sparkles, Clock, ShieldAlert, CheckCircle2, UserCheck } from 'lucide-react';
+import { Play, Zap, Clock, Lock, Sparkles } from 'lucide-react';
 import { sounds } from '../services/soundEffects';
 
-export default function SplashIntro({ user, activePhase = 1, totalQuestions = 0, onStartGame }) {
+export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
   const handleStart = () => {
     sounds.playSelect();
     onStartGame();
   };
 
+  const initialLetter = user?.nombre ? user.nombre.trim().charAt(0).toUpperCase() : 'P';
+  const fullName = user?.nombre && user?.apellido ? `${user.nombre} ${user.apellido}` : 'Participante Demo';
+  const legajoNumber = user?.legajo || '9999';
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 max-w-xl mx-auto w-full text-center z-10 animate-fade-in">
-      {/* Logo Don Yeyo con animación de latido suave */}
-      <div className="mb-6 flex flex-col items-center">
-        <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-3xl p-3 bg-gradient-to-br from-white/15 to-white/5 border border-white/20 shadow-2xl flex items-center justify-center animate-pulse-heart">
+    <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-6 max-w-lg mx-auto w-full text-center z-10 animate-casual-in">
+      {/* Insignia / Logotipo Centrado con animación suave */}
+      <div className="mb-4 flex flex-col items-center">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl p-3 bg-white/95 shadow-xl flex items-center justify-center animate-soft-pulse">
           <img 
-            src="/favicon.svg" 
-            alt="Don Yeyo Escudo" 
-            className="w-full h-full object-contain filter drop-shadow-xl" 
+            src="/logo-donyeyo.svg" 
+            alt="Don Yeyo Logo" 
+            className="w-full h-full object-contain" 
           />
         </div>
-        <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/30 border border-red-500/40 text-red-200 text-xs font-bold uppercase tracking-wider">
-          <Sparkles size={14} className="text-yellow-400" />
+        <div className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-semibold tracking-wide shadow-sm">
+          <Sparkles size={13} className="text-yellow-300" />
           <span>Semana de la Inocuidad 2026</span>
         </div>
       </div>
 
-      {/* Saludo Personalizado */}
-      <div className="glass-panel p-6 w-full rounded-2xl mb-6 text-left border-t border-white/25">
-        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/10">
-          <div className="w-10 h-10 rounded-full bg-red-600/80 flex items-center justify-center font-bold text-lg text-white shadow-inner">
-            {user?.nombre?.charAt(0) || 'P'}
+      {/* Tarjeta Principal Casual Gaming (Limpia, Blanca, Soft Corners & Soft Shadows) */}
+      <div className="casual-card p-6 sm:p-7 w-full mb-5 text-left">
+        {/* Cabecera de Usuario: Avatar + Jerarquía de Nombre y Legajo */}
+        <div className="flex items-center gap-3.5 mb-4 pb-3.5 border-b border-slate-100">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-red-600 to-red-500 flex items-center justify-center font-extrabold text-xl text-white shadow-md shadow-red-500/25 shrink-0">
+            {initialLetter}
           </div>
-          <div>
-            <div className="text-xs text-blue-200 font-semibold">¡Hola, bienvenido/a!</div>
-            <h2 className="text-xl font-bold text-white leading-tight">
-              {user ? `${user.nombre} ${user.apellido}` : 'Colaborador Don Yeyo'}
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-red-600 uppercase tracking-wider">
+              Bienvenido/a
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800 truncate leading-snug">
+              {fullName}
             </h2>
-            <div className="text-xs text-gray-300">Legajo: <span className="font-semibold text-white">{user?.legajo || 'Invitado'}</span></div>
+            <div className="text-xs text-slate-500 font-medium">
+              Legajo: <span className="text-slate-700 font-semibold">{legajoNumber}</span>
+            </div>
           </div>
         </div>
 
-        {/* Descripción de la Trivia */}
-        <h3 className="text-base font-bold text-yellow-400 mb-2 flex items-center gap-2">
-          <ShieldAlert size={18} />
-          <span>Trivia de Inocuidad - Fase {activePhase}</span>
-        </h3>
-        <p className="text-sm text-gray-200 leading-relaxed mb-4">
-          Pon a prueba tus conocimientos sobre Buenas Prácticas de Manufactura (BPM), inocuidad alimentaria y calidad en nuestros procesos productivos.
+        {/* Texto Instructivo Claro */}
+        <p className="text-sm text-slate-600 leading-relaxed mb-4 font-normal">
+          Pon a prueba tus conocimientos sobre Buenas Prácticas de Manufactura (BPM) y los estándares de inocuidad en los procesos de Don Yeyo.
         </p>
 
-        {/* Reglas del Juego */}
-        <div className="space-y-2 text-xs text-gray-300 bg-black/20 p-3.5 rounded-xl border border-white/5">
-          <div className="flex items-start gap-2">
-            <CheckCircle2 size={15} className="text-green-400 shrink-0 mt-0.5" />
-            <span>Son <strong>{totalQuestions} preguntas</strong> sobre nuestros estándares de calidad e inocuidad.</span>
+        {/* Lista de Items Instructivos (Rayo, Reloj, Candado) */}
+        <div className="space-y-2.5 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100 mb-2">
+          <div className="flex items-center gap-3 text-xs text-slate-700 font-medium">
+            <div className="w-7 h-7 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 shadow-xs">
+              <Zap size={15} />
+            </div>
+            <span><strong>{totalQuestions} preguntas</strong> sobre calidad e higiene operativa.</span>
           </div>
-          <div className="flex items-start gap-2">
-            <Clock size={15} className="text-yellow-400 shrink-0 mt-0.5" />
-            <span>Al presionar <strong>Comenzar</strong> se iniciará el cronómetro. Responde con rapidez para sumar más puntos.</span>
+
+          <div className="flex items-center gap-3 text-xs text-slate-700 font-medium">
+            <div className="w-7 h-7 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 shadow-xs">
+              <Clock size={15} />
+            </div>
+            <span>Al presionar <strong>Comenzar</strong> se iniciará el cronómetro.</span>
           </div>
-          <div className="flex items-start gap-2">
-            <ShieldAlert size={15} className="text-red-400 shrink-0 mt-0.5" />
-            <span><strong>Uso único:</strong> Al finalizar o salir, esta fase quedará guardada y no podrás repetirla.</span>
+
+          <div className="flex items-center gap-3 text-xs text-slate-700 font-medium">
+            <div className="w-7 h-7 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 shadow-xs">
+              <Lock size={15} />
+            </div>
+            <span><strong>Uso único:</strong> Cada fase permite un solo intento por participante.</span>
           </div>
         </div>
       </div>
 
-      {/* Botón de Inicio 3D Gaming */}
+      {/* Botón Principal Protagonista Estilo Casual Gaming */}
       <button 
         onClick={handleStart}
-        className="btn-3d-primary w-full max-w-sm"
+        className="btn-casual-primary"
       >
         <Play size={20} className="fill-white" />
         <span>Comenzar Trivia</span>

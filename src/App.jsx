@@ -9,16 +9,13 @@ import PwaInstallPrompt from './components/PwaInstallPrompt';
 import { validateUserToken, recordPhaseAccess } from './services/authService';
 import { loadTriviaQuestions } from './services/triviaService';
 import { sounds } from './services/soundEffects';
-import { ShieldCheck, KeyRound, RefreshCw, AlertTriangle } from 'lucide-react';
+import { RefreshCw, KeyRound } from 'lucide-react';
 
 export default function App() {
-  // Parámetros de entorno configurables
   const activePhase = parseInt(import.meta.env.VITE_ACTIVE_PHASE || '1', 10);
   const shuffleQuestions = import.meta.env.VITE_SHUFFLE_QUESTIONS === 'true';
   const timePerQuestion = parseInt(import.meta.env.VITE_TIME_PER_QUESTION || '45', 10);
-  const maxTotalTime = parseInt(import.meta.env.VITE_MAX_TIME_TOTAL || '600', 10);
 
-  // Estados de la Aplicación
   const [gameState, setGameState] = useState('LOADING'); // LOADING | SPLASH | PLAYING | FINISHED | LOCKED | INVALID_TOKEN
   const [currentUser, setCurrentUser] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -31,13 +28,10 @@ export default function App() {
   const [soundMuted, setSoundMuted] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
-  // Inicialización y Validación de Token
   useEffect(() => {
     async function initApp() {
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token') || urlParams.get('hash') || urlParams.get('legajo');
-
-      // Si no se proporcionó token en URL, usamos el usuario demo para facilitar pruebas visuales
       const effectiveToken = token || 'demo';
 
       const validation = await validateUserToken(effectiveToken, activePhase);
@@ -55,7 +49,6 @@ export default function App() {
         return;
       }
 
-      // Cargar preguntas de la fase activa
       const loadedQuestions = await loadTriviaQuestions(activePhase, shuffleQuestions);
       setQuestions(loadedQuestions);
       setGameState('SPLASH');
@@ -64,19 +57,16 @@ export default function App() {
     initApp();
   }, [activePhase, shuffleQuestions]);
 
-  // Manejo de sonido
   const handleToggleSound = () => {
     sounds.enabled = !sounds.enabled;
     setSoundMuted(!sounds.enabled);
   };
 
-  // Iniciar Trivia
   const handleStartGame = () => {
     setGameState('PLAYING');
     setGameStartTime(Date.now());
   };
 
-  // Registro de cada respuesta
   const handleAnswerSubmit = (answerData) => {
     if (answerData.isCorrect) {
       setUserScore(prev => prev + answerData.pointsEarned);
@@ -85,12 +75,10 @@ export default function App() {
     setAnswersLog(prev => [...prev, answerData]);
   };
 
-  // Finalizar Trivia y Guardar
   const handleFinishGame = async () => {
     const elapsedSeconds = gameStartTime ? Math.max(1, Math.round((Date.now() - gameStartTime) / 1000)) : 0;
     setTotalElapsedTime(elapsedSeconds);
 
-    // Guardar fecha, hora y resultados
     if (currentUser) {
       await recordPhaseAccess(currentUser.legajo, activePhase, {
         score: userScore,
@@ -104,33 +92,27 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between relative overflow-hidden bg-radial">
-      {/* Fondo con detalles gráficos sutiles */}
-      <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40" />
-
-      {/* Header superior */}
+    <div className="min-h-screen flex flex-col justify-between relative overflow-hidden">
+      {/* Header superior limpio sin 'Fase 1' */}
       <Header
-        activePhase={activePhase}
         score={userScore}
         questionIndex={answersLog.length}
         totalQuestions={questions.length}
-        timeRemaining={null}
-        showTimer={false}
         soundMuted={soundMuted}
         onToggleSound={handleToggleSound}
         isGameActive={gameState === 'PLAYING'}
       />
 
-      {/* Contenido Principal según el estado */}
+      {/* Contenido Principal */}
       <main className="flex-1 flex flex-col items-center justify-center relative z-10 w-full">
         {gameState === 'LOADING' && (
           <div className="flex flex-col items-center gap-4 text-white">
-            <div className="w-24 h-24 rounded-3xl p-3 bg-white/10 border border-white/20 shadow-2xl flex items-center justify-center animate-pulse-heart">
-              <img src="/favicon.svg" alt="Cargando" className="w-16 h-16 object-contain" />
+            <div className="w-20 h-20 rounded-3xl p-3 bg-white shadow-xl flex items-center justify-center animate-soft-pulse">
+              <img src="/logo-donyeyo.svg" alt="Cargando" className="w-full h-full object-contain" />
             </div>
-            <div className="flex items-center gap-2 text-sm text-blue-200">
+            <div className="flex items-center gap-2 text-sm text-slate-200 font-medium">
               <RefreshCw size={16} className="animate-spin text-red-400" />
-              <span>Preparando Trivia de Inocuidad...</span>
+              <span>Cargando Trivia de Inocuidad...</span>
             </div>
           </div>
         )}
@@ -138,7 +120,6 @@ export default function App() {
         {gameState === 'SPLASH' && (
           <SplashIntro
             user={currentUser}
-            activePhase={activePhase}
             totalQuestions={questions.length}
             onStartGame={handleStartGame}
           />
@@ -148,7 +129,6 @@ export default function App() {
           <TriviaGame
             questions={questions}
             timePerQuestion={timePerQuestion}
-            maxTotalTime={maxTotalTime}
             onFinishGame={handleFinishGame}
             onAnswerSubmit={handleAnswerSubmit}
           />
@@ -161,14 +141,12 @@ export default function App() {
             correctCount={correctAnswersCount}
             totalQuestions={questions.length}
             totalTime={totalElapsedTime}
-            activePhase={activePhase}
           />
         )}
 
         {gameState === 'LOCKED' && (
           <PhaseLocked
             user={currentUser}
-            activePhase={activePhase}
             playedDate={playedDate}
             isTokenInvalid={false}
           />
@@ -182,23 +160,23 @@ export default function App() {
       </main>
 
       {/* Footer corporativo Don Yeyo */}
-      <footer className="w-full max-w-4xl mx-auto px-4 py-3 flex items-center justify-between text-[11px] text-gray-400 border-t border-white/10 z-20">
-        <div className="flex items-center gap-1.5">
-          <span className="font-bold text-white/80">Don Yeyo S.A.</span>
+      <footer className="w-full max-w-4xl mx-auto px-4 py-3 flex items-center justify-between text-[11px] text-slate-300 z-20">
+        <div className="flex items-center gap-1.5 font-medium">
+          <span className="font-bold text-white">Don Yeyo S.A.</span>
           <span>&bull;</span>
-          <span>Inocuidad 2026</span>
+          <span>Semana de la Inocuidad 2026</span>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsAdminModalOpen(true)}
-            className="flex items-center gap-1 text-blue-300 hover:text-white transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-slate-200 hover:text-white transition-colors cursor-pointer bg-white/10 px-2.5 py-1 rounded-full backdrop-blur-xs"
             title="Ver Enlaces de Participantes (RRHH)"
           >
-            <KeyRound size={13} />
+            <KeyRound size={12} className="text-yellow-300" />
             <span className="hidden sm:inline">Enlaces RRHH</span>
           </button>
-          <span>v1.0.0</span>
+          <span className="opacity-75">v1.1.0</span>
         </div>
       </footer>
 
