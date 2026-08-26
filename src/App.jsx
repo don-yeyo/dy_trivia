@@ -5,7 +5,6 @@ import TriviaGame from './components/TriviaGame';
 import GameOver from './components/GameOver';
 import PhaseLocked from './components/PhaseLocked';
 import AdminLinksModal from './components/AdminLinksModal';
-import PwaInstallPrompt from './components/PwaInstallPrompt';
 import { validateUserToken, recordPhaseAccess } from './services/authService';
 import { loadTriviaQuestions } from './services/triviaService';
 import { sounds } from './services/soundEffects';
@@ -76,7 +75,6 @@ export default function App() {
   };
 
   const handleResetSession = () => {
-    // Limpiar registros locales de acceso
     if (currentUser?.legajo) {
       localStorage.removeItem(`dy_trivia_access_${currentUser.legajo}_fase${activePhase}`);
     }
@@ -87,7 +85,6 @@ export default function App() {
     localStorage.removeItem(`dy_trivia_access_1004_fase${activePhase}`);
     localStorage.removeItem(`dy_trivia_access_1005_fase${activePhase}`);
     
-    // Resetear estados del juego
     setUserScore(0);
     setCorrectAnswersCount(0);
     setAnswersLog([]);
@@ -112,7 +109,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between relative overflow-x-hidden py-2 sm:py-4">
+    <div className="app-layout">
       {/* Header superior limpio */}
       <Header
         score={userScore}
@@ -123,14 +120,14 @@ export default function App() {
         isGameActive={gameState === 'PLAYING'}
       />
 
-      {/* Contenido Principal con espaciado generoso y respiración */}
-      <main className="flex-1 flex flex-col items-center justify-center relative z-10 w-full px-4 sm:px-6 py-6 sm:py-10 my-auto">
+      {/* Contenido Principal con espaciado generoso */}
+      <main className="app-main">
         {gameState === 'LOADING' && (
-          <div className="flex flex-col items-center gap-5 text-white py-12">
+          <div className="flex flex-col items-center gap-5 text-white py-16">
             <div className="w-24 h-24 rounded-3xl p-4 bg-white shadow-2xl flex items-center justify-center animate-soft-pulse">
               <img src="/logo-donyeyo.svg" alt="Cargando" className="w-full h-full object-contain" />
             </div>
-            <div className="flex items-center gap-2.5 text-base text-slate-100 font-semibold tracking-wide">
+            <div className="flex items-center gap-3 text-base text-slate-100 font-semibold tracking-wide mt-2">
               <RefreshCw size={18} className="animate-spin text-red-500" />
               <span>Cargando Trivia de Inocuidad...</span>
             </div>
@@ -181,7 +178,7 @@ export default function App() {
       </main>
 
       {/* Footer corporativo Don Yeyo */}
-      <footer className="w-full max-w-4xl mx-auto px-6 py-4 flex items-center justify-between text-xs text-slate-300 z-20 mt-auto">
+      <footer className="app-footer">
         <div className="flex items-center gap-2 font-medium">
           <span className="font-bold text-white tracking-wide">Don Yeyo S.A.</span>
           <span className="text-slate-400">&bull;</span>
@@ -191,7 +188,7 @@ export default function App() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsAdminModalOpen(true)}
-            className="flex items-center gap-1.5 text-slate-200 hover:text-white transition-colors cursor-pointer bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-full backdrop-blur-md font-medium text-xs shadow-sm"
+            className="flex items-center gap-1.5 text-slate-200 hover:text-white transition-colors cursor-pointer bg-white/15 hover:bg-white/25 px-3.5 py-1.5 rounded-full backdrop-blur-md font-medium text-xs shadow-sm"
             title="Ver Enlaces de Participantes (RRHH)"
           >
             <KeyRound size={13} className="text-yellow-300" />

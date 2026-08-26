@@ -13,9 +13,9 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
   const legajoNumber = user?.legajo || '9999';
 
   return (
-    <div className="w-full max-w-xl mx-auto flex flex-col items-center justify-center text-center z-10 animate-casual-in py-2 sm:py-6">
+    <div className="w-full flex flex-col items-center justify-center text-center z-10 animate-casual-in">
       {/* Insignia / Logotipo Centrado con animación suave */}
-      <div className="mb-6 sm:mb-8 flex flex-col items-center">
+      <div className="flex flex-col items-center mb-6">
         <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl p-4 bg-white shadow-2xl flex items-center justify-center animate-soft-pulse border border-white/40">
           <img 
             src="/logo-donyeyo.svg" 
@@ -29,50 +29,50 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
         </div>
       </div>
 
-      {/* Tarjeta Principal Casual Gaming con paddings y márgenes generosos */}
-      <div className="casual-card p-6 sm:p-9 w-full mb-6 sm:mb-8 text-left">
+      {/* Tarjeta Principal Casual Gaming con paddings y márgenes explícitos */}
+      <div className="casual-card text-left">
         {/* Cabecera de Usuario: Avatar + Jerarquía de Nombre y Legajo */}
-        <div className="flex items-center gap-4 mb-6 pb-5 border-b border-slate-100">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 to-red-500 flex items-center justify-center font-extrabold text-2xl text-white shadow-lg shadow-red-500/25 shrink-0">
+        <div className="user-profile-header">
+          <div className="user-avatar">
             {initialLetter}
           </div>
           <div className="min-w-0">
-            <div className="text-xs font-bold text-red-600 uppercase tracking-wider mb-0.5">
+            <div className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">
               Bienvenido/a
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-800 truncate leading-snug">
               {fullName}
             </h2>
-            <div className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+            <div className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
               Legajo: <span className="text-slate-700 font-semibold">{legajoNumber}</span>
             </div>
           </div>
         </div>
 
         {/* Texto Instructivo Claro */}
-        <p className="text-sm sm:text-base text-slate-600 leading-relaxed mb-6 font-normal">
+        <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal mb-2">
           Pon a prueba tus conocimientos sobre Buenas Prácticas de Manufactura (BPM) y los estándares de inocuidad en los procesos de Don Yeyo.
         </p>
 
         {/* Lista de Items Instructivos (Rayo, Reloj, Candado) */}
-        <div className="space-y-3.5 bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-100/80 mb-2">
-          <div className="flex items-center gap-3.5 text-xs sm:text-sm text-slate-700 font-medium">
-            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 shadow-xs">
-              <Zap size={16} />
+        <div className="instructions-container">
+          <div className="instruction-row">
+            <div className="instruction-icon-box bg-amber-100 text-amber-600 shadow-xs">
+              <Zap size={18} />
             </div>
             <span><strong>{totalQuestions} preguntas</strong> sobre calidad e higiene operativa.</span>
           </div>
 
-          <div className="flex items-center gap-3.5 text-xs sm:text-sm text-slate-700 font-medium">
-            <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 shadow-xs">
-              <Clock size={16} />
+          <div className="instruction-row">
+            <div className="instruction-icon-box bg-blue-100 text-blue-600 shadow-xs">
+              <Clock size={18} />
             </div>
             <span>Al presionar <strong>Comenzar</strong> se iniciará el cronómetro.</span>
           </div>
 
-          <div className="flex items-center gap-3.5 text-xs sm:text-sm text-slate-700 font-medium">
-            <div className="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0 shadow-xs">
-              <Lock size={16} />
+          <div className="instruction-row">
+            <div className="instruction-icon-box bg-red-100 text-red-600 shadow-xs">
+              <Lock size={18} />
             </div>
             <span><strong>Uso único:</strong> Cada fase permite un solo intento por participante.</span>
           </div>
@@ -82,7 +82,7 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
       {/* Botón Principal Protagonista Estilo Casual Gaming */}
       <button 
         onClick={handleStart}
-        className="btn-casual-primary max-w-md"
+        className="btn-casual-primary"
       >
         <Play size={22} className="fill-white" />
         <span>Comenzar Trivia</span>
