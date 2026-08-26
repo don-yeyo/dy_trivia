@@ -121,16 +121,16 @@ export default function TriviaGame({
   const timeBarPercent = timePerQuestion > 0 ? (timeLeft / timePerQuestion) * 100 : 100;
 
   return (
-    <div className={`w-full max-w-xl mx-auto px-4 py-4 flex-1 flex flex-col justify-between z-10 ${
+    <div className={`w-full max-w-2xl mx-auto flex-1 flex flex-col justify-between z-10 py-2 sm:py-6 ${
       isAnimatingOut ? 'animate-casual-out' : 'animate-casual-in'
     }`}>
       {/* Progreso & Temporizador Casual */}
-      <div className="w-full mb-4">
-        <div className="flex justify-between items-center text-xs text-white/90 mb-1.5 font-semibold">
+      <div className="w-full mb-6">
+        <div className="flex justify-between items-center text-xs sm:text-sm text-white mb-2 font-semibold tracking-wide">
           <span>Pregunta {currentIndex + 1} de {questions.length}</span>
           <span className="text-yellow-300 font-bold">{Math.round(progressPercent)}%</span>
         </div>
-        <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden mb-2.5">
+        <div className="h-2.5 w-full bg-white/20 rounded-full overflow-hidden mb-3 shadow-inner">
           <div 
             className="h-full bg-gradient-to-r from-red-500 to-yellow-400 rounded-full transition-all duration-300 ease-out"
             style={{ width: `${progressPercent}%` }}
@@ -139,7 +139,7 @@ export default function TriviaGame({
 
         {/* Barra de tiempo por pregunta */}
         {timePerQuestion > 0 && (
-          <div className="casual-timer-track">
+          <div className="casual-timer-track h-2.5 shadow-inner">
             <div 
               className={`casual-timer-fill ${
                 timeLeft <= 10 ? 'bg-red-500 shadow-md shadow-red-500/50' : timeLeft <= 20 ? 'bg-yellow-400' : 'bg-emerald-400'
@@ -150,19 +150,19 @@ export default function TriviaGame({
         )}
       </div>
 
-      {/* Tarjeta de la Pregunta (Limpia, Blanca, Soft Shadows) */}
-      <div className="casual-card p-6 sm:p-7 w-full mb-4 text-left">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-red-600 uppercase tracking-wider mb-2">
-          <Zap size={14} className="text-red-500" />
+      {/* Tarjeta de la Pregunta (Paddings generosos y tipografía amplia) */}
+      <div className="casual-card p-6 sm:p-9 w-full mb-6 text-left shadow-2xl">
+        <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wider mb-3">
+          <Zap size={16} className="text-red-500" />
           <span>Valor: {currentQuestion.points} pts</span>
         </div>
-        <h2 className="text-lg sm:text-xl font-bold text-slate-800 leading-snug">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 leading-snug">
           {currentQuestion.question}
         </h2>
       </div>
 
-      {/* Opciones de Respuesta Casual */}
-      <div className="space-y-2.5 mb-4">
+      {/* Opciones de Respuesta Casual con espacio amplio */}
+      <div className="space-y-3.5 sm:space-y-4 mb-6">
         {currentQuestion.options.map((option, idx) => {
           const isSelected = selectedOptionId === option.id;
           const isCorrect = showFeedback && option.id === currentQuestion.correctOptionId;
@@ -185,11 +185,11 @@ export default function TriviaGame({
 
       {/* Explicación pedagógica de inocuidad */}
       {showFeedback && currentQuestion.explanation && (
-        <div className="casual-card p-4 text-xs sm:text-sm text-slate-700 flex items-start gap-2.5 animate-casual-in mb-2">
-          <HelpCircle size={17} className="text-red-500 shrink-0 mt-0.5" />
+        <div className="casual-card p-5 text-sm sm:text-base text-slate-700 flex items-start gap-3 animate-casual-in mb-2 shadow-lg">
+          <HelpCircle size={20} className="text-red-500 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold text-slate-900 block mb-0.5">Fundamento de Inocuidad:</span>
-            {currentQuestion.explanation}
+            <span className="font-bold text-slate-900 block mb-1">Fundamento de Inocuidad:</span>
+            <p className="leading-relaxed">{currentQuestion.explanation}</p>
           </div>
         </div>
       )}

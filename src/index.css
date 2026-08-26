@@ -97,18 +97,18 @@ h1, h2, h3, h4, .font-heading {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
   background: var(--dy-red-gradient);
   color: #ffffff;
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 18px 36px;
+  padding: 20px 40px;
   border-radius: var(--radius-btn);
-  border: 2px solid rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.45);
   box-shadow: var(--dy-red-shadow);
   cursor: pointer;
   transform: translateY(0);
@@ -123,7 +123,7 @@ h1, h2, h3, h4, .font-heading {
   top: 0;
   left: 0;
   right: 0;
-  height: 40%;
+  height: 42%;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 100%);
   border-radius: var(--radius-btn) var(--radius-btn) 100px 100px;
   pointer-events: none;
@@ -146,16 +146,16 @@ h1, h2, h3, h4, .font-heading {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
+  gap: 18px;
+  padding: 18px 24px;
   background: #ffffff;
   color: #1e293b;
   border-radius: var(--radius-option);
   border: 2px solid #e2e8f0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 0 #cbd5e1;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
   cursor: pointer;
   transform: translateY(0);
   transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -176,8 +176,8 @@ h1, h2, h3, h4, .font-heading {
 /* Badge de la letra (A, B, C, D, E) */
 .casual-option-badge {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
   background: #f1f5f9;
   color: #0d2c5c;
@@ -187,7 +187,7 @@ h1, h2, h3, h4, .font-heading {
   justify-content: center;
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   transition: all 0.18s ease;
 }
 

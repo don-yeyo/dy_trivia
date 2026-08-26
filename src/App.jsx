@@ -92,8 +92,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between relative overflow-hidden">
-      {/* Header superior limpio sin 'Fase 1' */}
+    <div className="min-h-screen flex flex-col justify-between relative overflow-x-hidden py-2 sm:py-4">
+      {/* Header superior limpio */}
       <Header
         score={userScore}
         questionIndex={answersLog.length}
@@ -103,15 +103,15 @@ export default function App() {
         isGameActive={gameState === 'PLAYING'}
       />
 
-      {/* Contenido Principal */}
-      <main className="flex-1 flex flex-col items-center justify-center relative z-10 w-full">
+      {/* Contenido Principal con espaciado generoso y respiración */}
+      <main className="flex-1 flex flex-col items-center justify-center relative z-10 w-full px-4 sm:px-6 py-6 sm:py-10 my-auto">
         {gameState === 'LOADING' && (
-          <div className="flex flex-col items-center gap-4 text-white">
-            <div className="w-20 h-20 rounded-3xl p-3 bg-white shadow-xl flex items-center justify-center animate-soft-pulse">
+          <div className="flex flex-col items-center gap-5 text-white py-12">
+            <div className="w-24 h-24 rounded-3xl p-4 bg-white shadow-2xl flex items-center justify-center animate-soft-pulse">
               <img src="/logo-donyeyo.svg" alt="Cargando" className="w-full h-full object-contain" />
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-200 font-medium">
-              <RefreshCw size={16} className="animate-spin text-red-400" />
+            <div className="flex items-center gap-2.5 text-base text-slate-100 font-semibold tracking-wide">
+              <RefreshCw size={18} className="animate-spin text-red-500" />
               <span>Cargando Trivia de Inocuidad...</span>
             </div>
           </div>
@@ -160,23 +160,23 @@ export default function App() {
       </main>
 
       {/* Footer corporativo Don Yeyo */}
-      <footer className="w-full max-w-4xl mx-auto px-4 py-3 flex items-center justify-between text-[11px] text-slate-300 z-20">
-        <div className="flex items-center gap-1.5 font-medium">
-          <span className="font-bold text-white">Don Yeyo S.A.</span>
-          <span>&bull;</span>
+      <footer className="w-full max-w-4xl mx-auto px-6 py-4 flex items-center justify-between text-xs text-slate-300 z-20 mt-auto">
+        <div className="flex items-center gap-2 font-medium">
+          <span className="font-bold text-white tracking-wide">Don Yeyo S.A.</span>
+          <span className="text-slate-400">&bull;</span>
           <span>Semana de la Inocuidad 2026</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => setIsAdminModalOpen(true)}
-            className="flex items-center gap-1 text-slate-200 hover:text-white transition-colors cursor-pointer bg-white/10 px-2.5 py-1 rounded-full backdrop-blur-xs"
+            className="flex items-center gap-1.5 text-slate-200 hover:text-white transition-colors cursor-pointer bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-full backdrop-blur-md font-medium text-xs shadow-sm"
             title="Ver Enlaces de Participantes (RRHH)"
           >
-            <KeyRound size={12} className="text-yellow-300" />
+            <KeyRound size={13} className="text-yellow-300" />
             <span className="hidden sm:inline">Enlaces RRHH</span>
           </button>
-          <span className="opacity-75">v1.1.0</span>
+          <span className="opacity-75 font-semibold">v1.1.0</span>
         </div>
       </footer>
 
@@ -185,9 +185,6 @@ export default function App() {
         isOpen={isAdminModalOpen}
         onClose={() => setIsAdminModalOpen(false)}
       />
-
-      {/* Prompt PWA para instalación */}
-      <PwaInstallPrompt />
     </div>
   );
 }
