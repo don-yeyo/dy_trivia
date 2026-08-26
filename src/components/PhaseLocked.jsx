@@ -24,9 +24,9 @@ export default function PhaseLocked({
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto flex flex-col items-center justify-center text-center z-10 animate-casual-in py-4 sm:py-8">
+    <div className="w-full max-w-xl mx-auto flex flex-col items-center justify-center text-center z-10 animate-casual-in py-2 sm:py-6">
       {/* Icono de Candado / Alerta */}
-      <div className="w-20 h-20 rounded-3xl p-4 bg-white/95 shadow-2xl mb-5 flex items-center justify-center border border-white/30">
+      <div className="w-20 h-20 rounded-3xl p-4 bg-white shadow-2xl mb-6 flex items-center justify-center border border-white/40">
         {isTokenInvalid ? (
           <AlertTriangle size={38} className="text-amber-500" />
         ) : (
@@ -36,50 +36,48 @@ export default function PhaseLocked({
 
       {isTokenInvalid ? (
         <>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-2">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 tracking-tight">
             Enlace No Válido
           </h1>
-          <p className="text-sm sm:text-base text-slate-200 mb-6 leading-relaxed">
+          <p className="text-xl sm:text-2xl font-bold text-white leading-snug mb-8 sm:mb-9">
             El enlace con el que intentas acceder no corresponde a un participante registrado o ha expirado. Por favor, solicita tu enlace personal al área de Calidad o Recursos Humanos de Don Yeyo.
           </p>
         </>
       ) : (
         <>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-2">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 tracking-tight">
             Trivia Ya Realizada
           </h1>
-          <p className="text-sm sm:text-base text-slate-200 mb-6">
-            ¡Hola <strong>{user?.nombre} {user?.apellido}</strong>! Tu participación en esta fase ya ha sido registrada exitosamente.
+          {/* Mismo estilo visual que el H1 */}
+          <p className="text-xl sm:text-2xl font-bold text-white leading-snug mb-8 sm:mb-9">
+            ¡Hola <span className="text-yellow-300 font-extrabold">{user?.nombre} {user?.apellido}</span>! Tu participación en esta fase ya ha sido registrada exitosamente.
           </p>
 
-          <div className="casual-card p-6 sm:p-8 w-full mb-6 text-left shadow-2xl">
-            <div className="flex items-center gap-2.5 text-xs sm:text-sm text-slate-600 mb-4 pb-3.5 border-b border-slate-100 font-medium">
-              <Calendar size={18} className="text-red-500" />
-              <span>Fecha de registro: <strong>{formattedDate || 'Completado previamente'}</strong></span>
+          {/* Tarjeta con tipografía mínima de 1rem */}
+          <div className="casual-card text-left shadow-2xl">
+            <div className="flex items-center gap-3 text-base text-slate-700 mb-5 pb-4 border-b border-slate-100 font-semibold">
+              <Calendar size={22} className="text-red-500 shrink-0" />
+              <span>Fecha de registro: <strong className="text-slate-900">{formattedDate || 'Completado previamente'}</strong></span>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs sm:text-sm text-slate-600 flex items-start gap-3 leading-relaxed">
-              <Info size={18} className="text-amber-500 shrink-0 mt-0.5" />
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-base text-slate-700 flex items-start gap-3.5 leading-relaxed">
+              <Info size={22} className="text-amber-500 shrink-0 mt-0.5" />
               <span>
                 Para garantizar la transparencia y equidad del concurso, cada fase permite un único intento por participante.
               </span>
             </div>
           </div>
 
-          {/* Botón para reiniciar intento en modo prueba / desarrollo */}
+          {/* Botón para reiniciar intento en modo prueba */}
           <button
             onClick={handleReset}
             className="btn-casual-primary max-w-sm mb-4"
           >
-            <RotateCcw size={18} className="text-white" />
+            <RotateCcw size={20} className="text-white" />
             <span>Reiniciar Trivia (Modo Prueba)</span>
           </button>
         </>
       )}
-
-      <div className="text-xs text-slate-300 mt-2">
-        Don Yeyo S.A. &copy; 2026 | Semana de la Inocuidad
-      </div>
     </div>
   );
 }

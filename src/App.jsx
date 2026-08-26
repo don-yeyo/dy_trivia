@@ -4,11 +4,9 @@ import SplashIntro from './components/SplashIntro';
 import TriviaGame from './components/TriviaGame';
 import GameOver from './components/GameOver';
 import PhaseLocked from './components/PhaseLocked';
-import AdminLinksModal from './components/AdminLinksModal';
 import { validateUserToken, recordPhaseAccess } from './services/authService';
 import { loadTriviaQuestions } from './services/triviaService';
-import { sounds } from './services/soundEffects';
-import { RefreshCw, KeyRound } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 export default function App() {
   const activePhase = parseInt(import.meta.env.VITE_ACTIVE_PHASE || '1', 10);
@@ -24,8 +22,6 @@ export default function App() {
   const [gameStartTime, setGameStartTime] = useState(null);
   const [totalElapsedTime, setTotalElapsedTime] = useState(0);
   const [playedDate, setPlayedDate] = useState(null);
-  const [soundMuted, setSoundMuted] = useState(false);
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   useEffect(() => {
     async function initApp() {
@@ -55,11 +51,6 @@ export default function App() {
 
     initApp();
   }, [activePhase, shuffleQuestions]);
-
-  const handleToggleSound = () => {
-    sounds.enabled = !sounds.enabled;
-    setSoundMuted(!sounds.enabled);
-  };
 
   const handleStartGame = () => {
     setGameState('PLAYING');
@@ -111,10 +102,7 @@ export default function App() {
   return (
     <div className="app-layout">
       {/* Header superior limpio */}
-      <Header
-        soundMuted={soundMuted}
-        onToggleSound={handleToggleSound}
-      />
+      <Header />
 
       {/* Contenido Principal */}
       <main className="app-main">
@@ -170,24 +158,6 @@ export default function App() {
           />
         )}
       </main>
-
-      {/* Footer limpio sin textos innecesarios */}
-      <footer className="app-footer justify-end">
-        <button
-          onClick={() => setIsAdminModalOpen(true)}
-          className="flex items-center gap-1.5 text-slate-200 hover:text-white transition-colors cursor-pointer bg-white/15 hover:bg-white/25 px-3.5 py-1.5 rounded-full backdrop-blur-md font-medium text-xs shadow-sm ml-auto"
-          title="Ver Enlaces de Participantes (RRHH)"
-        >
-          <KeyRound size={13} className="text-yellow-300" />
-          <span>Enlaces RRHH</span>
-        </button>
-      </footer>
-
-      {/* Modal de enlaces para RRHH / Pruebas */}
-      <AdminLinksModal
-        isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
-      />
     </div>
   );
 }
