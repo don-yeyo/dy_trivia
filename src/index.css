@@ -2,7 +2,7 @@
 
 /* ==========================================================================
    SISTEMA DE DISEÑO CASUAL GAMING CORPORATIVO - DON YEYO S.A.
-   Semana de la Inocuidad 2026 | UI/UX Bubble Animations & Countdown
+   Semana de la Inocuidad 2026 | Smooth Transitions & Refined Motion
    ========================================================================== */
 
 :root {
@@ -110,8 +110,50 @@ h1, h2, h3, h4, .font-heading {
 }
 
 /* ==========================================================================
-   COUNTDOWN INTRO ANIMATION ("¡PREPÁRATE! 5, 4, 3 ¡LISTO! 2, 1 ¡YA!")
+   TRANSICIÓN SUAVE DE PREGUNTAS (DESVANECIMIENTO Y MOVIMIENTO OUT / IN)
    ========================================================================== */
+
+/* Animación de entrada suave desde la derecha */
+@keyframes questionSwipeIn {
+  0% {
+    opacity: 0;
+    transform: translateX(32px) scale(0.97);
+  }
+  60% {
+    opacity: 0.9;
+    transform: translateX(-4px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-question-in {
+  animation: questionSwipeIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Animación de salida suave hacia la izquierda con desvanecimiento */
+@keyframes questionSwipeOut {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  30% {
+    opacity: 0.85;
+    transform: translateX(-8px) scale(0.99);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-36px) scale(0.94);
+  }
+}
+
+.animate-question-out {
+  animation: questionSwipeOut 0.38s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Countdown Pop */
 .countdown-bubble-item {
   display: flex;
   align-items: center;
@@ -167,70 +209,6 @@ h1, h2, h3, h4, .font-heading {
     opacity: 0;
     transform: scale(1.45) translateY(-20px);
   }
-}
-
-/* ==========================================================================
-   ANIMACIONES BURBUJA Y DESACELERACIÓN ELÁSTICA PARA PREGUNTAS Y OPCIONES
-   ========================================================================== */
-
-/* Animación contenedor global de pregunta */
-@keyframes bubbleIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.85) translateY(35px);
-  }
-  60% {
-    transform: scale(1.03) translateY(-4px);
-  }
-  80% {
-    transform: scale(0.99) translateY(2px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.animate-bubble-in {
-  animation: bubbleIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-/* Animación tarjeta de la pregunta (Card Bounce) */
-@keyframes cardBounce {
-  0% {
-    opacity: 0;
-    transform: translateY(25px) scale(0.92);
-  }
-  70% {
-    transform: translateY(-6px) scale(1.02);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animate-card-bounce {
-  animation: cardBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-/* Animación escalonada elástica de opciones */
-@keyframes optionPop {
-  0% {
-    opacity: 0;
-    transform: translateY(30px) scale(0.9);
-  }
-  65% {
-    transform: translateY(-5px) scale(1.02);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animate-option-pop {
-  animation: optionPop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 /* Indicadores Circulares Tipo Dona */
@@ -423,7 +401,9 @@ h1, h2, h3, h4, .font-heading {
   box-shadow: var(--dy-red-shadow-active);
 }
 
-/* Botones de Opción */
+/* ==========================================================================
+   BOTÓN DE OPCIÓN (CON FEEDBACK VISUAL SATISFACTORIO)
+   ========================================================================== */
 .casual-option-btn {
   position: relative;
   width: 100%;
@@ -442,7 +422,10 @@ h1, h2, h3, h4, .font-heading {
   line-height: 1.45;
   cursor: pointer;
   transform: translateY(0);
-  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              border-color 0.2s ease, 
+              background-color 0.2s ease, 
+              box-shadow 0.22s ease;
   text-align: left;
 }
 
@@ -472,7 +455,7 @@ h1, h2, h3, h4, .font-heading {
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
   font-size: 1.25rem;
-  transition: all 0.18s ease;
+  transition: all 0.2s ease;
 }
 
 .casual-option-btn:hover:not(:disabled) .casual-option-badge {
@@ -481,18 +464,20 @@ h1, h2, h3, h4, .font-heading {
   border-color: var(--dy-red);
 }
 
+/* Estado de Selección Suave y Reconocible */
 .casual-option-btn.selected {
   background: #eff6ff !important;
-  border-color: #3b82f6 !important;
+  border-color: #2563eb !important;
   color: #1e3a8a !important;
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3), 0 4px 0 #2563eb !important;
-  transform: translateY(2px) scale(0.99);
+  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.28), 0 4px 0 #1d4ed8 !important;
+  transform: scale(0.985) translateY(1px);
 }
 
 .casual-option-btn.selected .casual-option-badge {
-  background: #3b82f6 !important;
+  background: #2563eb !important;
   color: #ffffff !important;
-  border-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
 }
 
 /* Animaciones */
@@ -506,29 +491,6 @@ h1, h2, h3, h4, .font-heading {
 
 .animate-donut-vibrate {
   animation: donutVibrate 0.35s infinite ease-in-out;
-}
-
-@keyframes fadeOutVibrate {
-  0% {
-    opacity: 1;
-    transform: scale(1) translate(0, 0);
-  }
-  30% {
-    opacity: 0.85;
-    transform: scale(0.98) translate(-3px, 1px);
-  }
-  60% {
-    opacity: 0.5;
-    transform: scale(0.95) translate(3px, -2px);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.90) translateY(-20px);
-  }
-}
-
-.animate-fade-vibrate-out {
-  animation: fadeOutVibrate 0.4s ease-in forwards;
 }
 
 @keyframes softPulse {
