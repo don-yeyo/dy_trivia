@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { CheckCircle2, Clock, ShieldCheck, HeartHandshake, FileCheck } from 'lucide-react';
+import { CheckCircle2, Clock, ShieldCheck, HeartHandshake } from 'lucide-react';
 import { sounds } from '../services/soundEffects';
 
 export default function GameOver({
@@ -39,17 +39,15 @@ export default function GameOver({
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col items-center justify-center text-center z-10 animate-casual-in py-2 sm:py-6">
-      {/* Insignia Trofeo */}
-      <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-red-600 to-red-500 p-1 mb-6 shadow-2xl flex items-center justify-center">
-        <div className="w-full h-full rounded-2xl bg-white flex items-center justify-center">
-          <FileCheck size={48} className="text-red-600" />
-        </div>
+      {/* Emoji 👍 en grande reemplazando el icono */}
+      <div className="text-6xl sm:text-7xl mb-6 select-none animate-soft-pulse flex items-center justify-center filter drop-shadow-lg">
+        👍
       </div>
 
-      <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-2 tracking-tight">
+      <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight" style={{ marginBottom: '30px' }}>
         ¡Trivia Completada!
       </h1>
-      <p className="text-xl sm:text-2xl font-bold text-white leading-snug mb-8 sm:mb-9">
+      <p className="text-xl sm:text-2xl font-bold text-white leading-snug" style={{ marginBottom: '30px' }}>
         {user?.nombre} {user?.apellido} <span className="text-yellow-300 font-semibold text-lg sm:text-xl block sm:inline">(Legajo: {user?.legajo || '9999'})</span>
       </p>
 

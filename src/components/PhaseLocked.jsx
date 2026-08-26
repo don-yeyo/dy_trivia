@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, AlertTriangle, Calendar, Info, RotateCcw } from 'lucide-react';
+import { Calendar, Info, RotateCcw } from 'lucide-react';
 
 export default function PhaseLocked({
   user,
@@ -25,32 +25,28 @@ export default function PhaseLocked({
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col items-center justify-center text-center z-10 animate-casual-in py-2 sm:py-6">
-      {/* Icono de Candado / Alerta */}
-      <div className="w-20 h-20 rounded-3xl p-4 bg-white shadow-2xl mb-6 flex items-center justify-center border border-white/40">
-        {isTokenInvalid ? (
-          <AlertTriangle size={38} className="text-amber-500" />
-        ) : (
-          <Lock size={38} className="text-red-500" />
-        )}
+      {/* Emoji ✋ en grande reemplazando el icono */}
+      <div className="text-6xl sm:text-7xl mb-6 select-none animate-soft-pulse flex items-center justify-center filter drop-shadow-lg">
+        {isTokenInvalid ? '⚠️' : '✋'}
       </div>
 
       {isTokenInvalid ? (
         <>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-4 tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight" style={{ marginBottom: '30px' }}>
             Enlace No Válido
           </h1>
-          <p className="text-xl sm:text-2xl font-bold text-white leading-snug mb-8 sm:mb-9">
+          <p className="text-xl sm:text-2xl font-bold text-white leading-snug" style={{ marginBottom: '30px' }}>
             El enlace con el que intentas acceder no corresponde a un participante registrado o ha expirado. Por favor, solicita tu enlace personal al área de Calidad o Recursos Humanos de Don Yeyo.
           </p>
         </>
       ) : (
         <>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight" style={{ marginBottom: '30px' }}>
             Trivia Ya Realizada
           </h1>
-          {/* Mismo estilo visual que el H1 */}
-          <p className="text-xl sm:text-2xl font-bold text-white leading-snug mb-8 sm:mb-9">
-            ¡Hola <span className="text-yellow-300 font-extrabold">{user?.nombre} {user?.apellido}</span>! Tu participación en esta fase ya ha sido registrada exitosamente.
+          {/* Mismo estilo visual que el H1 con margen inferior de 30px */}
+          <p className="text-xl sm:text-2xl font-bold text-white leading-snug" style={{ marginBottom: '30px' }}>
+            ¡Hola <span className="text-yellow-300 font-extrabold">{user?.nombre} {user?.apellido}</span>! Tu participación en esta trivia ya ha sido registrada exitosamente.
           </p>
 
           {/* Tarjeta con tipografía mínima de 1rem */}
@@ -63,7 +59,7 @@ export default function PhaseLocked({
             <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-base text-slate-700 flex items-start gap-3.5 leading-relaxed">
               <Info size={22} className="text-amber-500 shrink-0 mt-0.5" />
               <span>
-                Para garantizar la transparencia y equidad del concurso, cads trivia permite un único intento por participante.
+                Para garantizar la transparencia y equidad del concurso, cada trivia permite un único intento por participante.
               </span>
             </div>
           </div>
