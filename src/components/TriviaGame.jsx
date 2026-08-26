@@ -182,9 +182,9 @@ export default function TriviaGame({
       isAnimatingOut ? 'animate-question-out' : 'animate-question-in'
     }`}>
       {/* Indicadores Circulares Tipo Dona en la Misma Línea */}
-      <div className="circular-status-bar">
+      <div id="barra-estado-donas" className="circular-status-bar">
         {/* Dona 1: Avance Circular */}
-        <div className="donut-card">
+        <div id="card-dona-preguntas" className="donut-card">
           <div className="donut-container">
             <svg className="donut-svg" viewBox="0 0 80 80">
               <circle
@@ -214,7 +214,7 @@ export default function TriviaGame({
 
         {/* Dona 2: Tiempo Restante Circular */}
         {timePerQuestion > 0 && (
-          <div className={`donut-card ${isLowTime ? 'animate-donut-vibrate' : ''}`}>
+          <div id="card-dona-tiempo" className={`donut-card ${isLowTime ? 'animate-donut-vibrate' : ''}`}>
             <div className={`donut-container ${isLowTime ? 'border-2 border-red-500/80 shadow-lg shadow-red-500/40' : ''}`}>
               <svg className="donut-svg" viewBox="0 0 80 80">
                 <circle
@@ -245,7 +245,7 @@ export default function TriviaGame({
       </div>
 
       {/* Tarjeta de la Pregunta */}
-      <div className="casual-card text-left">
+      <div id="card-pregunta" className="casual-card text-left">
         <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wider mb-3">
           <Zap size={16} className="text-red-500" />
           <span>Pregunta {currentStep}</span>
@@ -256,7 +256,7 @@ export default function TriviaGame({
       </div>
 
       {/* Opciones de Respuesta */}
-      <div className="space-y-4 mb-4">
+      <div id="contenedor-opciones" className="space-y-4 mb-4">
         {currentQuestion.options.map((option, idx) => {
           const isSelected = selectedOptionId === option.id;
 

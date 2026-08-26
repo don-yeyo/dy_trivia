@@ -18,9 +18,9 @@
   --dy-gold: #ffb800;
   
   /* Superficies Casual Gaming */
-  --card-bg: rgba(255, 255, 255, 0.95);
-  --card-border: rgba(255, 255, 255, 0.7);
-  --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.3);
+  --card-bg: rgba(255, 255, 255, 0.96);
+  --card-border-silver: linear-gradient(135deg, #ffffff 0%, #e2e8f0 15%, #94a3b8 35%, #ffffff 50%, #64748b 70%, #cbd5e1 85%, #ffffff 100%);
+  --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), 0 0 25px rgba(226, 232, 240, 0.25);
 
   --text-dark: #1e293b;
   --text-muted: #64748b;
@@ -282,15 +282,19 @@ h1, h2, h3, h4, .font-heading {
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* Tarjeta Principal Casual Gaming */
+/* Tarjeta Principal Casual Gaming con Borde Metálico Plata */
 .casual-card {
-  background: var(--card-bg);
+  background: 
+    linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
+    linear-gradient(135deg, #ffffff 0%, #e2e8f0 14%, #8ea1b4 32%, #ffffff 48%, #64748b 68%, #cbd5e1 84%, #ffffff 100%) border-box;
   color: var(--text-dark);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-radius: var(--radius-card);
-  box-shadow: var(--card-shadow);
-  border: 1.5px solid var(--card-border);
+  border: 6px solid transparent;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), 
+              0 0 0 1px rgba(255, 255, 255, 0.5),
+              0 10px 30px -5px rgba(203, 213, 225, 0.3);
   padding: 36px 36px;
   margin-bottom: 28px;
   width: 100%;
@@ -402,7 +406,7 @@ h1, h2, h3, h4, .font-heading {
 }
 
 /* ==========================================================================
-   BOTÓN DE OPCIÓN (CON FEEDBACK VISUAL SATISFACTORIO)
+   BOTÓN DE OPCIÓN (CON BORDE METÁLICO PLATA DE 3PX Y FEEDBACK SATISFACTORIO)
    ========================================================================== */
 .casual-option-btn {
   position: relative;
@@ -410,34 +414,40 @@ h1, h2, h3, h4, .font-heading {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 20px 26px;
+  padding: 18px 24px;
   margin-bottom: 16px;
-  background: #ffffff;
+  background: 
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(135deg, #ffffff 0%, #e2e8f0 14%, #8ea1b4 32%, #ffffff 48%, #64748b 68%, #cbd5e1 84%, #ffffff 100%) border-box;
   color: #1e293b;
   border-radius: var(--radius-option);
-  border: 2px solid #e2e8f0;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.06), 0 2px 0 #cbd5e1;
+  border: 3px solid transparent;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06), 
+              0 0 0 1px rgba(255, 255, 255, 0.7),
+              0 3px 0 #94a3b8;
   font-size: 1.12rem;
   font-weight: 600;
   line-height: 1.45;
   cursor: pointer;
   transform: translateY(0);
   transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), 
-              border-color 0.2s ease, 
-              background-color 0.2s ease, 
-              box-shadow 0.22s ease;
+              box-shadow 0.22s ease,
+              background 0.2s ease,
+              color 0.2s ease;
   text-align: left;
 }
 
 .casual-option-btn:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.01);
-  border-color: var(--dy-red);
-  box-shadow: 0 10px 25px rgba(229, 53, 59, 0.18), 0 4px 0 var(--dy-red);
+  background: 
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(135deg, #ffffff 0%, #ff9fa2 18%, #e5353b 45%, #ffffff 62%, #c92228 82%, #ffffff 100%) border-box;
+  box-shadow: 0 12px 28px rgba(229, 53, 59, 0.24), 0 5px 0 #a91217;
 }
 
 .casual-option-btn:active:not(:disabled) {
   transform: translateY(2px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 1px 0 #94a3b8;
 }
 
 .casual-option-badge {
@@ -466,10 +476,11 @@ h1, h2, h3, h4, .font-heading {
 
 /* Estado de Selección Suave y Reconocible */
 .casual-option-btn.selected {
-  background: #eff6ff !important;
-  border-color: #2563eb !important;
+  background: 
+    linear-gradient(#eff6ff, #eff6ff) padding-box,
+    linear-gradient(135deg, #ffffff 0%, #93c5fd 18%, #2563eb 45%, #ffffff 62%, #1d4ed8 82%, #ffffff 100%) border-box !important;
   color: #1e3a8a !important;
-  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.28), 0 4px 0 #1d4ed8 !important;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.32), 0 5px 0 #1e40af !important;
   transform: scale(0.985) translateY(1px);
 }
 
@@ -554,7 +565,7 @@ h1, h2, h3, h4, .font-heading {
   }
 
   .casual-card {
-    padding: 26px 22px;
+    padding: 24px 24px;
     margin-bottom: 24px;
     border-radius: 26px;
   }

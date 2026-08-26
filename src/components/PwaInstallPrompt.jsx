@@ -32,7 +32,7 @@ export default function PwaInstallPrompt() {
   if (!showPrompt) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-40 max-w-sm glass-panel p-3.5 rounded-2xl shadow-2xl border border-red-500/30 flex items-center justify-between gap-3 animate-bounce-in">
+    <div id="card-pwa-instalacion" className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 z-40 max-w-sm glass-panel p-3.5 rounded-2xl shadow-2xl border border-red-500/30 flex items-center justify-between gap-3 animate-bounce-in">
       <div className="flex items-center gap-2.5 min-w-0">
         <img src="/favicon.svg" alt="App Icon" className="w-8 h-8 rounded-lg shrink-0" />
         <div className="text-xs text-white leading-tight truncate">

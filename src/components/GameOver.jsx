@@ -51,43 +51,33 @@ export default function GameOver({
       <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight" style={{ marginBottom: '12px' }}>
         ¡Trivia Completada!
       </h1>
-      <p className="text-xl sm:text-2xl font-bold text-white leading-snug" style={{ marginBottom: '30px' }}>
-        {user?.nombre} {user?.apellido} <span className="text-yellow-300 font-semibold text-lg sm:text-xl block sm:inline">(Legajo: {user?.legajo || '9999'})</span>
+      <p className="text-xl sm:text-2xl font-bold text-yellow-300 leading-snug" style={{ marginBottom: '30px' }}>
+        {user?.nombre} {user?.apellido} <span className="text-white font-semibold text-lg sm:text-xl block sm:inline">(Legajo: {user?.legajo || '9999'})</span>
       </p>
 
-      {/* Tarjeta de Resumen Casual Gaming Organizada */}
-      <div className="casual-card text-left shadow-2xl">
-        {/* Encabezado de la Tarjeta */}
-        <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
-              <ShieldCheck size={22} />
-            </div>
+      {/* Tarjeta de Resumen Casual Gaming Organizada con Padding Simétrico */}
+      <div id="card-resumen" className="casual-card text-left shadow-2xl w-full" style={{ paddingLeft: '20px' }}>
+        {/* Encabezado de la Tarjeta Centrado */}
+        <div className="flex items-center justify-center pb-4 border-b border-slate-100 w-full" style={{ marginBottom: '20px' }}>
+          <div className="flex items-center justify-center gap-2.5 text-center">
+
             <span className="font-bold text-slate-800 text-lg sm:text-xl">Resumen de Participación</span>
           </div>
-          <span className="px-3.5 py-1.5 rounded-full bg-emerald-100 text-emerald-800 text-xs sm:text-sm font-bold flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Registrado
-          </span>
         </div>
 
-        {/* Métricas Principales en Grid de 2 Columnas */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col justify-between">
-            <div className="text-sm text-slate-600 mb-2 flex items-center gap-1.5 font-semibold">
-              <CheckCircle2 size={18} className="text-emerald-600" />
-              <span>Preguntas</span>
-            </div>
+        {/* Métricas Principales en Grid de 2 Columnas Centradas */}
+        <div className="grid grid-cols-2 gap-4 mb-6 w-full">
+          <div id="card-metrica-preguntas" className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col items-center justify-center text-center">
+            <CheckCircle2 size={32} className="text-emerald-600 mb-2" />
+            <span className="text-base text-slate-600 font-semibold mb-1.5">Preguntas</span>
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none">
               {totalQuestions} de {totalQuestions}
             </div>
           </div>
 
-          <div className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col justify-between">
-            <div className="text-sm text-slate-600 mb-2 flex items-center gap-1.5 font-semibold">
-              <Clock size={18} className="text-blue-600" />
-              <span>Tiempo Invertido</span>
-            </div>
+          <div id="card-metrica-tiempo" className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col items-center justify-center text-center">
+            <Clock size={32} className="text-blue-600 mb-2" />
+            <span className="text-base text-slate-600 font-semibold mb-1.5">Tiempo Total</span>
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none">
               {timeFormatted}
             </div>
@@ -95,26 +85,26 @@ export default function GameOver({
         </div>
 
         {/* Sección Informativa: Publicación de Resultados */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/90 border border-amber-200/70 text-base text-amber-950 mb-5 flex items-start gap-3.5 leading-relaxed">
-          <div className="w-8 h-8 min-w-8 rounded-xl bg-amber-200/70 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
-            <Award size={18} />
+        <div id="card-aviso-ranking" className="w-full p-4 sm:p-5 rounded-2xl bg-amber-50/90 border border-amber-200/70 text-base text-amber-950 flex items-start gap-3.5 leading-relaxed" style={{ marginBottom: '20px', marginTop: '20px' }}>
+          <div className="w-10 h-10 min-w-10 rounded-xl bg-amber-200/70 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+            <Award size={26} />
           </div>
-          <div>
-            <strong className="block text-amber-900 font-bold mb-0.5">Resultados y Ranking</strong>
-            <span>Los puntajes y respuestas correctas se publicarán al finalizar la etapa de evaluación de toda la planta.</span>
+          <div className="flex-1">
+            <strong className="block text-lg font-bold mb-0.5">Resultados y Ranking</strong>
+            <span className="text-lg">Los puntajes y respuestas correctas se publicarán al finalizar la etapa de evaluación de toda la planta.</span>
           </div>
         </div>
 
         {/* Mensaje de Compromiso y Calidad Don Yeyo */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-red-50/90 border border-red-100 text-base text-slate-800 flex items-start gap-3.5 leading-relaxed">
-          <div className="w-8 h-8 min-w-8 rounded-xl bg-red-200/70 text-red-700 flex items-center justify-center shrink-0 mt-0.5">
-            <HeartHandshake size={18} />
+        <div id="card-agradecimiento" className="w-full p-4 sm:p-5 rounded-2xl bg-red-50/90 border border-red-100 text-base text-slate-800 flex items-start gap-3.5 leading-relaxed">
+          <div className="w-10 h-10 min-w-10 rounded-xl bg-green-200/70 text-green-700 flex items-center justify-center shrink-0 mt-0.5">
+            <HeartHandshake size={26} />
           </div>
-          <p>
-            ¡Muchas gracias por tu compromiso con las Buenas Prácticas de Manufactura y la inocuidad en <strong>Don Yeyo</strong>!
+          <p className="text-lg flex-1">
+            ¡Muchas gracias por tu compromiso con las Buenas Prácticas de Manufactura e Inocuidad en <strong>Don Yeyo</strong>!
           </p>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

@@ -23,7 +23,7 @@ export default function AdminLinksModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="glass-panel w-full max-w-2xl max-h-[85vh] flex flex-col p-6 rounded-3xl border border-white/20 shadow-2xl">
+      <div id="card-admin-modal" className="glass-panel w-full max-w-2xl max-h-[85vh] flex flex-col p-6 rounded-3xl border border-white/20 shadow-2xl">
         <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
           <div className="flex items-center gap-2">
             <KeyRound size={22} className="text-yellow-400" />

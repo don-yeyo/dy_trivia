@@ -13,6 +13,7 @@ export default function OptionButton({
 
   return (
     <button
+      id={`card-opcion-${letter.toString().toLowerCase()}`}
       type="button"
       onClick={() => onClick(option.id)}
       disabled={isDisabled}
