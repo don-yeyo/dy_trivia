@@ -40,7 +40,7 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
 
         {/* Texto Instructivo Claro con 30px de margen inferior */}
         <p className="text-base sm:text-lg text-slate-700 leading-relaxed font-normal" style={{ marginBottom: '30px' }}>
-          Pon a prueba tus conocimientos sobre Buenas Prácticas de Manufactura (BPM) y los estándares de inocuidad en los procesos de Don Yeyo.
+          Poné a prueba tus conocimientos sobre Buenas Prácticas de Manufactura y los estándares de inocuidad de nuestros procesos en Don Yeyo.
         </p>
 
         {/* Lista de Items Instructivos */}
@@ -75,7 +75,7 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
       </div>
 
       {/* Botón Principal Protagonista Estilo Casual Gaming */}
-      <button 
+      <button
         onClick={handleStart}
         className="btn-casual-primary"
       >

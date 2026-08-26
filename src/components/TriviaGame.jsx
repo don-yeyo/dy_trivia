@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import OptionButton from './OptionButton';
 import { sounds } from '../services/soundEffects';
-import { Zap } from 'lucide-react';
+import { Zap, RefreshCw } from 'lucide-react';
 
 export default function TriviaGame({
   questions = [],
@@ -19,7 +19,9 @@ export default function TriviaGame({
   const isTransitioningRef = useRef(false);
   const questionStartTimeRef = useRef(Date.now());
 
-  const currentQuestion = questions[currentIndex];
+  const currentQuestion = questions && questions.length > 0 && currentIndex < questions.length 
+    ? questions[currentIndex] 
+    : null;
 
   // Geometría de la dona SVG
   const radius = 34;
@@ -68,9 +70,11 @@ export default function TriviaGame({
     advanceToNext();
   }, [currentQuestion, timePerQuestion, onAnswerSubmit, advanceToNext]);
 
-  // Iniciar temporizador limpio por pregunta
+  // Iniciar temporizador por pregunta
   useEffect(() => {
-    if (!currentQuestion) {
+    if (!questions || questions.length === 0) return;
+
+    if (currentIndex >= questions.length) {
       onFinishGame();
       return;
     }
@@ -108,11 +112,11 @@ export default function TriviaGame({
         timerRef.current = null;
       }
     };
-  }, [currentIndex, currentQuestion, timePerQuestion, handleTimeExpired, onFinishGame]);
+  }, [currentIndex, questions, timePerQuestion, handleTimeExpired, onFinishGame]);
 
-  // Manejo de selección de opción por el usuario
+  // Manejo de selección de opción
   const handleOptionSelect = (optionId) => {
-    if (isAnswerLocked || isTransitioningRef.current) return;
+    if (isAnswerLocked || isTransitioningRef.current || !currentQuestion) return;
     isTransitioningRef.current = true;
 
     if (timerRef.current) {
@@ -145,7 +149,14 @@ export default function TriviaGame({
     advanceToNext();
   };
 
-  if (!currentQuestion) return null;
+  if (!questions || questions.length === 0 || !currentQuestion) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-white">
+        <RefreshCw size={24} className="animate-spin text-red-400 mb-3" />
+        <span className="font-semibold">Cargando preguntas de la trivia...</span>
+      </div>
+    );
+  }
 
   // Cálculos para arcos de dona SVG
   const totalQuestions = questions.length;
@@ -164,7 +175,7 @@ export default function TriviaGame({
     }`}>
       {/* Indicadores Circulares Tipo Dona en la Misma Línea */}
       <div className="circular-status-bar">
-        {/* Dona 1: Avance Circular con texto "X de N" adentro */}
+        {/* Dona 1: Avance Circular */}
         <div className="donut-card animate-bubble-in">
           <div className="donut-container">
             <svg className="donut-svg" viewBox="0 0 80 80">
@@ -225,7 +236,7 @@ export default function TriviaGame({
         )}
       </div>
 
-      {/* Tarjeta de la Pregunta con efecto burbuja elástico */}
+      {/* Tarjeta de la Pregunta */}
       <div className="casual-card text-left animate-card-bounce">
         <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wider mb-3">
           <Zap size={16} className="text-red-500" />
@@ -236,7 +247,7 @@ export default function TriviaGame({
         </h2>
       </div>
 
-      {/* Opciones de Respuesta con aparición escalonada elástica */}
+      {/* Opciones de Respuesta */}
       <div className="space-y-4 mb-4">
         {currentQuestion.options.map((option, idx) => {
           const isSelected = selectedOptionId === option.id;

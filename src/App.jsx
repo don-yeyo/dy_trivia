@@ -23,6 +23,7 @@ export default function App() {
   const [gameStartTime, setGameStartTime] = useState(null);
   const [totalElapsedTime, setTotalElapsedTime] = useState(0);
   const [playedDate, setPlayedDate] = useState(null);
+  const [gameSessionId, setGameSessionId] = useState(Date.now());
 
   useEffect(() => {
     async function initApp() {
@@ -54,7 +55,13 @@ export default function App() {
   }, [activePhase, shuffleQuestions]);
 
   // Al presionar Comenzar, iniciar cuenta regresiva
-  const handleTriggerCountdown = () => {
+  const handleTriggerCountdown = async () => {
+    // Si por alguna razón no hay preguntas cargadas, recargar
+    if (!questions || questions.length === 0) {
+      const loaded = await loadTriviaQuestions(activePhase, shuffleQuestions);
+      setQuestions(loaded);
+    }
+    setGameSessionId(Date.now());
     setGameState('COUNTDOWN');
   };
 
@@ -72,7 +79,7 @@ export default function App() {
     setAnswersLog(prev => [...prev, answerData]);
   };
 
-  const handleResetSession = () => {
+  const handleResetSession = async () => {
     if (currentUser?.legajo) {
       localStorage.removeItem(`dy_trivia_access_${currentUser.legajo}_fase${activePhase}`);
     }
@@ -87,6 +94,12 @@ export default function App() {
     setCorrectAnswersCount(0);
     setAnswersLog([]);
     setPlayedDate(null);
+    setGameSessionId(Date.now());
+
+    // Asegurar carga fresca de preguntas
+    const loadedQuestions = await loadTriviaQuestions(activePhase, shuffleQuestions);
+    setQuestions(loadedQuestions);
+
     setGameState('SPLASH');
   };
 
@@ -141,6 +154,7 @@ export default function App() {
 
         {gameState === 'PLAYING' && (
           <TriviaGame
+            key={gameSessionId}
             questions={questions}
             timePerQuestion={timePerQuestion}
             onFinishGame={handleFinishGame}
