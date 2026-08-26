@@ -75,6 +75,26 @@ export default function App() {
     setAnswersLog(prev => [...prev, answerData]);
   };
 
+  const handleResetSession = () => {
+    // Limpiar registros locales de acceso
+    if (currentUser?.legajo) {
+      localStorage.removeItem(`dy_trivia_access_${currentUser.legajo}_fase${activePhase}`);
+    }
+    localStorage.removeItem(`dy_trivia_access_9999_fase${activePhase}`);
+    localStorage.removeItem(`dy_trivia_access_1001_fase${activePhase}`);
+    localStorage.removeItem(`dy_trivia_access_1002_fase${activePhase}`);
+    localStorage.removeItem(`dy_trivia_access_1003_fase${activePhase}`);
+    localStorage.removeItem(`dy_trivia_access_1004_fase${activePhase}`);
+    localStorage.removeItem(`dy_trivia_access_1005_fase${activePhase}`);
+    
+    // Resetear estados del juego
+    setUserScore(0);
+    setCorrectAnswersCount(0);
+    setAnswersLog([]);
+    setPlayedDate(null);
+    setGameState('SPLASH');
+  };
+
   const handleFinishGame = async () => {
     const elapsedSeconds = gameStartTime ? Math.max(1, Math.round((Date.now() - gameStartTime) / 1000)) : 0;
     setTotalElapsedTime(elapsedSeconds);
@@ -149,6 +169,7 @@ export default function App() {
             user={currentUser}
             playedDate={playedDate}
             isTokenInvalid={false}
+            onResetSession={handleResetSession}
           />
         )}
 
