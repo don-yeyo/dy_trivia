@@ -17,8 +17,8 @@
   --dy-blue-dark: #0d2c5c;
   --dy-gold: #ffb800;
   
-  /* Superficies Casual Gaming */
-  --card-bg: rgba(255, 255, 255, 0.96);
+  /* Superficies Casual Gaming con Cristal Difuminado al 40% */
+  --card-bg: rgba(255, 255, 255, 0.40);
   --card-border-silver: linear-gradient(135deg, #ffffff 0%, #e2e8f0 15%, #94a3b8 35%, #ffffff 50%, #64748b 70%, #cbd5e1 85%, #ffffff 100%);
   --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), 0 0 25px rgba(226, 232, 240, 0.25);
 
@@ -46,19 +46,109 @@ body {
   color: #ffffff;
   overflow-x: hidden;
   position: relative;
-  /* Fondo fotográfico corporativo a pantalla completa con overlay de legibilidad */
-  background-color: #0b1c38;
-  background-image: linear-gradient(
-      180deg, 
-      rgba(9, 24, 48, 0.82) 0%, 
-      rgba(13, 38, 77, 0.88) 50%, 
-      rgba(7, 19, 38, 0.95) 100%
-    ),
-    url('https://scontent.feze7-2.fna.fbcdn.net/v/t39.30808-6/481086469_934932188785572_7355512695684152288_n.jpg?stp=dst-jpg_tt6&cstp=mx1709x756&ctp=s960x960&_nc_cat=104&ccb=1-7&_nc_sid=cc71e4&_nc_eui2=AeH3DicGM3ZdOgmTW_lDMdSitD0ORDkDz7S0PQ5EOQPPtHZ2-d4CGi_MJthp0gJwj2bP1zRf0WqKIUCkxzA48012&_nc_ohc=TMnZFtkczt4Q7kNvwEbIY1A&_nc_oc=AdosqTuclGp7VDYD1W7ci5IIy00xaMQ_mpG76bMc_YB1vCJ4TyOOBnRxVWio2wrlgSE&_nc_zt=23&_nc_ht=scontent.feze7-2.fna&_nc_gid=VfeP7Hkc8CH5DNMvOfWWAw&_nc_ss=7b2a8&oh=00_AQH-hLM2AQeNMLh7t-ZL1eeMaKOE5AAqbHXoaVQEgapcmg&oe=6A950747');
-  background-size: cover;
-  background-position: center;
+  /* Fondo degradé puro de azules corporativos Don Yeyo de alta profundidad */
+  background-color: #07152b;
+  background-image: 
+    radial-gradient(circle at 50% 25%, rgba(26, 68, 128, 0.45) 0%, transparent 65%),
+    linear-gradient(180deg, #091a36 0%, #0d2c5c 45%, #081730 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
+}
+
+/* ==========================================================================
+   FONDO DE RAYOS RECTOS GIRATORIOS (SUNBURST CASUAL GAMING)
+   ========================================================================== */
+.sunburst-wrapper {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+}
+
+/* Al aparecer la pantalla: formación desde el centro con aceleración */
+.sunburst-enter {
+  animation: rayBurstIn 0.52s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+}
+
+/* Al irse la pantalla: desvanecimiento rápido */
+.sunburst-exit {
+  animation: rayBurstOut 0.18s ease-out forwards;
+}
+
+.sunburst-spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 320vmax;
+  height: 320vmax;
+  min-width: 3200px;
+  min-height: 3200px;
+  /* Rayos rectos nítidos con conic-gradient */
+  background: repeating-conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(255, 255, 255, 0.08) 0deg 7.5deg,
+    rgba(255, 255, 255, 0.005) 7.5deg 15deg
+  );
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 75%);
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 75%);
+  animation: spinRays 45s linear infinite;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+.sunburst-glow {
+  position: absolute;
+  width: 650px;
+  height: 650px;
+  max-width: 90vw;
+  max-height: 90vw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.14) 0%, rgba(229, 53, 59, 0.08) 40%, transparent 70%);
+  pointer-events: none;
+}
+
+@keyframes spinRays {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes rayBurstIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  35% {
+    transform: scale(0.18);
+    opacity: 0.4;
+  }
+  70% {
+    transform: scale(0.68);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes rayBurstOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
 }
 
 /* Tipografía */
@@ -282,14 +372,14 @@ h1, h2, h3, h4, .font-heading {
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* Tarjeta Principal Casual Gaming con Borde Metálico Plata */
+/* Tarjeta Principal Casual Gaming con Borde Metálico Plata y Cristal Difuminado */
 .casual-card {
   background: 
     linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
     linear-gradient(135deg, #ffffff 0%, #e2e8f0 14%, #8ea1b4 32%, #ffffff 48%, #64748b 68%, #cbd5e1 84%, #ffffff 100%) border-box;
   color: var(--text-dark);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: var(--radius-card);
   border: 6px solid transparent;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), 
@@ -406,7 +496,7 @@ h1, h2, h3, h4, .font-heading {
 }
 
 /* ==========================================================================
-   BOTÓN DE OPCIÓN (CON BORDE METÁLICO PLATA DE 3PX Y FEEDBACK SATISFACTORIO)
+   BOTÓN DE OPCIÓN (CON BORDE METÁLICO PLATA DE 3PX Y CRISTAL DIFUMINADO AL 40%)
    ========================================================================== */
 .casual-option-btn {
   position: relative;
@@ -417,12 +507,14 @@ h1, h2, h3, h4, .font-heading {
   padding: 18px 24px;
   margin-bottom: 16px;
   background: 
-    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(rgba(255, 255, 255, 0.40), rgba(255, 255, 255, 0.40)) padding-box,
     linear-gradient(135deg, #ffffff 0%, #e2e8f0 14%, #8ea1b4 32%, #ffffff 48%, #64748b 68%, #cbd5e1 84%, #ffffff 100%) border-box;
   color: #1e293b;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-radius: var(--radius-option);
   border: 3px solid transparent;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06), 
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10), 
               0 0 0 1px rgba(255, 255, 255, 0.7),
               0 3px 0 #94a3b8;
   font-size: 1.12rem;
@@ -440,7 +532,7 @@ h1, h2, h3, h4, .font-heading {
 .casual-option-btn:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.01);
   background: 
-    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(rgba(255, 255, 255, 0.60), rgba(255, 255, 255, 0.60)) padding-box,
     linear-gradient(135deg, #ffffff 0%, #ff9fa2 18%, #e5353b 45%, #ffffff 62%, #c92228 82%, #ffffff 100%) border-box;
   box-shadow: 0 12px 28px rgba(229, 53, 59, 0.24), 0 5px 0 #a91217;
 }
@@ -456,7 +548,9 @@ h1, h2, h3, h4, .font-heading {
   height: 46px;
   min-width: 46px;
   border-radius: 14px;
-  background: #f1f5f9;
+  background: rgba(241, 245, 249, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: #0d2c5c;
   border: 1.5px solid #e2e8f0;
   display: flex;
@@ -477,7 +571,7 @@ h1, h2, h3, h4, .font-heading {
 /* Estado de Selección Suave y Reconocible */
 .casual-option-btn.selected {
   background: 
-    linear-gradient(#eff6ff, #eff6ff) padding-box,
+    linear-gradient(rgba(239, 246, 255, 0.65), rgba(239, 246, 255, 0.65)) padding-box,
     linear-gradient(135deg, #ffffff 0%, #93c5fd 18%, #2563eb 45%, #ffffff 62%, #1d4ed8 82%, #ffffff 100%) border-box !important;
   color: #1e3a8a !important;
   box-shadow: 0 12px 30px rgba(37, 99, 235, 0.32), 0 5px 0 #1e40af !important;

@@ -5,6 +5,7 @@ import CountdownIntro from './components/CountdownIntro';
 import TriviaGame from './components/TriviaGame';
 import GameOver from './components/GameOver';
 import PhaseLocked from './components/PhaseLocked';
+import SunburstBackground from './components/SunburstBackground';
 import { validateUserToken, recordPhaseAccess } from './services/authService';
 import { loadTriviaQuestions } from './services/triviaService';
 import { RefreshCw } from 'lucide-react';
@@ -120,7 +121,10 @@ export default function App() {
   };
 
   return (
-    <div className="app-layout">
+    <div className="app-layout relative overflow-hidden">
+      {/* Fondo de rayos rectos giratorios reactivo en todas las pantallas */}
+      <SunburstBackground screenKey={gameState} />
+
       {/* Header superior limpio */}
       <Header />
 

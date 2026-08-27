@@ -25,7 +25,9 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 
 4. **Experiencia Gaming 3D & Estética Don Yeyo**:
    - Paleta corporativa oficial: Azul Marino (`#0d2c5c`), Rojo Don Yeyo (`#e40521`), Blanco y acentos Neón.
-   - Pantalla de bienvenida (Splash) con logo corporativo latiendo suavemente (*pulse*) y bienvenida personalizada.
+   - Fondo dinámico de rayos rectos giratorios (*Sunburst Effect*) en todas las pantallas con formación acelerada desde el centro y desvanecimiento rápido de salida.
+   - Pantalla de bienvenida (Splash) con bienvenida personalizada e icono de usuario centrado.
+   - Tarjetas casual gaming con bisel metálico plateado de alta fidelidad.
    - Botones 3D estilo vidrio (*glassmorphism 3D*) con micro-animaciones de rebote, swap-in y aceleraciones rápidas.
    - Efectos de sonido generados por **Web Audio API** (sin assets pesados) para selección, aciertos, fallos y victoria.
    - Animación de confeti al completar la trivia.
