@@ -6,38 +6,37 @@
    ========================================================================== */
 
 :root {
-  /* Paleta Corporativa Don Yeyo */
+  /* Paleta Corporativa Don Yeyo de Alto Contraste */
   --dy-red: #E5353B;
   --dy-red-hover: #c92228;
-  --dy-red-gradient: linear-gradient(180deg, #ff474d 0%, #E5353B 60%, #c92228 100%);
-  --dy-red-shadow: 0 10px 25px -5px rgba(229, 53, 59, 0.45), 0 4px 0 #a91217;
-  --dy-red-shadow-hover: 0 14px 28px -5px rgba(229, 53, 59, 0.6), 0 5px 0 #a91217;
-  --dy-red-shadow-active: 0 4px 10px rgba(229, 53, 59, 0.3), 0 1px 0 #a91217;
+  --dy-red-gradient: linear-gradient(180deg, #ff383f 0%, #E5353B 55%, #bd181e 100%);
+  --dy-red-shadow: 0 10px 25px -4px rgba(229, 53, 59, 0.5), 0 4px 0 #941116;
+  --dy-red-shadow-hover: 0 14px 30px -4px rgba(229, 53, 59, 0.7), 0 6px 0 #941116;
+  --dy-red-shadow-active: 0 4px 10px rgba(229, 53, 59, 0.35), 0 2px 0 #941116;
 
   --dy-blue-dark: #0d2c5c;
-  --dy-gold: #ffb800;
+  --dy-gold: #f59e0b;
 
   /* ========================================================================
      🎛️ CONFIGURACIÓN GLOBAL DE VIDRIO ESMERILADO / GLASSMORPHISM
-     Edita estos valores aquí y se aplicarán a todas las tarjetas del juego:
      ======================================================================== */
-  --card-glass-bg: rgba(255, 255, 255, 0.50);
-  /* Fondo translúcido principal */
-  --card-glass-blur: 17px;
+  --card-glass-bg: rgba(255, 255, 255, 0.88);
+  /* Fondo nítido y luminoso de alto contraste */
+  --card-glass-blur: 20px;
   /* Nivel de desenfoque / blur */
-  --card-glass-border: 1.5px solid rgba(255, 255, 255, 0.40);
-  /* Borde fino translúcido */
-  --card-glass-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  --card-glass-border: 3px solid rgba(255, 255, 255, 0.95);
+  /* Borde blanco brillante nítido */
+  --card-glass-shadow: 0 25px 50px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.6);
 
-  --option-glass-bg: rgba(255, 255, 255, 0.40);
+  --option-glass-bg: rgba(255, 255, 255, 0.88);
   /* Fondo de tarjetas de opciones */
-  --option-glass-blur: 12px;
+  --option-glass-blur: 16px;
   /* Blur de tarjetas de opciones */
-  --option-glass-border: 1.5px solid rgba(255, 255, 255, 0.35);
+  --option-glass-border: 2.5px solid rgba(255, 255, 255, 0.95);
   /* Borde de opciones */
 
-  --text-dark: #1e293b;
-  --text-muted: #64748b;
+  --text-dark: #0f172a;
+  --text-muted: #334155;
 
   --radius-card: 32px;
   --radius-btn: 9999px;
@@ -61,10 +60,10 @@ body {
   overflow-x: hidden;
   position: relative;
   /* Fondo degradé puro de azules corporativos Don Yeyo de alta profundidad */
-  background-color: #07152b;
+  background-color: #061224;
   background-image:
-    radial-gradient(circle at 50% 25%, rgba(26, 68, 128, 0.45) 0%, transparent 65%),
-    linear-gradient(180deg, #091a36 0%, #0d2c5c 45%, #081730 100%);
+    radial-gradient(circle at 50% 20%, rgba(30, 80, 160, 0.6) 0%, transparent 65%),
+    linear-gradient(180deg, #0a1f40 0%, #0d2c5c 40%, #061326 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
@@ -77,7 +76,7 @@ body {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 1;
+  z-index: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -102,12 +101,12 @@ body {
   height: 320vmax;
   min-width: 3200px;
   min-height: 3200px;
-  /* Rayos rectos nítidos con conic-gradient */
+  /* Rayos rectos nítidos con mayor contraste */
   background: repeating-conic-gradient(from 0deg at 50% 50%,
-      rgba(255, 255, 255, 0.08) 0deg 7.5deg,
-      rgba(255, 255, 255, 0.005) 7.5deg 15deg);
-  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 75%);
-  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 75%);
+      rgba(255, 255, 255, 0.14) 0deg 7.5deg,
+      rgba(255, 255, 255, 0.01) 7.5deg 15deg);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.55) 50%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.55) 50%, transparent 80%);
   animation: spinRays 45s linear infinite;
   transform-origin: center center;
   pointer-events: none;
@@ -115,12 +114,12 @@ body {
 
 .sunburst-glow {
   position: absolute;
-  width: 650px;
-  height: 650px;
-  max-width: 90vw;
-  max-height: 90vw;
+  width: 700px;
+  height: 700px;
+  max-width: 95vw;
+  max-height: 95vw;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.14) 0%, rgba(229, 53, 59, 0.08) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(229, 53, 59, 0.16) 40%, transparent 70%);
   pointer-events: none;
 }
 
@@ -519,7 +518,7 @@ h4,
 }
 
 /* ==========================================================================
-   BOTÓN DE OPCIÓN (CON VIDRIO ESMERILADO / GLASSMORPHISM)
+   BOTÓN DE OPCIÓN (ALTO CONTRASTE CASUAL GAMING)
    ========================================================================== */
 .casual-option-btn {
   position: relative;
@@ -530,20 +529,20 @@ h4,
   padding: 18px 24px;
   margin-bottom: 16px;
   background: var(--option-glass-bg);
-  color: #1e293b;
+  color: #0f172a;
   backdrop-filter: blur(var(--option-glass-blur));
   -webkit-backdrop-filter: blur(var(--option-glass-blur));
   border-radius: var(--radius-option);
   border: var(--option-glass-border);
   box-shadow:
-    0 6px 18px rgba(0, 0, 0, 0.10),
-    inset 0 1px 1px rgba(255, 255, 255, 0.5);
-  font-size: 1.12rem;
-  font-weight: 600;
+    0 6px 18px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  font-size: 1.15rem;
+  font-weight: 700;
   line-height: 1.45;
   cursor: pointer;
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.22s ease,
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease,
     background 0.2s ease,
     border-color 0.2s ease,
     color 0.2s ease;
@@ -552,48 +551,50 @@ h4,
 
 .casual-option-btn:hover:not(:disabled) {
   transform: translateY(-3px) scale(1.01);
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  background: #ffffff;
+  border-color: #E5353B;
+  color: #0f172a;
+  box-shadow: 0 12px 28px rgba(229, 53, 59, 0.28), 0 0 0 1px #E5353B;
 }
 
 .casual-option-btn:active:not(:disabled) {
   transform: translateY(2px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .casual-option-badge {
   flex-shrink: 0;
-  width: 46px;
-  height: 46px;
-  min-width: 46px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.40);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: #ffffff;
   color: #0d2c5c;
-  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  border: 2px solid #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Outfit', sans-serif;
-  font-weight: 800;
-  font-size: 1.25rem;
+  font-weight: 900;
+  font-size: 1.3rem;
   transition: all 0.2s ease;
 }
 
 .casual-option-btn:hover:not(:disabled) .casual-option-badge {
-  background: var(--dy-red);
+  background: #E5353B;
   color: #ffffff;
-  border-color: var(--dy-red);
+  border-color: #E5353B;
+  box-shadow: 0 4px 12px rgba(229, 53, 59, 0.4);
 }
 
 /* Estado de Selección Suave y Reconocible */
 .casual-option-btn.selected {
-  background: rgba(239, 246, 255, 0.75) !important;
+  background: #eff6ff !important;
   border-color: #2563eb !important;
   color: #1e3a8a !important;
-  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.32), 0 0 0 1px #2563eb !important;
+  font-weight: 800 !important;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.35), 0 0 0 2px #2563eb !important;
   transform: scale(0.985) translateY(1px);
 }
 
@@ -601,7 +602,7 @@ h4,
   background: #2563eb !important;
   color: #ffffff !important;
   border-color: #1d4ed8 !important;
-  box-shadow: 0 0 15px rgba(37, 99, 235, 0.5);
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.6);
 }
 
 

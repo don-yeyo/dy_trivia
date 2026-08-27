@@ -60,25 +60,24 @@ export default function GameOver({
         {/* Encabezado de la Tarjeta Centrado */}
         <div className="flex items-center justify-center pb-4 w-full" style={{ marginBottom: '20px' }}>
           <div className="flex items-center justify-center gap-2.5 text-center">
-
-            <span className="font-bold text-slate-800 text-lg sm:text-xl">Resumen de Participación</span>
+            <span className="font-black text-slate-950 text-xl sm:text-2xl tracking-tight">Resumen de Participación</span>
           </div>
         </div>
 
         {/* Métricas Principales en Grid de 2 Columnas Transparentes */}
         <div className="grid grid-cols-2 gap-4 mb-6 w-full" style={{ marginBottom: '20px' }}>
           <div id="card-metrica-preguntas" className="p-2 flex flex-col items-center justify-center text-center">
-            <CheckCircle2 size={36} className="text-emerald-600 mb-1.5" />
-            <span className="text-base text-slate-700 font-semibold mb-1">Preguntas</span>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none">
+            <CheckCircle2 size={38} className="text-emerald-600 mb-1.5 stroke-[2.5]" />
+            <span className="text-base text-slate-800 font-bold mb-1">Preguntas</span>
+            <div className="text-3xl sm:text-4xl font-black text-slate-950 leading-none">
               {totalQuestions} de {totalQuestions}
             </div>
           </div>
 
           <div id="card-metrica-tiempo" className="p-2 flex flex-col items-center justify-center text-center">
-            <Clock size={36} className="text-blue-600 mb-1.5" />
-            <span className="text-base text-slate-700 font-semibold mb-1">Tiempo Total</span>
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none">
+            <Clock size={38} className="text-blue-700 mb-1.5 stroke-[2.5]" />
+            <span className="text-base text-slate-800 font-bold mb-1">Tiempo Total</span>
+            <div className="text-3xl sm:text-4xl font-black text-slate-950 leading-none">
               {timeFormatted}
             </div>
           </div>
@@ -87,21 +86,21 @@ export default function GameOver({
         {/* Sección Informativa: Publicación de Resultados Transparente */}
         <div id="card-aviso-ranking" className="w-full pt-4 pb-2 text-base text-amber-950 flex items-start gap-3.5 leading-relaxed border-slate-200/50" style={{ marginBottom: '16px' }}>
           <div className="text-amber-700 shrink-0 mt-0.5">
-            <Award size={30} />
+            <Award size={32} className="stroke-[2.5]" />
           </div>
           <div className="flex-1">
-            <strong className="block text-lg font-bold mb-0.5">Resultados y Ranking</strong>
-            <span className="text-lg">Los puntajes y respuestas correctas se publicarán al finalizar la etapa de evaluación de toda la planta.</span>
+            <strong className="block text-lg font-black text-amber-950 mb-0.5">Resultados y Ranking</strong>
+            <span className="text-lg text-amber-950 font-medium">Los puntajes y respuestas correctas se publicarán al finalizar la etapa de evaluación de toda la planta.</span>
           </div>
         </div>
 
         {/* Mensaje de Compromiso y Calidad Don Yeyo Transparente */}
-        <div id="card-agradecimiento" className="w-full pt-3 text-base text-slate-800 flex items-start gap-3.5 leading-relaxed border-slate-200/50">
+        <div id="card-agradecimiento" className="w-full pt-3 text-base text-slate-900 flex items-start gap-3.5 leading-relaxed border-slate-200/50">
           <div className="text-emerald-700 shrink-0 mt-0.5">
-            <HeartHandshake size={30} />
+            <HeartHandshake size={32} className="stroke-[2.5]" />
           </div>
-          <p className="text-lg flex-1">
-            ¡Muchas gracias por tu compromiso con las Buenas Prácticas de Manufactura e Inocuidad en <strong>Don Yeyo</strong>!
+          <p className="text-lg flex-1 font-medium text-slate-950">
+            ¡Muchas gracias por tu compromiso con las Buenas Prácticas de Manufactura e Inocuidad en <strong className="font-black text-red-600">Don Yeyo</strong>!
           </p>
         </div>
       </div>

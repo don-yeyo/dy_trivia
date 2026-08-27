@@ -244,13 +244,13 @@ export default function TriviaGame({
         )}
       </div>
 
-      {/* Tarjeta de la Pregunta */}
+      {/* Tarjeta de la Pregunta de Alto Contraste */}
       <div id="card-pregunta" className="casual-card text-left">
-        <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wider mb-3">
-          <Zap size={16} className="text-red-500" />
-          <span>Pregunta {currentStep}</span>
+        <div className="flex items-center gap-2 text-sm sm:text-base font-black text-red-600 uppercase tracking-wider mb-3">
+          <Zap size={18} className="text-red-600 fill-red-600" />
+          <span>Pregunta {currentStep} de {totalQuestions}</span>
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 leading-snug">
+        <h2 className="text-xl sm:text-2xl font-black text-slate-950 leading-snug tracking-tight">
           {currentQuestion.question}
         </h2>
       </div>
