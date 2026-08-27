@@ -34,20 +34,24 @@ export default function TriviaGame({
       timerRef.current = null;
     }
 
+    if (typeof document !== 'undefined' && document.activeElement && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
+    }
+
     // Iniciar animación de salida elegante con fade y desplazamiento
     setIsAnimatingOut(true);
 
     setTimeout(() => {
       if (currentIndex + 1 < questions.length) {
+        setSelectedOptionId(null);
+        setIsAnswerLocked(false);
+        isTransitioningRef.current = false;
         setCurrentIndex(prev => prev + 1);
         setIsAnimatingOut(false);
-        setIsAnswerLocked(false);
-        setSelectedOptionId(null);
-        isTransitioningRef.current = false;
       } else {
         onFinishGame();
       }
-    }, 380);
+    }, 350);
   }, [currentIndex, questions.length, onFinishGame]);
 
   // Manejo de tiempo agotado
@@ -256,13 +260,13 @@ export default function TriviaGame({
       </div>
 
       {/* Opciones de Respuesta */}
-      <div id="contenedor-opciones" className="space-y-4 mb-4">
+      <div id="contenedor-opciones" className="space-y-3 sm:space-y-4 mb-4">
         {currentQuestion.options.map((option, idx) => {
           const isSelected = selectedOptionId === option.id;
 
           return (
             <OptionButton
-              key={option.id}
+              key={`q${currentQuestion.id}-opt${option.id}-${currentStep}-${idx}`}
               index={idx}
               option={option}
               isSelected={isSelected}
