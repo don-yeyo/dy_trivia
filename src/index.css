@@ -9,10 +9,10 @@
   /* Paleta Corporativa Don Yeyo de Alto Contraste */
   --dy-red: #E5353B;
   --dy-red-hover: #c92228;
-  --dy-red-gradient: linear-gradient(180deg, #ff383f 0%, #E5353B 55%, #bd181e 100%);
-  --dy-red-shadow: 0 10px 25px -4px rgba(229, 53, 59, 0.5), 0 4px 0 #941116;
-  --dy-red-shadow-hover: 0 14px 30px -4px rgba(229, 53, 59, 0.7), 0 6px 0 #941116;
-  --dy-red-shadow-active: 0 4px 10px rgba(229, 53, 59, 0.35), 0 2px 0 #941116;
+  --dy-red-gradient: linear-gradient(180deg, #ff383f 0%, #E5353B 55%, #bd181e 30%);
+  --dy-red-shadow: 0 10px 25px -4px rgba(229, 53, 59, 0.5), 0 4px 10px #941116;
+  --dy-red-shadow-hover: 0 14px 30px -4px rgba(229, 53, 59, 0.7), 0 6px 20px #941116;
+  --dy-red-shadow-active: 0 4px 10px rgba(229, 53, 59, 0.35), 0 2px 5px #d1ff02;
 
   --dy-blue-dark: #0d2c5c;
   --dy-gold: #f59e0b;
@@ -20,17 +20,22 @@
   /* ========================================================================
      🎛️ CONFIGURACIÓN GLOBAL DE VIDRIO ESMERILADO / GLASSMORPHISM
      ======================================================================== */
-  --card-glass-bg: rgba(255, 255, 255, 0.88);
+  --card-glass-bg: rgba(255, 255, 255, 0.8);
+  --card-glass-blur: 10px;
+  --option-glass-bg: rgba(255, 255, 255, 0.7);
+  --option-glass-blur: 10px;
+
+
   /* Fondo nítido y luminoso de alto contraste */
-  --card-glass-blur: 20px;
+
   /* Nivel de desenfoque / blur */
   --card-glass-border: 3px solid rgba(255, 255, 255, 0.95);
   /* Borde blanco brillante nítido */
-  --card-glass-shadow: 0 25px 50px -10px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.6);
+  --card-glass-shadow: 0;
 
-  --option-glass-bg: rgba(255, 255, 255, 0.88);
+
   /* Fondo de tarjetas de opciones */
-  --option-glass-blur: 16px;
+
   /* Blur de tarjetas de opciones */
   --option-glass-border: 2.5px solid rgba(255, 255, 255, 0.95);
   /* Borde de opciones */
@@ -62,8 +67,8 @@ body {
   /* Fondo degradé puro de azules corporativos Don Yeyo de alta profundidad */
   background-color: #061224;
   background-image:
-    radial-gradient(circle at 50% 20%, rgba(30, 80, 160, 0.6) 0%, transparent 65%),
-    linear-gradient(180deg, #0a1f40 0%, #0d2c5c 40%, #061326 100%);
+    radial-gradient(circle at 50% 20%, rgba(30, 80, 160, 1) 0%, transparent 65%),
+    linear-gradient(180deg, #002561 0%, #0066ff 40%, #12366b 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
@@ -119,7 +124,7 @@ body {
   max-width: 95vw;
   max-height: 95vw;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(229, 53, 59, 0.16) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(25, 0, 255, 0.16) 40%, transparent 70%);
   pointer-events: none;
 }
 
@@ -403,8 +408,9 @@ h4,
 .casual-card {
   background: var(--card-glass-bg);
   color: var(--text-dark);
-  backdrop-filter: blur(var(--card-glass-blur));
+  backdrop-filter: blur(var(--card-glass-blur)) !important;
   -webkit-backdrop-filter: blur(var(--card-glass-blur));
+  /*filter: blur(var(--card-glass-blur));*/
   border-radius: var(--radius-card);
   border: var(--card-glass-border);
   box-shadow: var(--card-glass-shadow);
