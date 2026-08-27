@@ -170,6 +170,7 @@ export default function App() {
           <GameOver
             user={currentUser}
             totalQuestions={questions.length}
+            answeredQuestions={answersLog.filter(a => a.selectedOptionId !== null && a.selectedOptionId !== undefined).length}
             totalTime={totalElapsedTime}
           />
         )}

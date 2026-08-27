@@ -6,6 +6,7 @@ import { sounds } from '../services/soundEffects';
 export default function GameOver({
   user,
   totalQuestions = 0,
+  answeredQuestions = 0,
   totalTime = 0
 }) {
   useEffect(() => {
@@ -68,9 +69,9 @@ export default function GameOver({
         <div className="grid grid-cols-2 gap-4 mb-6 w-full" style={{ marginBottom: '20px' }}>
           <div id="card-metrica-preguntas" className="p-2 flex flex-col items-center justify-center text-center">
             <CheckCircle2 size={38} className="text-emerald-600 mb-1.5 stroke-[2.5]" />
-            <span className="text-base text-slate-800 font-bold mb-1">Preguntas</span>
+            <span className="text-base text-slate-800 font-bold mb-1">Preguntas Respondidas</span>
             <div className="text-3xl sm:text-4xl font-black text-slate-950 leading-none">
-              {totalQuestions} de {totalQuestions}
+              {answeredQuestions} de {totalQuestions}
             </div>
           </div>
 

@@ -36,6 +36,7 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - Barra de tiempo animada por pregunta con alerta visual cuando restan pocos segundos.
    - Posibilidad de presentar preguntas de forma secuencial o aleatoria (`VITE_SHUFFLE_QUESTIONS`).
    - Bonificación de puntaje por rapidez de respuesta.
+   - **Registro fidedigno de respuestas:** Si a un participante se le agota el tiempo en una pregunta, esta se registra como no contestada y no se contabiliza en el resumen de preguntas respondidas (ej. mostrando "4 de 5").
 
 6. **Soporte PWA (Instalable en Android, iOS y Desktop)**:
    - Service Worker con soporte offline para assets base.

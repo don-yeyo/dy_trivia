@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { sounds } from '../services/soundEffects';
 
 const COUNTDOWN_STEPS = [
-  { text: '¡Prepárate!', isWord: true, duration: 750 },
+  { text: '¡Preparate!', isWord: true, duration: 750 },
   { text: '5', isWord: false, duration: 650 },
   { text: '4', isWord: false, duration: 650 },
   { text: '3', isWord: false, duration: 650 },
-  { text: '¡Listo!', isWord: true, duration: 700 },
+  { text: '¡Listos!', isWord: true, duration: 700 },
   { text: '2', isWord: false, duration: 650 },
   { text: '1', isWord: false, duration: 650 },
   { text: '¡YA!', isWord: true, duration: 650, isFinal: true }
@@ -41,7 +41,7 @@ export default function CountdownIntro({ onCountdownComplete }) {
 
   return (
     <div className="w-full flex-1 flex flex-col items-center justify-center text-center z-20 py-12 select-none pointer-events-none">
-      <div 
+      <div
         key={stepIndex}
         className="countdown-bubble-item"
       >
