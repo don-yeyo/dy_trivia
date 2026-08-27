@@ -90,35 +90,55 @@ function getFallbackUsers() {
  * Valida si el token recibido por URL pertenece a un usuario válido y el estado de la fase activa
  */
 export async function validateUserToken(token, activePhase = 1) {
+  const allowSessionReset = import.meta.env.VITE_ALLOW_SESSION_RESET === 'true';
+
+  // Si no hay token en la URL
   if (!token) {
-    return { isValid: false, reason: 'TOKEN_MISSING' };
+    if (allowSessionReset) {
+      // En modo desarrollo, permitir ingresar con usuario demo si no se especificó token
+      token = 'demo';
+    } else {
+      return { isValid: false, reason: 'TOKEN_MISSING' };
+    }
   }
 
-  // Token demo para testing rápido
+  // Token demo permitido solo si está habilitado el modo de pruebas o si está en la lista de usuarios
   if (token === 'demo' || token === 'demo_token_inocuidad_2026') {
-    const demoUser = {
-      legajo: "9999",
-      apellido: "Demo",
-      nombre: "Participante",
-      token_hash: "demo_token_inocuidad_2026",
-      fase1: localStorage.getItem('dy_trivia_access_9999_fase1') || '',
-      fase2: localStorage.getItem('dy_trivia_access_9999_fase2') || '',
-      fase3: localStorage.getItem('dy_trivia_access_9999_fase3') || ''
-    };
+    if (allowSessionReset) {
+      const demoUser = {
+        legajo: "9999",
+        apellido: "Demo",
+        nombre: "Participante",
+        token_hash: "demo_token_inocuidad_2026",
+        fase1: localStorage.getItem('dy_trivia_access_9999_fase1') || '',
+        fase2: localStorage.getItem('dy_trivia_access_9999_fase2') || '',
+        fase3: localStorage.getItem('dy_trivia_access_9999_fase3') || ''
+      };
 
-    const phaseKey = `fase${activePhase}`;
-    const alreadyPlayed = Boolean(demoUser[phaseKey]);
+      const phaseKey = `fase${activePhase}`;
+      const alreadyPlayed = Boolean(demoUser[phaseKey]);
 
-    return {
-      isValid: true,
-      user: demoUser,
-      alreadyPlayed,
-      playedDate: demoUser[phaseKey] || null
-    };
+      return {
+        isValid: true,
+        user: demoUser,
+        alreadyPlayed,
+        playedDate: demoUser[phaseKey] || null
+      };
+    }
   }
 
   const users = await fetchUsersList();
-  const foundUser = users.find(u => u.token_hash === token || u.legajo === token);
+  const cleanToken = String(token).trim().toLowerCase();
+  
+  // Buscar usuario por token_hash exacto (o legajo en modo desarrollo)
+  const foundUser = users.find(u => {
+    const userHash = String(u.token_hash || '').trim().toLowerCase();
+    const userLegajo = String(u.legajo || '').trim().toLowerCase();
+    
+    if (userHash === cleanToken) return true;
+    if (allowSessionReset && userLegajo === cleanToken) return true;
+    return false;
+  });
 
   if (!foundUser) {
     return { isValid: false, reason: 'USER_NOT_FOUND' };

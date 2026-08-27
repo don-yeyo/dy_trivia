@@ -71,6 +71,7 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 | `VITE_SHUFFLE_QUESTIONS` | Orden de preguntas aleatorio o secuencial | `true` / `false` |
 | `VITE_TIME_PER_QUESTION` | Tiempo límite en segundos por pregunta (0 = libre) | `45` |
 | `VITE_MAX_TIME_TOTAL` | Tiempo máximo de permanencia total en segundos | `600` |
+| `VITE_ALLOW_SESSION_RESET` | Modo desarrollo: permitir reinicio de sesión y acceso sin token | `false` (prod) / `true` (dev) |
 | `VITE_DATA_SOURCE` | Switch de origen de datos | `"csv"`, `"google_sheets_api"` o `"google_sheets"` |
 | `VITE_GOOGLE_SHEETS_SPREADSHEET_ID` | ID de la planilla de Google Sheets | `"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"` |
 | `VITE_GOOGLE_SHEETS_API_KEY` | Clave API de Google Cloud Console | `"AIzaSy..."` |

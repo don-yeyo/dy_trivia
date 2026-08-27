@@ -5,6 +5,7 @@ export default function PhaseLocked({
   user,
   playedDate = null,
   isTokenInvalid = false,
+  allowReset = false,
   onResetSession
 }) {
   const formattedDate = playedDate
@@ -50,7 +51,7 @@ export default function PhaseLocked({
           </p>
 
           {/* Tarjeta con tipografía mínima de 1rem */}
-          <div id="card-fase-bloqueada" className="casual-card text-left shadow-2xl">
+          <div id="card-fase-bloqueada" className="casual-card text-left shadow-2xl" style={{ marginBottom: allowReset ? '24px' : '0px' }}>
             <div className="flex items-center gap-3 text-lg text-slate-700 mb-5 pb-4 font-semibold">
               <Calendar size={30} className="text-red-500 shrink-0" />
               <span>Fecha de registro: <strong className="text-slate-900">{formattedDate || 'Completado previamente'}</strong></span>
@@ -64,14 +65,16 @@ export default function PhaseLocked({
             </div>
           </div>
 
-          {/* Botón para reiniciar intento en modo prueba */}
-          <button
-            onClick={handleReset}
-            className="btn-casual-primary max-w-sm mb-4"
-          >
-            <RotateCcw size={20} className="text-white" />
-            <span>Reiniciar Trivia (Modo Prueba)</span>
-          </button>
+          {/* Botón para reiniciar intento visible SOLO en modo de prueba (VITE_ALLOW_SESSION_RESET=true) */}
+          {allowReset && (
+            <button
+              onClick={handleReset}
+              className="btn-casual-primary max-w-sm mb-4"
+            >
+              <RotateCcw size={20} className="text-white" />
+              <span>Reiniciar Trivia (Modo Prueba)</span>
+            </button>
+          )}
         </>
       )}
     </div>

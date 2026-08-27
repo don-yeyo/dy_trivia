@@ -55,13 +55,21 @@ export default function App() {
     initApp();
   }, [activePhase, shuffleQuestions]);
 
-  // Al presionar Comenzar, iniciar cuenta regresiva
+  // Al presionar Comenzar, consumir el intento para la fase y arrancar cuenta regresiva
   const handleTriggerCountdown = async () => {
     // Si por alguna razón no hay preguntas cargadas, recargar
     if (!questions || questions.length === 0) {
       const loaded = await loadTriviaQuestions(activePhase, shuffleQuestions);
       setQuestions(loaded);
     }
+
+    // Consumo del enlace al dar inicio (evita que el usuario reinicie recargando en juego)
+    if (currentUser?.legajo) {
+      const startTimestamp = new Date().toISOString();
+      localStorage.setItem(`dy_trivia_access_${currentUser.legajo}_fase${activePhase}`, startTimestamp);
+      setPlayedDate(startTimestamp);
+    }
+
     setGameSessionId(Date.now());
     setGameState('COUNTDOWN');
   };
@@ -180,6 +188,7 @@ export default function App() {
             user={currentUser}
             playedDate={playedDate}
             isTokenInvalid={false}
+            allowReset={import.meta.env.VITE_ALLOW_SESSION_RESET === 'true'}
             onResetSession={handleResetSession}
           />
         )}
