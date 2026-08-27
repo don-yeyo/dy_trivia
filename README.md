@@ -42,9 +42,10 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - Bonificación de puntaje por rapidez de respuesta.
    - **Registro fidedigno de respuestas:** Si a un participante se le agota el tiempo en una pregunta, esta se registra como no contestada y no se contabiliza en el resumen de preguntas respondidas (ej. mostrando "4 de 5").
 
-6. **Soporte PWA (Instalable en Android, iOS y Desktop)**:
+6. **Soporte PWA & Vista Previa para WhatsApp / Redes (Open Graph)**:
    - Service Worker con soporte offline para assets base.
    - Web App Manifest completo con favicon e iconos corporativos.
+   - Etiquetas **Open Graph (`og:image`, `og:title`, `og:description`)** y **Twitter Cards** configuradas con imagen HD (`public/og-preview.jpg`) para que al compartir cualquier enlace en **WhatsApp**, Facebook, LinkedIn o Telegram aparezca automáticamente la tarjeta de vista previa con la imagen oficial de la trivia.
 
 7. **Listo para Despliegue en Netlify**:
    - Configuración `netlify.toml` con SPA fallback.
