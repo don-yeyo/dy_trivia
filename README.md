@@ -74,7 +74,7 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 | `VITE_ALLOW_SESSION_RESET` | Modo desarrollo: permitir reinicio de sesión y acceso sin token | `false` (prod) / `true` (dev) |
 | `VITE_DATA_SOURCE` | Switch de origen de datos | `"csv"`, `"google_sheets_api"` o `"google_sheets"` |
 | `VITE_GOOGLE_SHEETS_SPREADSHEET_ID` | ID de la planilla de Google Sheets | `"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"` |
-| `VITE_GOOGLE_SHEETS_API_KEY` | Clave API de Google Cloud Console | `"AIzaSy..."` |
+| `VITE_GOOGLE_SHEETS_API_KEY` | Clave API de Google Cloud Console | `"TU_API_KEY_DE_GOOGLE"` |
 | `VITE_GOOGLE_SHEETS_QUESTIONS_RANGE` | Pestaña y rango de preguntas | `"Preguntas!A1:Z100"` |
 | `VITE_GOOGLE_SHEETS_USERS_RANGE` | Pestaña y rango de participantes | `"Participantes!A1:Z500"` |
 | `VITE_GOOGLE_SHEET_QUESTIONS_URL` | URL CSV publicada de preguntas | `"https://docs.google.com/..."` |
@@ -126,7 +126,7 @@ Este modo se conecta directamente a la API oficial de Google Cloud mediante tu `
 ```env
 VITE_DATA_SOURCE="google_sheets_api"
 VITE_GOOGLE_SHEETS_SPREADSHEET_ID="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-VITE_GOOGLE_SHEETS_API_KEY="AIzaSyTuClaveDeApiAqui..."
+VITE_GOOGLE_SHEETS_API_KEY="TU_API_KEY_DE_GOOGLE_AQUI"
 VITE_GOOGLE_SHEETS_QUESTIONS_RANGE="Preguntas!A1:Z100"
 VITE_GOOGLE_SHEETS_USERS_RANGE="Participantes!A1:Z500"
 ```
