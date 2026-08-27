@@ -6,8 +6,9 @@ import TriviaGame from './components/TriviaGame';
 import GameOver from './components/GameOver';
 import PhaseLocked from './components/PhaseLocked';
 import SunburstBackground from './components/SunburstBackground';
-import { validateUserToken, recordPhaseAccess } from './services/authService';
+import { validateUserToken, recordPhaseQuestionAnswer } from './services/authService';
 import { loadTriviaQuestions } from './services/triviaService';
+import { fetchUserProgressFromResults } from './services/googleSheetsService';
 import { RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
   const [gameState, setGameState] = useState('LOADING'); // LOADING | SPLASH | COUNTDOWN | PLAYING | FINISHED | LOCKED | INVALID_TOKEN
   const [currentUser, setCurrentUser] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [totalPhaseQuestionsCount, setTotalPhaseQuestionsCount] = useState(0);
   const [userScore, setUserScore] = useState(0);
   const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
   const [answersLog, setAnswersLog] = useState([]);
@@ -30,7 +32,8 @@ export default function App() {
     async function initApp() {
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token') || urlParams.get('hash') || urlParams.get('legajo');
-      const effectiveToken = token || 'demo';
+      const allowSessionReset = import.meta.env.VITE_ALLOW_SESSION_RESET === 'true';
+      const effectiveToken = token || (allowSessionReset ? 'demo' : null);
 
       const validation = await validateUserToken(effectiveToken, activePhase);
 
@@ -41,35 +44,51 @@ export default function App() {
 
       setCurrentUser(validation.user);
 
-      if (validation.alreadyPlayed) {
-        setPlayedDate(validation.playedDate);
-        setGameState('LOCKED');
-        return;
-      }
+      // Cargar todas las preguntas de la fase activa
+      const allPhaseQuestions = await loadTriviaQuestions(activePhase, shuffleQuestions);
+      setTotalPhaseQuestionsCount(allPhaseQuestions.length);
 
-      const loadedQuestions = await loadTriviaQuestions(activePhase, shuffleQuestions);
-      setQuestions(loadedQuestions);
-      setGameState('SPLASH');
+      // Consultar el progreso de respuestas en Google Sheets (Fuente de Verdad)
+      const progress = await fetchUserProgressFromResults(validation.user.legajo, activePhase);
+
+      if (progress.hasRecord && progress.answers && progress.answers.length > 0) {
+        const answeredIds = progress.answers.map(a => a.questionId);
+        const pendingQuestions = allPhaseQuestions.filter(q => !answeredIds.includes(q.id));
+
+        // Si ya respondió todas las preguntas de esta fase
+        if (pendingQuestions.length === 0) {
+          setPlayedDate(progress.fechaHora || new Date().toISOString());
+          setGameState('LOCKED');
+          return;
+        }
+
+        // Si le quedan preguntas pendientes por responder
+        setQuestions(pendingQuestions);
+        setUserScore(progress.score || 0);
+        setCorrectAnswersCount(progress.correctCount || 0);
+        setAnswersLog(progress.answers || []);
+        setTotalElapsedTime(progress.totalTime || 0);
+        setGameState('SPLASH');
+      } else {
+        // Primera vez o preguntas reseteadas en la planilla
+        setQuestions(allPhaseQuestions);
+        setUserScore(0);
+        setCorrectAnswersCount(0);
+        setAnswersLog([]);
+        setTotalElapsedTime(0);
+        setGameState('SPLASH');
+      }
     }
 
     initApp();
   }, [activePhase, shuffleQuestions]);
 
-  // Al presionar Comenzar, consumir el intento para la fase y arrancar cuenta regresiva
+  // Al presionar Comenzar, iniciar cuenta regresiva
   const handleTriggerCountdown = async () => {
-    // Si por alguna razón no hay preguntas cargadas, recargar
     if (!questions || questions.length === 0) {
       const loaded = await loadTriviaQuestions(activePhase, shuffleQuestions);
       setQuestions(loaded);
     }
-
-    // Consumo del enlace al dar inicio (evita que el usuario reinicie recargando en juego)
-    if (currentUser?.legajo) {
-      const startTimestamp = new Date().toISOString();
-      localStorage.setItem(`dy_trivia_access_${currentUser.legajo}_fase${activePhase}`, startTimestamp);
-      setPlayedDate(startTimestamp);
-    }
-
     setGameSessionId(Date.now());
     setGameState('COUNTDOWN');
   };
@@ -80,51 +99,38 @@ export default function App() {
     setGameStartTime(Date.now());
   };
 
+  // Tras responder cada pregunta individual, actualizar estado y persistir en Google Sheets
   const handleAnswerSubmit = (answerData) => {
-    if (answerData.isCorrect) {
-      setUserScore(prev => prev + answerData.pointsEarned);
+    const isCorrect = Boolean(answerData.isCorrect);
+    const pointsEarned = answerData.pointsEarned || 0;
+    const timeSpent = answerData.timeSpent || 0;
+
+    if (isCorrect) {
+      setUserScore(prev => prev + pointsEarned);
       setCorrectAnswersCount(prev => prev + 1);
     }
+    setTotalElapsedTime(prev => prev + timeSpent);
     setAnswersLog(prev => [...prev, answerData]);
+
+    // Persistencia inmediata en Google Sheets para esta pregunta
+    if (currentUser?.legajo) {
+      recordPhaseQuestionAnswer(currentUser.legajo, activePhase, answerData);
+    }
   };
 
   const handleResetSession = async () => {
-    if (currentUser?.legajo) {
-      localStorage.removeItem(`dy_trivia_access_${currentUser.legajo}_fase${activePhase}`);
-    }
-    localStorage.removeItem(`dy_trivia_access_9999_fase${activePhase}`);
-    localStorage.removeItem(`dy_trivia_access_1001_fase${activePhase}`);
-    localStorage.removeItem(`dy_trivia_access_1002_fase${activePhase}`);
-    localStorage.removeItem(`dy_trivia_access_1003_fase${activePhase}`);
-    localStorage.removeItem(`dy_trivia_access_1004_fase${activePhase}`);
-    localStorage.removeItem(`dy_trivia_access_1005_fase${activePhase}`);
-    
     setUserScore(0);
     setCorrectAnswersCount(0);
     setAnswersLog([]);
     setPlayedDate(null);
     setGameSessionId(Date.now());
 
-    // Asegurar carga fresca de preguntas
     const loadedQuestions = await loadTriviaQuestions(activePhase, shuffleQuestions);
     setQuestions(loadedQuestions);
-
     setGameState('SPLASH');
   };
 
   const handleFinishGame = async () => {
-    const elapsedSeconds = gameStartTime ? Math.max(1, Math.round((Date.now() - gameStartTime) / 1000)) : 0;
-    setTotalElapsedTime(elapsedSeconds);
-
-    if (currentUser) {
-      await recordPhaseAccess(currentUser.legajo, activePhase, {
-        score: userScore,
-        correctCount: correctAnswersCount,
-        totalTime: elapsedSeconds,
-        answers: answersLog
-      });
-    }
-
     setGameState('FINISHED');
   };
 
@@ -177,7 +183,7 @@ export default function App() {
         {gameState === 'FINISHED' && (
           <GameOver
             user={currentUser}
-            totalQuestions={questions.length}
+            totalQuestions={totalPhaseQuestionsCount || questions.length}
             answeredQuestions={answersLog.filter(a => a.selectedOptionId !== null && a.selectedOptionId !== undefined).length}
             totalTime={totalElapsedTime}
           />

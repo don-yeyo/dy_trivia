@@ -155,8 +155,8 @@ Para guardar automáticamente los puntajes, tiempos, desglose de respuestas y fe
 /**
  * ==============================================================================
  * GOOGLE APPS SCRIPT - WEBHOOK TRIVIA INOCUIDAD 2026 (DON YEYO S.A.)
- * Registra en tiempo real los resultados de los colaboradores al finalizar
- * y permite poblar automáticamente las pestañas de Preguntas y Participantes.
+ * Registra en tiempo real cada pregunta respondida, acumulando puntajes,
+ * respuestas correctas, tiempos y el JSON detallado por colaborador.
  * ==============================================================================
  */
 function doPost(e) {
@@ -167,66 +167,21 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var data = JSON.parse(e.postData.contents);
 
-    // Si la acción es poblar las tablas con datos de demo
+    // 1. Acción especial: Poblar datos de prueba desde script
     if (data.action === "POBLAR_DEMO") {
       poblarDesdePayload(ss, data);
       return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Tablas pobladas con éxito" }))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 1. Obtener o Crear pestaña "Resultados"
-    var sheetResultados = ss.getSheetByName("Resultados");
-    if (!sheetResultados) {
-      sheetResultados = ss.insertSheet("Resultados");
-      sheetResultados.appendRow([
-        "Fecha y Hora",
-        "Legajo",
-        "Fase",
-        "Puntaje Obtenido",
-        "Respuestas Correctas",
-        "Tiempo Total (Segundos)",
-        "Detalle Respuestas (JSON)"
-      ]);
-      sheetResultados.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#e2e8f0");
+    // 2. Acción: Guardar respuesta individual de pregunta en tiempo real
+    if (data.action === "SAVE_QUESTION_ANSWER" && data.answer) {
+      saveIndividualAnswer(ss, data);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Pregunta guardada" }))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 2. Registrar la fila con el intento completado
-    sheetResultados.appendRow([
-      data.fechaHora || new Date().toISOString(),
-      data.legajo || "",
-      data.fase || 1,
-      data.puntaje || 0,
-      data.respuestasCorrectas || 0,
-      data.tiempoSegundos || 0,
-      JSON.stringify(data.detalleRespuestas || [])
-    ]);
-
-    // 3. Actualizar la fecha de completado en la pestaña "Participantes"
-    var sheetParticipantes = ss.getSheetByName("Participantes");
-    if (sheetParticipantes) {
-      var values = sheetParticipantes.getDataRange().getValues();
-      var headers = values[0];
-      var colFase = -1;
-      
-      var targetHeader = "fase" + data.fase;
-      for (var c = 0; c < headers.length; c++) {
-        if (String(headers[c]).trim().toLowerCase() === targetHeader) {
-          colFase = c + 1;
-          break;
-        }
-      }
-
-      if (colFase !== -1) {
-        for (var r = 1; r < values.length; r++) {
-          if (String(values[r][0]).trim() === String(data.legajo).trim()) {
-            sheetParticipantes.getRange(r + 1, colFase).setValue(data.fechaHora || new Date().toISOString());
-            break;
-          }
-        }
-      }
-    }
-
-    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Registrado con éxito" }))
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "OK" }))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
@@ -234,6 +189,89 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
   } finally {
     lock.releaseLock();
+  }
+}
+
+/**
+ * Guarda o actualiza la respuesta de una pregunta individual en la pestaña 'Resultados'
+ */
+function saveIndividualAnswer(ss, data) {
+  var sheetResultados = ss.getSheetByName("Resultados");
+  if (!sheetResultados) {
+    sheetResultados = ss.insertSheet("Resultados");
+    sheetResultados.appendRow([
+      "Fecha y Hora", "Legajo", "Fase", "Puntaje Obtenido", "Respuestas Correctas", "Tiempo Total (Segundos)", "Detalle Respuestas (JSON)"
+    ]);
+    sheetResultados.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#e2e8f0");
+  }
+
+  var values = sheetResultados.getDataRange().getValues();
+  var targetRowIndex = -1;
+  var existingAnswers = [];
+
+  // Buscar fila existente para este legajo y fase
+  for (var r = 1; r < values.length; r++) {
+    var rowLegajo = String(values[r][1]).trim();
+    var rowFase = parseInt(values[r][2], 10);
+    if (rowLegajo === String(data.legajo).trim() && rowFase === parseInt(data.fase, 10)) {
+      targetRowIndex = r + 1;
+      var rawJson = values[r][6];
+      if (rawJson) {
+        try {
+          existingAnswers = JSON.parse(rawJson);
+        } catch (e) {}
+      }
+      break;
+    }
+  }
+
+  // Insertar o actualizar la respuesta en el array de respuestas
+  var newAnswer = data.answer;
+  var answerIndex = -1;
+  for (var i = 0; i < existingAnswers.length; i++) {
+    if (existingAnswers[i].questionId === newAnswer.questionId) {
+      answerIndex = i;
+      break;
+    }
+  }
+
+  if (answerIndex >= 0) {
+    existingAnswers[answerIndex] = newAnswer;
+  } else {
+    existingAnswers.push(newAnswer);
+  }
+
+  // Recalcular métricas acumuladas
+  var totalScore = 0;
+  var totalCorrect = 0;
+  var totalSeconds = 0;
+
+  existingAnswers.forEach(function(ans) {
+    totalScore += (ans.pointsEarned || 0);
+    if (ans.isCorrect) totalCorrect += 1;
+    totalSeconds += (ans.timeSpent || 0);
+  });
+
+  var timestamp = data.fechaHoraRespuesta || new Date().toISOString();
+
+  if (targetRowIndex !== -1) {
+    // Actualizar fila existente
+    sheetResultados.getRange(targetRowIndex, 1).setValue(timestamp);
+    sheetResultados.getRange(targetRowIndex, 4).setValue(totalScore);
+    sheetResultados.getRange(targetRowIndex, 5).setValue(totalCorrect);
+    sheetResultados.getRange(targetRowIndex, 6).setValue(totalSeconds);
+    sheetResultados.getRange(targetRowIndex, 7).setValue(JSON.stringify(existingAnswers));
+  } else {
+    // Crear nueva fila para este colaborador y fase
+    sheetResultados.appendRow([
+      timestamp,
+      data.legajo,
+      data.fase,
+      totalScore,
+      totalCorrect,
+      totalSeconds,
+      JSON.stringify(existingAnswers)
+    ]);
   }
 }
 

@@ -87,7 +87,7 @@ function getFallbackUsers() {
 }
 
 /**
- * Valida si el token recibido por URL pertenece a un usuario válido y el estado de la fase activa
+ * Valida si el token recibido por URL pertenece a un usuario válido
  */
 export async function validateUserToken(token, activePhase = 1) {
   const allowSessionReset = import.meta.env.VITE_ALLOW_SESSION_RESET === 'true';
@@ -95,7 +95,6 @@ export async function validateUserToken(token, activePhase = 1) {
   // Si no hay token en la URL
   if (!token) {
     if (allowSessionReset) {
-      // En modo desarrollo, permitir ingresar con usuario demo si no se especificó token
       token = 'demo';
     } else {
       return { isValid: false, reason: 'TOKEN_MISSING' };
@@ -110,19 +109,14 @@ export async function validateUserToken(token, activePhase = 1) {
         apellido: "Demo",
         nombre: "Participante",
         token_hash: "demo_token_inocuidad_2026",
-        fase1: localStorage.getItem('dy_trivia_access_9999_fase1') || '',
-        fase2: localStorage.getItem('dy_trivia_access_9999_fase2') || '',
-        fase3: localStorage.getItem('dy_trivia_access_9999_fase3') || ''
+        fase1: '',
+        fase2: '',
+        fase3: ''
       };
-
-      const phaseKey = `fase${activePhase}`;
-      const alreadyPlayed = Boolean(demoUser[phaseKey]);
 
       return {
         isValid: true,
-        user: demoUser,
-        alreadyPlayed,
-        playedDate: demoUser[phaseKey] || null
+        user: demoUser
       };
     }
   }
@@ -144,29 +138,19 @@ export async function validateUserToken(token, activePhase = 1) {
     return { isValid: false, reason: 'USER_NOT_FOUND' };
   }
 
-  // Verificar si ya accedió/jugó esta fase (revisamos tanto el origen de datos como el localStorage local)
-  const phaseKey = `fase${activePhase}`;
-  const localAccessKey = `dy_trivia_access_${foundUser.legajo}_fase${activePhase}`;
-  const accessTimestamp = foundUser[phaseKey] || localStorage.getItem(localAccessKey);
-
   return {
     isValid: true,
-    user: foundUser,
-    alreadyPlayed: Boolean(accessTimestamp),
-    playedDate: accessTimestamp || null
+    user: foundUser
   };
 }
 
 /**
- * Registra el acceso y fecha/hora de juego de la fase
+ * Registra en tiempo real cada pregunta respondida en Google Sheets
  */
-export async function recordPhaseAccess(legajo, activePhase, scoreData = {}) {
+export async function recordPhaseQuestionAnswer(legajo, activePhase, answerData) {
   const timestamp = new Date().toISOString();
-  const localAccessKey = `dy_trivia_access_${legajo}_fase${activePhase}`;
-  localStorage.setItem(localAccessKey, timestamp);
-
-  // Si existe webhook de Google Apps Script configurado, enviar la información
   const appsScriptEndpoint = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_ENDPOINT;
+
   if (appsScriptEndpoint) {
     try {
       await fetch(appsScriptEndpoint, {
@@ -174,18 +158,22 @@ export async function recordPhaseAccess(legajo, activePhase, scoreData = {}) {
         headers: { 'Content-Type': 'application/json' },
         mode: 'no-cors',
         body: JSON.stringify({
-          action: 'RECORD_PHASE_ACCESS',
-          legajo,
-          fase: activePhase,
-          fechaHora: timestamp,
-          puntaje: scoreData.score || 0,
-          respuestasCorrectas: scoreData.correctCount || 0,
-          tiempoSegundos: scoreData.totalTime || 0,
-          detalleRespuestas: scoreData.answers || []
+          action: 'SAVE_QUESTION_ANSWER',
+          legajo: String(legajo),
+          fase: parseInt(activePhase, 10),
+          fechaHoraRespuesta: timestamp,
+          answer: {
+            questionId: answerData.questionId,
+            selectedOptionId: answerData.selectedOptionId,
+            isCorrect: Boolean(answerData.isCorrect),
+            pointsEarned: answerData.pointsEarned || 0,
+            timeSpent: answerData.timeSpent || 0,
+            fechaHoraRespuesta: timestamp
+          }
         })
       });
     } catch (e) {
-      console.warn('No se pudo sincronizar con Google Apps Script:', e);
+      console.warn('No se pudo enviar respuesta a Google Apps Script:', e);
     }
   }
 

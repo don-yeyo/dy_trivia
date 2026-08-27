@@ -77,7 +77,7 @@ export async function fetchFromPublishedCSV(url) {
 }
 
 /**
- * Envía datos de una sesión completada al endpoint de Google Apps Script Webhook
+ * Envía datos de una sesión completada o respuesta individual al endpoint de Google Apps Script Webhook
  * @param {string} endpoint - URL del Web App de Apps Script
  * @param {Object} payload - Objeto con usuario, fase, puntaje, tiempo y respuestas
  */
@@ -99,3 +99,88 @@ export async function submitResultsToAppsScript(endpoint, payload) {
     return false;
   }
 }
+
+/**
+ * Consulta la pestaña 'Resultados' de Google Sheets para obtener el progreso exacto y respuestas ya dadas por un colaborador
+ * @param {string} legajo - Legajo del colaborador
+ * @param {number} phase - Fase activa consultada
+ * @returns {Promise<Object>} Objeto con answers (array), score, correctCount, totalTime, isCompleted
+ */
+export async function fetchUserProgressFromResults(legajo, phase = 1) {
+  const dataSource = import.meta.env.VITE_DATA_SOURCE || 'csv';
+  const spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_SPREADSHEET_ID;
+  const apiKey = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
+  const resultsRange = import.meta.env.VITE_GOOGLE_SHEETS_RESULTS_RANGE || 'Resultados!A1:Z1000';
+
+  try {
+    let rows = [];
+
+    if (dataSource === 'google_sheets_api' && spreadsheetId && apiKey) {
+      rows = await fetchFromGoogleSheetsAPI(spreadsheetId, resultsRange, apiKey);
+    }
+
+    if (!rows || rows.length === 0) {
+      return {
+        hasRecord: false,
+        answers: [],
+        score: 0,
+        correctCount: 0,
+        totalTime: 0,
+        isCompleted: false
+      };
+    }
+
+    // Buscar la fila correspondiente al legajo y fase
+    const targetRow = rows.find(r => {
+      const rowLegajo = String(r.legajo || '').trim();
+      const rowFase = parseInt(r.fase || '1', 10);
+      return rowLegajo === String(legajo).trim() && rowFase === parseInt(phase, 10);
+    });
+
+    if (!targetRow) {
+      return {
+        hasRecord: false,
+        answers: [],
+        score: 0,
+        correctCount: 0,
+        totalTime: 0,
+        isCompleted: false
+      };
+    }
+
+    // Parsear el detalle de respuestas (JSON)
+    let answers = [];
+    const jsonField = targetRow['detalle respuestas (json)'] || targetRow['detallerespuestas'] || targetRow['respuestas'] || '';
+    if (jsonField) {
+      try {
+        answers = JSON.parse(jsonField);
+      } catch (err) {
+        console.warn('Error parseando JSON de respuestas:', err);
+      }
+    }
+
+    const score = parseInt(targetRow['puntaje obtenido'] || targetRow['puntaje'] || '0', 10);
+    const correctCount = parseInt(targetRow['respuestas correctas'] || '0', 10);
+    const totalTime = parseInt(targetRow['tiempo total (segundos)'] || targetRow['tiempo'] || '0', 10);
+
+    return {
+      hasRecord: true,
+      answers,
+      score,
+      correctCount,
+      totalTime,
+      fechaHora: targetRow['fecha y hora'] || targetRow['fechahora'] || ''
+    };
+  } catch (error) {
+    console.warn('No se pudo consultar el progreso de resultados en Google Sheets:', error);
+    return {
+      hasRecord: false,
+      answers: [],
+      score: 0,
+      correctCount: 0,
+      totalTime: 0,
+      isCompleted: false
+    };
+  }
+}
+
