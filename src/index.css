@@ -193,16 +193,16 @@ h4,
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 16px 20px;
+  justify-content: flex-start;
+  padding: 8px 16px 20px 16px;
 }
 
-/* Header */
+/* Header compacto con Safe Area */
 .app-header {
   width: 100%;
   max-width: 960px;
-  margin: 0 auto 20px auto;
-  padding: calc(10px + env(safe-area-inset-top, 0px) + 20px) 16px 10px 16px;
+  margin: 0 auto 6px auto;
+  padding: calc(6px + env(safe-area-inset-top, 0px)) 16px 4px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -218,8 +218,8 @@ h4,
   justify-content: center;
   width: 100%;
   max-width: 680px;
-  margin: 10px auto 28px auto;
-  padding: 0 12px;
+  margin: 0 auto 20px auto;
+  padding: 0 8px;
   position: relative;
   z-index: 10;
 }
@@ -709,12 +709,12 @@ h4,
 /* Responsive Móvil (< 640px) */
 @media (max-width: 640px) {
   .app-layout {
-    padding: 12px 14px;
+    padding: 6px 12px 16px 12px;
   }
 
   .app-header {
-    margin-bottom: 14px;
-    padding: calc(8px + env(safe-area-inset-top, 0px) + 20px) 10px 8px 10px;
+    margin-bottom: 4px;
+    padding: calc(6px + env(safe-area-inset-top, 0px)) 8px 2px 8px;
   }
 
   .countdown-word {

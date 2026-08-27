@@ -3,32 +3,49 @@
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
 import Papa from 'papaparse';
+import { fetchFromGoogleSheetsAPI, fetchFromPublishedCSV } from './googleSheetsService';
 
 /**
- * Carga las preguntas desde CSV o Google Sheets y las filtra según la fase activa
+ * Carga las preguntas desde CSV local, Google Sheets API v4 o Google Sheets CSV publicado
+ * y las filtra según la fase activa.
  */
 export async function loadTriviaQuestions(phase = 1, shuffle = false) {
   const dataSource = import.meta.env.VITE_DATA_SOURCE || 'csv';
   const googleSheetUrl = import.meta.env.VITE_GOOGLE_SHEET_QUESTIONS_URL;
+  const spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_SPREADSHEET_ID;
+  const apiKey = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
+  const range = import.meta.env.VITE_GOOGLE_SHEETS_QUESTIONS_RANGE || 'Preguntas!A1:Z100';
 
   try {
-    let csvData = "";
-    if (dataSource === 'google_sheets' && googleSheetUrl) {
-      const res = await fetch(googleSheetUrl);
-      csvData = await res.text();
-    } else {
+    let rows = [];
+
+    // Modo 1: Google Sheets API v4 oficial (con API Key y Spreadsheet ID)
+    if (dataSource === 'google_sheets_api' && spreadsheetId && apiKey) {
+      rows = await fetchFromGoogleSheetsAPI(spreadsheetId, range, apiKey);
+    } 
+    // Modo 2: Google Sheets URL publicado como CSV o GViz
+    else if ((dataSource === 'google_sheets' || dataSource === 'google_sheets_csv') && googleSheetUrl) {
+      rows = await fetchFromPublishedCSV(googleSheetUrl);
+    } 
+    // Modo 3: Archivo CSV local en /public/data/preguntas_inocuidad.csv
+    else {
       const res = await fetch('/data/preguntas_inocuidad.csv');
       if (res.ok) {
-        csvData = await res.text();
+        const csvData = await res.text();
+        const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
+        rows = parsed.data;
       } else {
         return getFallbackQuestions(phase);
       }
     }
 
-    const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
-    
+    if (!rows || rows.length === 0) {
+      console.warn(`No se obtuvieron filas de datos. Usando preguntas de respaldo.`);
+      return getFallbackQuestions(phase);
+    }
+
     // Filtrar por fase activa
-    const filtered = parsed.data.filter(item => {
+    const filtered = rows.filter(item => {
       const itemPhase = parseInt(item.fase || '1', 10);
       return itemPhase === parseInt(phase, 10);
     });

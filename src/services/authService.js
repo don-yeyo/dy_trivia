@@ -1,9 +1,6 @@
-// ==============================================================================
-// SERVICIO DE AUTENTICACIÓN Y VALIDACIÓN DE ENLACES ÚNICOS
-// Don Yeyo S.A. | Trivia Inocuidad 2026
-// ==============================================================================
 import CryptoJS from 'crypto-js';
 import Papa from 'papaparse';
+import { fetchFromGoogleSheetsAPI, fetchFromPublishedCSV } from './googleSheetsService';
 
 const SEED_PHRASE = import.meta.env.VITE_SEED_PHRASE || "DY_INOCUIDAD_2026_CALIDAD_Y_COMPROMISO";
 
@@ -17,41 +14,52 @@ export function generateUserHash(legajo, apellido, nombre) {
 }
 
 /**
- * Carga la lista de usuarios participantes desde CSV local o Google Sheets
+ * Carga la lista de usuarios participantes desde CSV local, Google Sheets API v4 o Google Sheets CSV publicado
  */
 export async function fetchUsersList() {
   const dataSource = import.meta.env.VITE_DATA_SOURCE || 'csv';
   const googleSheetUrl = import.meta.env.VITE_GOOGLE_SHEET_USERS_URL;
+  const spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_SPREADSHEET_ID;
+  const apiKey = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
+  const range = import.meta.env.VITE_GOOGLE_SHEETS_USERS_RANGE || 'Participantes!A1:Z500';
 
   try {
-    let csvData = "";
-    if (dataSource === 'google_sheets' && googleSheetUrl) {
-      const res = await fetch(googleSheetUrl);
-      csvData = await res.text();
-    } else {
-      // Leer CSV local desde /data o fallback hardcoded
+    let rows = [];
+
+    // Modo 1: Google Sheets API v4 oficial (con API Key y Spreadsheet ID)
+    if (dataSource === 'google_sheets_api' && spreadsheetId && apiKey) {
+      rows = await fetchFromGoogleSheetsAPI(spreadsheetId, range, apiKey);
+    }
+    // Modo 2: Google Sheets URL publicado como CSV o GViz
+    else if ((dataSource === 'google_sheets' || dataSource === 'google_sheets_csv') && googleSheetUrl) {
+      rows = await fetchFromPublishedCSV(googleSheetUrl);
+    }
+    // Modo 3: Archivo CSV local en /public/data/usuarios_participantes.csv
+    else {
       const res = await fetch('/data/usuarios_participantes.csv');
       if (res.ok) {
-        csvData = await res.text();
+        const csvData = await res.text();
+        const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
+        rows = parsed.data;
       } else {
-        // Fallback default
-        return [
-          { legajo: "1001", apellido: "Pérez", nombre: "Juan", token_hash: generateUserHash("1001", "Pérez", "Juan"), fase1: "", fase2: "", fase3: "" },
-          { legajo: "1002", apellido: "González", nombre: "María", token_hash: generateUserHash("1002", "González", "María"), fase1: "", fase2: "", fase3: "" },
-          { legajo: "1003", apellido: "Rodríguez", nombre: "Carlos", token_hash: generateUserHash("1003", "Rodríguez", "Carlos"), fase1: "", fase2: "", fase3: "" },
-          { legajo: "9999", apellido: "Demo", nombre: "Participante", token_hash: "demo_token_inocuidad_2026", fase1: "", fase2: "", fase3: "" }
-        ];
+        return getFallbackUsers();
       }
     }
 
-    const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
-    return parsed.data.map(user => {
-      // Si el CSV no tenía hash calculado, se calcula automáticamente
-      const calculatedHash = generateUserHash(user.legajo, user.apellido, user.nombre);
+    if (!rows || rows.length === 0) {
+      return getFallbackUsers();
+    }
+
+    return rows.map(user => {
+      const legajo = String(user.legajo || '').trim();
+      const apellido = String(user.apellido || '').trim();
+      const nombre = String(user.nombre || '').trim();
+      const calculatedHash = generateUserHash(legajo, apellido, nombre);
+
       return {
-        legajo: String(user.legajo || '').trim(),
-        apellido: String(user.apellido || '').trim(),
-        nombre: String(user.nombre || '').trim(),
+        legajo,
+        apellido,
+        nombre,
         token_hash: user.token_hash || calculatedHash,
         fase1: user.fase1 || '',
         fase2: user.fase2 || '',
@@ -60,10 +68,22 @@ export async function fetchUsersList() {
     });
   } catch (error) {
     console.error('Error cargando usuarios:', error);
-    return [
-      { legajo: "9999", apellido: "Demo", nombre: "Participante", token_hash: "demo_token_inocuidad_2026", fase1: "", fase2: "", fase3: "" }
-    ];
+    return getFallbackUsers();
   }
+}
+
+/**
+ * Usuarios por defecto de respaldo si no hay conexión
+ */
+function getFallbackUsers() {
+  return [
+    { legajo: "1001", apellido: "Pérez", nombre: "Juan", token_hash: generateUserHash("1001", "Pérez", "Juan"), fase1: "", fase2: "", fase3: "" },
+    { legajo: "1002", apellido: "González", nombre: "María", token_hash: generateUserHash("1002", "González", "María"), fase1: "", fase2: "", fase3: "" },
+    { legajo: "1003", apellido: "Rodríguez", nombre: "Carlos", token_hash: generateUserHash("1003", "Rodríguez", "Carlos"), fase1: "", fase2: "", fase3: "" },
+    { legajo: "1004", apellido: "López", nombre: "Ana", token_hash: generateUserHash("1004", "López", "Ana"), fase1: "", fase2: "", fase3: "" },
+    { legajo: "1005", apellido: "Martínez", nombre: "Lucas", token_hash: generateUserHash("1005", "Martínez", "Lucas"), fase1: "", fase2: "", fase3: "" },
+    { legajo: "9999", apellido: "Demo", nombre: "Participante", token_hash: "demo_token_inocuidad_2026", fase1: "", fase2: "", fase3: "" }
+  ];
 }
 
 /**

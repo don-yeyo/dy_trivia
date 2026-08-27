@@ -71,10 +71,286 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 | `VITE_SHUFFLE_QUESTIONS` | Orden de preguntas aleatorio o secuencial | `true` / `false` |
 | `VITE_TIME_PER_QUESTION` | Tiempo límite en segundos por pregunta (0 = libre) | `45` |
 | `VITE_MAX_TIME_TOTAL` | Tiempo máximo de permanencia total en segundos | `600` |
-| `VITE_DATA_SOURCE` | Origen de datos para preguntas y usuarios | `"csv"` o `"google_sheets"` |
-| `VITE_GOOGLE_SHEET_QUESTIONS_URL` | URL de publicación CSV de Google Sheet de preguntas | `"https://docs.google.com/..."` |
-| `VITE_GOOGLE_SHEET_USERS_URL` | URL de publicación CSV de Google Sheet de usuarios | `"https://docs.google.com/..."` |
-| `VITE_GOOGLE_APPS_SCRIPT_ENDPOINT` | Webhook de Google Apps Script para guardar resultados | `"https://script.google.com/macros/s/..."` |
+| `VITE_DATA_SOURCE` | Switch de origen de datos | `"csv"`, `"google_sheets_api"` o `"google_sheets"` |
+| `VITE_GOOGLE_SHEETS_SPREADSHEET_ID` | ID de la planilla de Google Sheets | `"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"` |
+| `VITE_GOOGLE_SHEETS_API_KEY` | Clave API de Google Cloud Console | `"AIzaSy..."` |
+| `VITE_GOOGLE_SHEETS_QUESTIONS_RANGE` | Pestaña y rango de preguntas | `"Preguntas!A1:Z100"` |
+| `VITE_GOOGLE_SHEETS_USERS_RANGE` | Pestaña y rango de participantes | `"Participantes!A1:Z500"` |
+| `VITE_GOOGLE_SHEET_QUESTIONS_URL` | URL CSV publicada de preguntas | `"https://docs.google.com/..."` |
+| `VITE_GOOGLE_SHEET_USERS_URL` | URL CSV publicada de usuarios | `"https://docs.google.com/..."` |
+| `VITE_GOOGLE_APPS_SCRIPT_ENDPOINT` | Webhook de Apps Script para guardar resultados | `"https://script.google.com/macros/s/..."` |
+
+---
+
+## 🔌 Configuración de Google Sheets como Base de Datos
+
+La aplicación cuenta con un selector flexible mediante la variable de entorno `VITE_DATA_SOURCE`:
+
+### Modo 1: Archivos Locales CSV (`VITE_DATA_SOURCE="csv"`)
+Modo por defecto para desarrollo u operación offline. Lee los archivos:
+- `/public/data/preguntas_inocuidad.csv`
+- `/public/data/usuarios_participantes.csv`
+
+---
+
+### Modo 2: Google Sheets API v4 Oficial (`VITE_DATA_SOURCE="google_sheets_api"`)
+
+Este modo se conecta directamente a la API oficial de Google Cloud mediante tu `API Key` y el `Spreadsheet ID`.
+
+#### Paso 1: Crear Proyecto y Habilitar Google Sheets API en Google Cloud
+1. Ingresa a [Google Cloud Console](https://console.cloud.google.com/).
+2. Crea un nuevo proyecto (ej: `Don Yeyo - Trivia Inocuidad 2026`).
+3. En el menú lateral, dirígete a **APIs & Services (APIs y servicios) > Library (Biblioteca)**.
+4. Busca **"Google Sheets API"** y haz clic en **Enable (Habilitar)**.
+
+#### Paso 2: Crear y Restringir la API Key
+1. Dirígete a **APIs & Services > Credentials (Credenciales)**.
+2. Haz clic en **+ Create Credentials (+ Crear credenciales) > API key (Clave de API)**.
+3. Copia la API Key generada.
+4. *(Recomendado para Producción)* Edita la clave y aplícale restricciones:
+   - **Application restrictions**: Selecciona **HTTP referrers (sitios web)** e ingresa tu dominio de producción (ej: `https://trivia.donyeyo.com.ar/*`) y `http://localhost:*` para desarrollo local.
+   - **API restrictions**: Selecciona **Restrict key** y marca únicamente **Google Sheets API**.
+
+#### Paso 3: Configurar la Planilla de Google Sheets
+1. Abre tu hoja de cálculo en Google Sheets.
+2. Copia el **Spreadsheet ID** que figura en la URL:
+   `https://docs.google.com/spreadsheets/d/`**`1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms`**`/edit`
+3. Haz clic en el botón **Compartir** (arriba a la derecha) y asegúrate de que el acceso general esté configurado en:
+   **"Cualquier persona con el enlace" -> Lector**.
+4. Nombra tus pestañas:
+   - Pestaña 1: `Preguntas` (con las columnas de preguntas).
+   - Pestaña 2: `Participantes` (con la nómina de colaboradores).
+
+#### Paso 4: Cargar en `.env`
+```env
+VITE_DATA_SOURCE="google_sheets_api"
+VITE_GOOGLE_SHEETS_SPREADSHEET_ID="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+VITE_GOOGLE_SHEETS_API_KEY="AIzaSyTuClaveDeApiAqui..."
+VITE_GOOGLE_SHEETS_QUESTIONS_RANGE="Preguntas!A1:Z100"
+VITE_GOOGLE_SHEETS_USERS_RANGE="Participantes!A1:Z500"
+```
+
+---
+
+### Modo 3: Publicación Web CSV (`VITE_DATA_SOURCE="google_sheets"`)
+
+Ideal si no deseas crear un proyecto en Google Cloud Console:
+1. En tu Google Sheet ve a **Archivo > Compartir > Publicar en la web**.
+2. Selecciona la pestaña (ej: `Preguntas`) y formato **Valores separados por comas (.csv)**.
+3. Haz clic en **Publicar** y copia el enlace generado en `VITE_GOOGLE_SHEET_QUESTIONS_URL`.
+4. Repite para la pestaña `Participantes` en `VITE_GOOGLE_SHEET_USERS_URL`.
+
+---
+
+### 📝 Registro en Vivo de Respuestas (Google Apps Script Webhook)
+
+Para guardar automáticamente los puntajes, tiempos, desglose de respuestas y fecha/hora en tu Google Sheet al terminar cada partida:
+
+#### Paso 1: Abrir el editor de Apps Script
+1. En tu Google Sheet ve al menú superior: **Extensiones > Apps Script**.
+2. Reemplaza el contenido de `Código.gs` con el siguiente código optimizado:
+
+```javascript
+/**
+ * ==============================================================================
+ * GOOGLE APPS SCRIPT - WEBHOOK TRIVIA INOCUIDAD 2026 (DON YEYO S.A.)
+ * Registra en tiempo real los resultados de los colaboradores al finalizar
+ * y permite poblar automáticamente las pestañas de Preguntas y Participantes.
+ * ==============================================================================
+ */
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.tryLock(10000);
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var data = JSON.parse(e.postData.contents);
+
+    // Si la acción es poblar las tablas con datos de demo
+    if (data.action === "POBLAR_DEMO") {
+      poblarDesdePayload(ss, data);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Tablas pobladas con éxito" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 1. Obtener o Crear pestaña "Resultados"
+    var sheetResultados = ss.getSheetByName("Resultados");
+    if (!sheetResultados) {
+      sheetResultados = ss.insertSheet("Resultados");
+      sheetResultados.appendRow([
+        "Fecha y Hora",
+        "Legajo",
+        "Fase",
+        "Puntaje Obtenido",
+        "Respuestas Correctas",
+        "Tiempo Total (Segundos)",
+        "Detalle Respuestas (JSON)"
+      ]);
+      sheetResultados.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#e2e8f0");
+    }
+
+    // 2. Registrar la fila con el intento completado
+    sheetResultados.appendRow([
+      data.fechaHora || new Date().toISOString(),
+      data.legajo || "",
+      data.fase || 1,
+      data.puntaje || 0,
+      data.respuestasCorrectas || 0,
+      data.tiempoSegundos || 0,
+      JSON.stringify(data.detalleRespuestas || [])
+    ]);
+
+    // 3. Actualizar la fecha de completado en la pestaña "Participantes"
+    var sheetParticipantes = ss.getSheetByName("Participantes");
+    if (sheetParticipantes) {
+      var values = sheetParticipantes.getDataRange().getValues();
+      var headers = values[0];
+      var colFase = -1;
+      
+      var targetHeader = "fase" + data.fase;
+      for (var c = 0; c < headers.length; c++) {
+        if (String(headers[c]).trim().toLowerCase() === targetHeader) {
+          colFase = c + 1;
+          break;
+        }
+      }
+
+      if (colFase !== -1) {
+        for (var r = 1; r < values.length; r++) {
+          if (String(values[r][0]).trim() === String(data.legajo).trim()) {
+            sheetParticipantes.getRange(r + 1, colFase).setValue(data.fechaHora || new Date().toISOString());
+            break;
+          }
+        }
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Registrado con éxito" }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * ⚡ FUNCIÓN DE 1-CLIC PARA POBLAR LA HOJA DIRECTAMENTE DESDE EL EDITOR DE APPS SCRIPT
+ * Selecciona "poblarDatosDemo" en el menú superior y haz clic en "Ejecutar (Run)"
+ */
+function poblarDatosDemo() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. Crear y poblar pestaña "Preguntas"
+  var sheetPreguntas = ss.getSheetByName("Preguntas");
+  if (!sheetPreguntas) {
+    sheetPreguntas = ss.insertSheet("Preguntas");
+  } else {
+    sheetPreguntas.clear();
+  }
+
+  sheetPreguntas.appendRow([
+    "pregunta", "opcion1", "opcion2", "opcion3", "opcion4", "opcion5", "respuesta_correcta", "puntos", "explicacion", "fase"
+  ]);
+  sheetPreguntas.getRange(1, 1, 1, 10).setFontWeight("bold").setBackground("#0d2c5c").setFontColor("#ffffff");
+
+  var preguntas = [
+    ["¿Cuál es el tiempo mínimo recomendado para el lavado y desinfección de manos en la línea de producción?", "10 segundos", "20 segundos con jabón bactericida y fricción", "5 segundos con agua solamente", "1 minuto completo", "40 segundos sin secado", 2, 100, "Según BPM y normas de inocuidad, el lavado efectivo requiere al menos 20 segundos de fricción con jabón desinfectante.", 1],
+    ["¿Qué tipo de contaminación ocurre si un operario usa guantes sucios para manipular producto terminado?", "Contaminación Física", "Contaminación Cruzada / Biológica", "Contaminación Radiológica", "Contaminación Atmosférica", "", 2, 100, "La transferencia de microorganismos de una superficie sucia al alimento listo para consumo es contaminación cruzada.", 1],
+    ["Ante la detección de un objeto extraño metálico en la tolva de amasado, ¿cuál es la acción inmediata?", "Ignorarlo y continuar", "Detener la línea inmediatamente y dar aviso a Calidad / Supervisor", "Retirarlo al final del turno", "Aumentar la velocidad del proceso", "", 2, 150, "Cualquier peligro físico detectado exige la detención inmediata y notificación al área de Calidad para trazabilidad.", 1],
+    ["¿Cuál de las siguientes indumentarias está prohibida en zona de elaboración según el estándar Don Yeyo?", "Cofia cubriendo todo el cabello", "Barbijos o cubrebarba si corresponde", "Anillos, aros, relojes y cadenas", "Calzado de seguridad exclusivo de planta", "", 3, 100, "Todo tipo de joyería y accesorios personales representan un peligro físico y fuente de contaminación en planta.", 1],
+    ["¿Qué significa la sigla BPM en la industria alimentaria de Don Yeyo?", "Buenas Prácticas de Manufactura", "Bases Para el Mantenimiento", "Buenas Políticas de Manejo", "Balance de Producción Mensual", "", 1, 100, "BPM (Buenas Prácticas de Manufactura) son los principios básicos y prácticas de higiene para garantizar alimentos seguros.", 1],
+    ["En el sistema HACCP, ¿qué es un PCC (Punto Crítico de Control)?", "Una etapa donde se revisa el costo del producto", "Una etapa donde se puede aplicar un control esencial para prevenir o eliminar un peligro de inocuidad", "Un punto de reunión en emergencias", "La hora de descanso del personal", "", 2, 150, "Un PCC es una fase en la que es vital aplicar control para reducir un peligro a niveles aceptables.", 2],
+    ["Si un termómetro de cámara de refrigeración marca 12°C cuando el límite crítico es máximo 4°C, ¿qué debe hacerse?", "Abrir la puerta para ventilar", "Registrar el desvío, retener el lote y alertar inmediatamente a Calidad", "Esperar al siguiente turno para ver si baja", "Apagar la alarma sonora", "", 2, 150, "Superar el límite crítico de temperatura compromete la cadena de frío y requiere acción correctiva inmediata.", 2],
+    ["¿Por qué es fundamental la rotación de materias primas bajo el criterio FIFO (Primero que Entra, Primero que Sale)?", "Para evitar el vencimiento y deterioro de ingredientes", "Para gastar menos energía eléctrica", "Para ordenar las estanterías por color", "Para que el camión no espere", "", 1, 100, "El sistema FIFO garantiza frescura, previene materias primas caducadas y asegura la calidad organoléptica.", 2],
+    ["¿Qué producto químico está autorizado para desinfección directa de superficies en contacto con masas?", "Detergente industrial no apto alimenticio", "Sanitizante de grado alimenticio aprobado según concentración estipulada", "Lavandina pura sin dilución", "Alcohol etílico al 96% sin dosificar", "", 2, 120, "Solo sanitizantes aprobados para contacto alimentario en dosis precisas aseguran desinfección sin contaminación química.", 2],
+    ["¿Cuál es el procedimiento correcto al toser o estornudar dentro de la nave de envasado?", "Girar hacia la cinta de empaque", "Apartarse de la línea, cubrirse con el pliegue del codo, cambiarse barbijo/cofia y lavarse las manos", "Taparse con las manos y seguir operando", "No hacer nada", "", 2, 100, "Protege el producto y obliga a higienizar manos y recambio de EPP antes de reanudar la manipulación.", 3],
+    ["En el Plan de Limpieza y Desinfección (POES), ¿cuál es la diferencia entre limpiar y desinfectar?", "Son exactamente lo mismo", "Limpiar elimina suciedad visible; desinfectar reduce microorganismos a niveles seguros", "Desinfectar es solo pasar un trapo húmedo", "Limpiar requiere químicos fuertes y desinfectar solo agua fría", "", 2, 150, "Limpieza remueve materia orgánica/suciedad, mientras que la desinfección inactiva la carga microbiana residual.", 3],
+    ["¿Qué acción se debe tomar si se detecta presencia o indicios de plagas en el depósito de harina?", "Colocar veneno casero en la esquina", "Aislar la zona, retener la materia prima afectada y reportar al responsable de MIP y Calidad", "Ignorarlo si es un insecto pequeño", "Barrer hacia afuera", "", 2, 150, "El Manejo Integrado de Plagas (MIP) prohíbe pesticidas no controlados y exige reporte inmediato y aislamiento.", 3],
+    ["¿Qué documento acredita que un lote de panificado cumple todas las especificaciones de inocuidad antes del despacho?", "Remito comercial simple", "Certificado de Calidad y Liberación de Lote", "Factura de venta", "Planilla de asistencia del personal", "", 2, 120, "La liberación de lote formal garantiza que se validaron todos los controles microbiológicos y de proceso.", 3]
+  ];
+
+  preguntas.forEach(function(row) {
+    sheetPreguntas.appendRow(row);
+  });
+
+  // 2. Crear y poblar pestaña "Participantes"
+  var sheetParticipantes = ss.getSheetByName("Participantes");
+  if (!sheetParticipantes) {
+    sheetParticipantes = ss.insertSheet("Participantes");
+  } else {
+    sheetParticipantes.clear();
+  }
+
+  sheetParticipantes.appendRow([
+    "legajo", "apellido", "nombre", "token_hash", "fase1", "fase2", "fase3"
+  ]);
+  sheetParticipantes.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#E5353B").setFontColor("#ffffff");
+
+  var participantes = [
+    [1001, "Pérez", "Juan", "c7f8a9e1d2c3b4a5f6e7d8c9b0a1f2e3d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9", "", "", ""],
+    [1002, "González", "María", "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2", "", "", ""],
+    [1003, "Rodríguez", "Carlos", "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2", "", "", ""],
+    [1004, "López", "Ana", "b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8", "", "", ""],
+    [1005, "Martínez", "Lucas", "d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3", "", "", ""],
+    [9999, "Demo", "Participante", "demo_token_inocuidad_2026", "", "", ""]
+  ];
+
+  participantes.forEach(function(row) {
+    sheetParticipantes.appendRow(row);
+  });
+
+  SpreadsheetApp.flush();
+  Logger.log("✅ ¡Pestañas Preguntas y Participantes pobladas exitosamente!");
+}
+
+function poblarDesdePayload(ss, data) {
+  if (data.preguntas && data.preguntas.length > 0) {
+    var sheetPreguntas = ss.getSheetByName("Preguntas") || ss.insertSheet("Preguntas");
+    sheetPreguntas.clear();
+    sheetPreguntas.appendRow(["pregunta", "opcion1", "opcion2", "opcion3", "opcion4", "opcion5", "respuesta_correcta", "puntos", "explicacion", "fase"]);
+    sheetPreguntas.getRange(1, 1, 1, 10).setFontWeight("bold").setBackground("#0d2c5c").setFontColor("#ffffff");
+    data.preguntas.forEach(function(p) {
+      sheetPreguntas.appendRow([p.pregunta, p.opcion1, p.opcion2, p.opcion3, p.opcion4, p.opcion5, p.respuesta_correcta, p.puntos, p.explicacion, p.fase]);
+    });
+  }
+
+  if (data.participantes && data.participantes.length > 0) {
+    var sheetParticipantes = ss.getSheetByName("Participantes") || ss.insertSheet("Participantes");
+    sheetParticipantes.clear();
+    sheetParticipantes.appendRow(["legajo", "apellido", "nombre", "token_hash", "fase1", "fase2", "fase3"]);
+    sheetParticipantes.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#E5353B").setFontColor("#ffffff");
+    data.participantes.forEach(function(u) {
+      sheetParticipantes.appendRow([u.legajo, u.apellido, u.nombre, u.token_hash, u.fase1 || "", u.fase2 || "", u.fase3 || ""]);
+    });
+  }
+}
+```
+
+#### Paso 2: Guardar e Implementar como Aplicación Web
+1. Haz clic en el icono **Guardar** (💾) o presiona `Ctrl + S`.
+2. Haz clic en el botón azul **Implementar > Nueva implementación**.
+3. En el icono del **engranaje ⚙️**, selecciona **Aplicación web**.
+4. Configura:
+   - **Descripción**: `Webhook Trivia Inocuidad 2026`
+   - **Ejecutar como**: **Yo** (`tu-correo@empresa.com`)
+   - **Quién tiene acceso**: **Cualquier usuario** *(Permite que los dispositivos de los colaboradores envíen sus resultados sin requerir login)*.
+5. Haz clic en **Implementar**.
+
+#### Paso 3: Autorizar Permisos de Google
+1. En la ventana *"La aplicación web requiere que autorices el acceso a tus datos"*, haz clic en **Autorizar acceso**.
+2. Selecciona tu cuenta de Google.
+3. En la pantalla *"Google hasn’t verified this app / Google no ha verificado esta aplicación"*, haz clic en el enlace **Advanced (Configuración avanzada)**.
+4. Haz clic en **Go to Untitled project (unsafe)** / **Ir al proyecto (no seguro)**.
+5. En la pantalla de confirmación de permisos, haz clic en **Continue / Permitir**.
+
+#### Paso 4: Copiar la URL generada en `.env`
+Google mostrará el modal final con la **URL de la aplicación web** (que termina en `/exec`):
+```env
+VITE_GOOGLE_APPS_SCRIPT_ENDPOINT="https://script.google.com/macros/s/AKfycbx_H0vdG-GEq5b5YXSNgEg582QECQ1ekd-eLmFCx_w337_6Kai4kBnD1aStYkPYCri9YA/exec"
+```
 
 ---
 
@@ -112,9 +388,9 @@ En el pie de página de la aplicación, el botón **"Enlaces RRHH"** abre un pan
 
 ---
 
-## 📄 Estructura de Planillas Google Sheets
+## 📄 Estructura de Columnas en Google Sheets
 
-### 1. Planilla de Preguntas (`preguntas_inocuidad`)
+### 1. Pestaña de Preguntas (`Preguntas`)
 | Columna | Nombre | Tipo | Descripción |
 | :--- | :--- | :--- | :--- |
 | A | `pregunta` | Texto | Enunciado de la pregunta |
@@ -128,13 +404,13 @@ En el pie de página de la aplicación, el botón **"Enlaces RRHH"** abre un pan
 | I | `explicacion` | Texto | Justificación técnica de inocuidad |
 | J | `fase` | Número | Fase a la que pertenece (1, 2 o 3) |
 
-### 2. Planilla de Usuarios (`usuarios_participantes`)
+### 2. Pestaña de Participantes (`Participantes`)
 | Columna | Nombre | Tipo | Descripción |
 | :--- | :--- | :--- | :--- |
 | A | `legajo` | Texto / Número | Legajo del colaborador |
 | B | `apellido` | Texto | Apellido del colaborador |
 | C | `nombre` | Texto | Nombre del colaborador |
-| D | `token_hash` | Texto | Hash SHA-256 generado |
+| D | `token_hash` | Texto | Hash SHA-256 (opcional, si está vacío la app lo calcula) |
 | E | `fase1` | Timestamp | Fecha/hora en que completó la Fase 1 |
 | F | `fase2` | Timestamp | Fecha/hora en que completó la Fase 2 |
 | G | `fase3` | Timestamp | Fecha/hora en que completó la Fase 3 |
