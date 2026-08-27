@@ -8,7 +8,7 @@ export default function Header() {
         <img 
           src="/logo-donyeyo.svg" 
           alt="Don Yeyo" 
-          className="h-12 sm:h-14 w-auto object-contain filter drop-shadow-md" 
+          className="h-12 sm:h-14 w-auto object-contain filter drop-shadow-md animate-logo-heartbeat" 
         />
       </div>
     </header>

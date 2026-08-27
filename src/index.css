@@ -202,7 +202,7 @@ h4,
   width: 100%;
   max-width: 960px;
   margin: 0 auto 20px auto;
-  padding: 10px 16px;
+  padding: calc(10px + env(safe-area-inset-top, 0px) + 20px) 16px 10px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -657,6 +657,39 @@ h4,
   animation: softPulse 2.8s infinite ease-in-out;
 }
 
+/* Latido Suave y Constante del Logo Don Yeyo */
+@keyframes logoHeartbeat {
+  0% {
+    transform: scale(1);
+  }
+
+  14% {
+    transform: scale(1.1);
+  }
+
+  28% {
+    transform: scale(1);
+  }
+
+  42% {
+    transform: scale(1.1);
+  }
+
+  70% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-logo-heartbeat {
+  animation: logoHeartbeat 2.4s ease-in-out infinite;
+  transform-origin: center center;
+  will-change: transform;
+}
+
 @keyframes casualSwapIn {
   0% {
     opacity: 0;
@@ -681,7 +714,7 @@ h4,
 
   .app-header {
     margin-bottom: 14px;
-    padding: 8px 10px;
+    padding: calc(8px + env(safe-area-inset-top, 0px) + 20px) 10px 8px 10px;
   }
 
   .countdown-word {
