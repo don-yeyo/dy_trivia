@@ -414,10 +414,10 @@ h1, h2, h3, h4, .font-heading {
   box-shadow: 0 4px 14px rgba(229, 53, 59, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Caja de Ítems Instructivos */
+/* Caja de Ítems Instructivos Fusionada con el Cristal */
 .instructions-container {
-  background: #f8fafc;
-  border: 1.5px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.20);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
   border-radius: 22px;
   padding: 20px 24px;
   margin-top: 24px;

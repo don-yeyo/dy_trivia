@@ -56,7 +56,7 @@ export default function PhaseLocked({
               <span>Fecha de registro: <strong className="text-slate-900">{formattedDate || 'Completado previamente'}</strong></span>
             </div>
 
-            <div id="card-info-bloqueo" className="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-lg text-slate-700 flex items-start gap-3.5 leading-relaxed" style={{ marginTop: '20px' }}>
+            <div id="card-info-bloqueo" className="p-5 bg-white/20 rounded-2xl border border-white/40 text-lg text-slate-700 flex items-start gap-3.5 leading-relaxed" style={{ marginTop: '20px' }}>
               <Info size={30} className="text-amber-500 shrink-0 mt-0.5" />
               <span>
                 Para garantizar la transparencia y equidad del concurso, cada trivia permite un único intento por participante.

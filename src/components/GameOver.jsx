@@ -67,17 +67,17 @@ export default function GameOver({
 
         {/* Métricas Principales en Grid de 2 Columnas Centradas */}
         <div className="grid grid-cols-2 gap-4 mb-6 w-full">
-          <div id="card-metrica-preguntas" className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col items-center justify-center text-center">
+          <div id="card-metrica-preguntas" className="bg-white/20 p-4 sm:p-5 rounded-2xl border border-white/40 flex flex-col items-center justify-center text-center">
             <CheckCircle2 size={32} className="text-emerald-600 mb-2" />
-            <span className="text-base text-slate-600 font-semibold mb-1.5">Preguntas</span>
+            <span className="text-base text-slate-700 font-semibold mb-1.5">Preguntas</span>
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none">
               {totalQuestions} de {totalQuestions}
             </div>
           </div>
 
-          <div id="card-metrica-tiempo" className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col items-center justify-center text-center">
+          <div id="card-metrica-tiempo" className="bg-white/20 p-4 sm:p-5 rounded-2xl border border-white/40 flex flex-col items-center justify-center text-center">
             <Clock size={32} className="text-blue-600 mb-2" />
-            <span className="text-base text-slate-600 font-semibold mb-1.5">Tiempo Total</span>
+            <span className="text-base text-slate-700 font-semibold mb-1.5">Tiempo Total</span>
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none">
               {timeFormatted}
             </div>
@@ -85,8 +85,8 @@ export default function GameOver({
         </div>
 
         {/* Sección Informativa: Publicación de Resultados */}
-        <div id="card-aviso-ranking" className="w-full p-4 sm:p-5 rounded-2xl bg-amber-50/90 border border-amber-200/70 text-base text-amber-950 flex items-start gap-3.5 leading-relaxed" style={{ marginBottom: '20px', marginTop: '20px' }}>
-          <div className="w-10 h-10 min-w-10 rounded-xl bg-amber-200/70 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+        <div id="card-aviso-ranking" className="w-full p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-400/30 text-base text-amber-950 flex items-start gap-3.5 leading-relaxed" style={{ marginBottom: '20px', marginTop: '20px' }}>
+          <div className="w-10 h-10 min-w-10 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
             <Award size={26} />
           </div>
           <div className="flex-1">
@@ -96,8 +96,8 @@ export default function GameOver({
         </div>
 
         {/* Mensaje de Compromiso y Calidad Don Yeyo */}
-        <div id="card-agradecimiento" className="w-full p-4 sm:p-5 rounded-2xl bg-red-50/90 border border-red-100 text-base text-slate-800 flex items-start gap-3.5 leading-relaxed">
-          <div className="w-10 h-10 min-w-10 rounded-xl bg-green-200/70 text-green-700 flex items-center justify-center shrink-0 mt-0.5">
+        <div id="card-agradecimiento" className="w-full p-4 sm:p-5 rounded-2xl bg-emerald-500/10 border border-emerald-400/30 text-base text-slate-800 flex items-start gap-3.5 leading-relaxed">
+          <div className="w-10 h-10 min-w-10 rounded-xl bg-emerald-500/20 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5">
             <HeartHandshake size={26} />
           </div>
           <p className="text-lg flex-1">
