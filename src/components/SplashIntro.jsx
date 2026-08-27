@@ -21,7 +21,7 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
       {/* Tarjeta Principal Casual Gaming */}
       <div id="card-bienvenida" className="casual-card text-left">
         {/* Cabecera de Usuario: Avatar Centrado en su propia línea */}
-        <div className="user-profile-header flex flex-col items-center justify-center text-center" style={{ marginBottom: '0px', paddingBottom: '0px' }}>
+        <div className="user-profile-header flex flex-col items-center justify-center text-center border-0" style={{ marginBottom: '0px', paddingBottom: '0px', borderBottom: 'none' }}>
           <div className="user-avatar mx-auto mb-2" title="Usuario">
             <User size={34} className="text-red-600 stroke-[2.3]" />
           </div>
@@ -43,11 +43,11 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
           Poné a prueba tus conocimientos sobre Buenas Prácticas de Manufactura y los estándares de inocuidad de nuestros procesos en Don Yeyo.
         </p>
 */}
-        {/* Lista de Items Instructivos */}
+        {/* Lista de Items Instructivos Totalmente Transparente */}
         <div id="card-instrucciones" className="instructions-container">
           <div className="instruction-row">
-            <div className="instruction-icon-box bg-amber-100 text-amber-600 shadow-xs">
-              <Zap size={20} />
+            <div className="instruction-icon-box text-amber-600">
+              <Zap size={24} />
             </div>
             <span className="text-lg text-slate-800">
               <strong>{totalQuestions} preguntas</strong> sobre calidad e higiene operativa.
@@ -55,8 +55,8 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
           </div>
 
           <div className="instruction-row">
-            <div className="instruction-icon-box bg-blue-100 text-blue-600 shadow-xs">
-              <Clock size={20} />
+            <div className="instruction-icon-box text-blue-600">
+              <Clock size={24} />
             </div>
             <span className="text-lg text-slate-800">
               Al presionar <strong>Comenzar</strong> se iniciará el cronómetro.
@@ -64,8 +64,8 @@ export default function SplashIntro({ user, totalQuestions = 0, onStartGame }) {
           </div>
 
           <div className="instruction-row">
-            <div className="instruction-icon-box bg-red-100 text-red-600 shadow-xs">
-              <Lock size={20} />
+            <div className="instruction-icon-box text-red-600">
+              <Lock size={24} />
             </div>
             <span className="text-lg text-slate-800">
               <strong>Uso único:</strong> Cada trivia permite un solo intento por participante.

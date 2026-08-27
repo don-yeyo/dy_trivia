@@ -51,12 +51,12 @@ export default function PhaseLocked({
 
           {/* Tarjeta con tipografía mínima de 1rem */}
           <div id="card-fase-bloqueada" className="casual-card text-left shadow-2xl">
-            <div className="flex items-center gap-3 text-lg text-slate-700 mb-5 pb-4 border-b border-slate-100 font-semibold">
+            <div className="flex items-center gap-3 text-lg text-slate-700 mb-5 pb-4 font-semibold">
               <Calendar size={30} className="text-red-500 shrink-0" />
               <span>Fecha de registro: <strong className="text-slate-900">{formattedDate || 'Completado previamente'}</strong></span>
             </div>
 
-            <div id="card-info-bloqueo" className="p-5 bg-white/20 rounded-2xl border border-white/40 text-lg text-slate-700 flex items-start gap-3.5 leading-relaxed" style={{ marginTop: '20px' }}>
+            <div id="card-info-bloqueo" className="pt-2 text-lg text-slate-700 flex items-start gap-3.5 leading-relaxed" style={{ marginTop: '20px' }}>
               <Info size={30} className="text-amber-500 shrink-0 mt-0.5" />
               <span>
                 Para garantizar la transparencia y equidad del concurso, cada trivia permite un único intento por participante.
