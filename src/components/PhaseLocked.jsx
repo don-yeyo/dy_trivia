@@ -60,7 +60,7 @@ export default function PhaseLocked({
             <div id="card-info-bloqueo" className="pt-2 text-lg text-slate-700 flex items-start gap-3.5 leading-relaxed" style={{ marginTop: '20px' }}>
               <Info size={30} className="text-amber-500 shrink-0 mt-0.5" />
               <span>
-                Para garantizar la transparencia y equidad del concurso, cada trivia permite un único intento por participante.
+                Para garantizar la transparencia y equidad del concurso, cada pregunta permite un único intento por participante.
               </span>
             </div>
           </div>

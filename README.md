@@ -27,7 +27,10 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - Paleta corporativa oficial: Azul Marino (`#0d2c5c`), Rojo Don Yeyo (`#e40521`), Blanco y acentos Neón.
    - **Logo oficial animado**: Latido constante y sutil (*heartbeat*) en el encabezado que le otorga dinamismo y vida visual permanente a la marca.
    - Fondo dinámico de rayos rectos giratorios (*Sunburst Effect*) en todas las pantallas con formación acelerada desde el centro y desvanecimiento rápido de salida.
-   - Pantalla de bienvenida (Splash) con bienvenida personalizada e icono de usuario centrado.
+   - **Pantalla de bienvenida y reanudación inteligente**:
+     - *Primera vez:* "¡Bienvenido/a!", total de preguntas y botón "Comenzar Trivia".
+     - *Reanudación:* "¡Bienvenido/a de nuevo!", conteo dinámico exacto de preguntas pendientes ("Te restan X preguntas...") y botón "Continuar Trivia".
+     - *Aclaración explícita:* Cada pregunta permite un único intento por participante.
    - Tarjetas y opciones con **Glassmorphism auténtico / Vidrio Esmerilado** (`backdrop-filter: blur`, bordes translúcidos y reflejo interior) centralizadas mediante variables CSS en `:root` de `src/index.css`.
    - Botones 3D estilo casual gaming con micro-animaciones de rebote, swap-in y aceleraciones rápidas.
    - Efectos de sonido generados por **Web Audio API** (sin assets pesados) para selección, aciertos, fallos y victoria.

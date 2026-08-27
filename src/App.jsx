@@ -159,7 +159,9 @@ export default function App() {
         {gameState === 'SPLASH' && (
           <SplashIntro
             user={currentUser}
-            totalQuestions={questions.length}
+            totalQuestions={totalPhaseQuestionsCount || questions.length}
+            pendingQuestionsCount={questions.length}
+            isResuming={answersLog && answersLog.length > 0}
             onStartGame={handleTriggerCountdown}
           />
         )}
