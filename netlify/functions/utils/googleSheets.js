@@ -25,7 +25,15 @@ export async function fetchSheetValues(range) {
   const encodedRange = encodeURIComponent(range);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}?key=${apiKey}`;
 
-  const response = await fetch(url);
+  const appUrl = getServerEnv('URL') || getServerEnv('DEPLOY_URL') || 'https://dy-inocuidad.netlify.app';
+
+  const response = await fetch(url, {
+    headers: {
+      'Referer': appUrl.endsWith('/') ? appUrl : `${appUrl}/`,
+      'Origin': appUrl
+    }
+  });
+
   if (!response.ok) {
     const errText = await response.text();
     throw new Error(`Error en Google Sheets API [${response.status}]: ${errText}`);
