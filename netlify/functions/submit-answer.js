@@ -40,24 +40,40 @@ export async function handler(event, context) {
     const questionsRange = getServerEnv('GOOGLE_SHEETS_QUESTIONS_RANGE') || 'Preguntas!A1:Z100';
     const rows = await fetchSheetValues(questionsRange);
 
-    const questionRow = rows.find(r => {
-      const qId = parseInt(r.id || r.numero || '0', 10);
+    const phaseRows = rows.filter(r => {
       const qPhase = parseInt(r.fase || r.phase || '1', 10);
-      return qId === parseInt(questionId, 10) && qPhase === parseInt(phase, 10);
+      return qPhase === parseInt(phase, 10);
+    });
+
+    const questionRow = phaseRows.find((r, idx) => {
+      const explicitId = r.id || r.numero || r.id_pregunta;
+      if (explicitId !== undefined && explicitId !== '') {
+        return parseInt(explicitId, 10) === parseInt(questionId, 10);
+      }
+      return (idx + 1) === parseInt(questionId, 10);
     });
 
     if (!questionRow) {
       return {
         statusCode: 404,
         headers,
-        body: JSON.stringify({ error: 'Pregunta no encontrada' })
+        body: JSON.stringify({ error: 'Pregunta no encontrada', requestedId: questionId, phase })
       };
     }
 
-    // 2. Extraer opción correcta en servidor
-    const rawCorrect = String(questionRow.opcion_correcta || questionRow.correcta || questionRow.respuesta_correcta || 'A').trim().toUpperCase();
+    // 2. Extraer opción correcta en servidor (número 1..5 o letra A..E)
+    const rawCorrect = String(
+      questionRow.respuesta_correcta || 
+      questionRow.respuestacorrecta || 
+      questionRow.opcion_correcta || 
+      questionRow.opcioncorrecta || 
+      questionRow.correcta || 
+      questionRow.correctoptionid || 
+      '1'
+    ).trim().toUpperCase();
+
     const correctMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5 };
-    const correctOptionId = correctMap[rawCorrect] || 1;
+    const correctOptionId = correctMap[rawCorrect] || parseInt(rawCorrect, 10) || 1;
 
     // 3. Evaluar acierto y cálculo de puntaje en servidor
     const isCorrect = selectedOptionId !== null && selectedOptionId !== undefined && parseInt(selectedOptionId, 10) === correctOptionId;

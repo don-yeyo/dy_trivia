@@ -40,36 +40,37 @@ export async function handler(event, context) {
       };
     }
 
-    // Filtrar por fase y armar objetos limpios sin la columna de respuesta correcta
+    const phaseRows = rows.filter(r => {
+      const qPhase = parseInt(r.fase || r.phase || '1', 10);
+      return qPhase === phase;
+    });
+
     const sanitizedQuestions = [];
 
-    rows.forEach((r, idx) => {
-      const qPhase = parseInt(r.fase || r.phase || '1', 10);
-      if (qPhase !== phase) return;
-
-      const qId = parseInt(r.id || r.numero || idx + 1, 10);
+    phaseRows.forEach((r, idx) => {
+      const explicitId = r.id || r.numero || r.id_pregunta;
+      const qId = (explicitId !== undefined && explicitId !== '') ? parseInt(explicitId, 10) : (idx + 1);
       const questionText = r.pregunta || r.question || '';
       const points = parseInt(r.puntos || r.points || '100', 10);
 
-      // Extraer opciones disponibles
+      // Extraer opciones (soporta opcion1..opcion5, opcion_a..opcion_e, a..e)
       const options = [];
-      const optionA = r.opcion_a || r.opciona || r.a || '';
-      const optionB = r.opcion_b || r.opcionb || r.b || '';
-      const optionC = r.opcion_c || r.opcionc || r.c || '';
-      const optionD = r.opcion_d || r.opciond || r.d || '';
-      const optionE = r.opcion_e || r.opcione || r.e || '';
-
-      if (optionA) options.push({ id: 1, text: optionA });
-      if (optionB) options.push({ id: 2, text: optionB });
-      if (optionC) options.push({ id: 3, text: optionC });
-      if (optionD) options.push({ id: 4, text: optionD });
-      if (optionE) options.push({ id: 5, text: optionE });
+      for (let i = 1; i <= 5; i++) {
+        const letter = String.fromCharCode(96 + i); // a, b, c, d, e
+        const optText = r[`opcion${i}`] || r[`opcion_${i}`] || r[`opcion${letter}`] || r[`opcion_${letter}`] || r[letter] || r[`opcion ${i}`] || '';
+        if (optText && String(optText).trim() !== '') {
+          options.push({
+            id: i,
+            text: String(optText).trim()
+          });
+        }
+      }
 
       if (questionText && options.length >= 2) {
         // Objeto sanitizado: NUNCA incluye correctOptionId ni pistas
         sanitizedQuestions.push({
           id: qId,
-          phase: qPhase,
+          phase: phase,
           question: questionText,
           points,
           options
