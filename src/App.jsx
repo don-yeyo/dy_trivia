@@ -44,12 +44,12 @@ export default function App() {
 
       setCurrentUser(validation.user);
 
-      // Cargar todas las preguntas de la fase activa
+      // Cargar todas las preguntas sanitizadas de la fase activa desde el backend
       const allPhaseQuestions = await loadTriviaQuestions(activePhase, shuffleQuestions);
       setTotalPhaseQuestionsCount(allPhaseQuestions.length);
 
-      // Consultar el progreso de respuestas en Google Sheets (Fuente de Verdad)
-      const progress = await fetchUserProgressFromResults(validation.user.legajo, activePhase);
+      // El progreso ya viene verificado desde el backend seguro
+      const progress = validation.progress || { hasRecord: false, answers: [] };
 
       if (progress.hasRecord && progress.answers && progress.answers.length > 0) {
         const answeredIds = progress.answers.map(a => a.questionId);
@@ -99,22 +99,18 @@ export default function App() {
     setGameStartTime(Date.now());
   };
 
-  // Tras responder cada pregunta individual, actualizar estado y persistir en Google Sheets
-  const handleAnswerSubmit = (answerData) => {
-    const isCorrect = Boolean(answerData.isCorrect);
-    const pointsEarned = answerData.pointsEarned || 0;
+  // Tras responder cada pregunta individual, enviar al backend para evaluación segura
+  const handleAnswerSubmit = async (answerData) => {
     const timeSpent = answerData.timeSpent || 0;
-
-    if (isCorrect) {
-      setUserScore(prev => prev + pointsEarned);
-      setCorrectAnswersCount(prev => prev + 1);
-    }
     setTotalElapsedTime(prev => prev + timeSpent);
     setAnswersLog(prev => [...prev, answerData]);
 
-    // Persistencia inmediata en Google Sheets para esta pregunta
     if (currentUser?.legajo) {
-      recordPhaseQuestionAnswer(currentUser.legajo, activePhase, answerData);
+      const serverResult = await recordPhaseQuestionAnswer(currentUser.legajo, activePhase, answerData);
+      if (serverResult && serverResult.isCorrect) {
+        setUserScore(prev => prev + (serverResult.pointsEarned || 0));
+        setCorrectAnswersCount(prev => prev + 1);
+      }
     }
   };
 

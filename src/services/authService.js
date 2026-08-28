@@ -87,48 +87,52 @@ function getFallbackUsers() {
 }
 
 /**
- * Valida si el token recibido por URL pertenece a un usuario válido
+ * Valida si el token recibido por URL pertenece a un usuario válido consultando el backend seguro
  */
 export async function validateUserToken(token, activePhase = 1) {
   const allowSessionReset = import.meta.env.VITE_ALLOW_SESSION_RESET === 'true';
+  const effectiveToken = token || (allowSessionReset ? 'demo' : '');
 
-  // Si no hay token en la URL
-  if (!token) {
-    if (allowSessionReset) {
-      token = 'demo';
-    } else {
-      return { isValid: false, reason: 'TOKEN_MISSING' };
-    }
+  if (!effectiveToken) {
+    return { isValid: false, reason: 'TOKEN_MISSING' };
   }
 
-  // Token demo permitido solo si está habilitado el modo de pruebas o si está en la lista de usuarios
-  if (token === 'demo' || token === 'demo_token_inocuidad_2026') {
-    if (allowSessionReset) {
-      const demoUser = {
-        legajo: "9999",
-        apellido: "Demo",
-        nombre: "Participante",
-        token_hash: "demo_token_inocuidad_2026",
-        fase1: '',
-        fase2: '',
-        fase3: ''
-      };
+  try {
+    // 1. Consultar endpoint seguro de backend (Netlify Functions)
+    const res = await fetch(`/api/auth?token=${encodeURIComponent(effectiveToken)}&phase=${activePhase}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.isValid) {
+        return {
+          isValid: true,
+          user: data.user,
+          progress: data.progress || { hasRecord: false, answers: [] }
+        };
+      }
+    } else if (res.status === 404) {
+      return { isValid: false, reason: 'USER_NOT_FOUND' };
+    }
+  } catch (backendError) {
+    console.warn('Backend serverless no disponible, evaluando fallback:', backendError);
+  }
 
+  // 2. Fallback Offline / Desarrollo si no hay backend activo
+  if (effectiveToken === 'demo' || effectiveToken === 'demo_token_inocuidad_2026') {
+    if (allowSessionReset) {
       return {
         isValid: true,
-        user: demoUser
+        user: { legajo: "9999", apellido: "Demo", nombre: "Participante" },
+        progress: { hasRecord: false, answers: [] }
       };
     }
   }
 
   const users = await fetchUsersList();
-  const cleanToken = String(token).trim().toLowerCase();
+  const cleanToken = String(effectiveToken).trim().toLowerCase();
   
-  // Buscar usuario por token_hash exacto (o legajo en modo desarrollo)
   const foundUser = users.find(u => {
     const userHash = String(u.token_hash || '').trim().toLowerCase();
     const userLegajo = String(u.legajo || '').trim().toLowerCase();
-    
     if (userHash === cleanToken) return true;
     if (allowSessionReset && userLegajo === cleanToken) return true;
     return false;
@@ -140,42 +144,43 @@ export async function validateUserToken(token, activePhase = 1) {
 
   return {
     isValid: true,
-    user: foundUser
+    user: {
+      legajo: String(foundUser.legajo),
+      nombre: String(foundUser.nombre),
+      apellido: String(foundUser.apellido)
+    },
+    progress: { hasRecord: false, answers: [] }
   };
 }
 
 /**
- * Registra en tiempo real cada pregunta respondida en Google Sheets
+ * Registra en tiempo real cada respuesta individual en el backend seguro
+ * El backend se encarga de validar la corrección y persistir en Google Sheets
  */
 export async function recordPhaseQuestionAnswer(legajo, activePhase, answerData) {
-  const timestamp = new Date().toISOString();
-  const appsScriptEndpoint = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_ENDPOINT;
+  try {
+    const res = await fetch('/api/submit-answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        legajo: String(legajo),
+        phase: parseInt(activePhase, 10),
+        questionId: answerData.questionId,
+        selectedOptionId: answerData.selectedOptionId,
+        timeSpent: answerData.timeSpent || 0
+      })
+    });
 
-  if (appsScriptEndpoint) {
-    try {
-      await fetch(appsScriptEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        mode: 'no-cors',
-        body: JSON.stringify({
-          action: 'SAVE_QUESTION_ANSWER',
-          legajo: String(legajo),
-          fase: parseInt(activePhase, 10),
-          fechaHoraRespuesta: timestamp,
-          answer: {
-            questionId: answerData.questionId,
-            selectedOptionId: answerData.selectedOptionId,
-            isCorrect: Boolean(answerData.isCorrect),
-            pointsEarned: answerData.pointsEarned || 0,
-            timeSpent: answerData.timeSpent || 0,
-            fechaHoraRespuesta: timestamp
-          }
-        })
-      });
-    } catch (e) {
-      console.warn('No se pudo enviar respuesta a Google Apps Script:', e);
+    if (res.ok) {
+      return await res.json();
     }
+  } catch (err) {
+    console.warn('Error enviando respuesta a /api/submit-answer:', err);
   }
 
-  return timestamp;
+  return {
+    success: false,
+    pointsEarned: 0,
+    isCorrect: false
+  };
 }

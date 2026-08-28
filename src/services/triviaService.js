@@ -6,89 +6,65 @@ import Papa from 'papaparse';
 import { fetchFromGoogleSheetsAPI, fetchFromPublishedCSV } from './googleSheetsService';
 
 /**
- * Carga las preguntas desde CSV local, Google Sheets API v4 o Google Sheets CSV publicado
- * y las filtra según la fase activa.
+ * Carga las preguntas de la fase activa desde el backend seguro (/api/questions)
+ * evitando exponer respuestas correctas o credenciales en el cliente.
  */
 export async function loadTriviaQuestions(phase = 1, shuffle = false) {
-  const dataSource = import.meta.env.VITE_DATA_SOURCE || 'csv';
-  const googleSheetUrl = import.meta.env.VITE_GOOGLE_SHEET_QUESTIONS_URL;
-  const spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_SPREADSHEET_ID;
-  const apiKey = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
-  const range = import.meta.env.VITE_GOOGLE_SHEETS_QUESTIONS_RANGE || 'Preguntas!A1:Z100';
-
   try {
-    let rows = [];
+    // 1. Intentar llamar al backend serverless seguro
+    const res = await fetch(`/api/questions?phase=${phase}&shuffle=${shuffle}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+    }
+  } catch (backendError) {
+    console.warn('Backend serverless no disponible, evaluando fallback:', backendError);
+  }
 
-    // Modo 1: Google Sheets API v4 oficial (con API Key y Spreadsheet ID)
-    if (dataSource === 'google_sheets_api' && spreadsheetId && apiKey) {
-      rows = await fetchFromGoogleSheetsAPI(spreadsheetId, range, apiKey);
-    } 
-    // Modo 2: Google Sheets URL publicado como CSV o GViz
-    else if ((dataSource === 'google_sheets' || dataSource === 'google_sheets_csv') && googleSheetUrl) {
-      rows = await fetchFromPublishedCSV(googleSheetUrl);
-    } 
-    // Modo 3: Archivo CSV local en /public/data/preguntas_inocuidad.csv
-    else {
+  // 2. Modo Offline / Desarrollo con CSV local
+  const dataSource = import.meta.env.VITE_DATA_SOURCE || 'csv';
+  if (dataSource === 'csv') {
+    try {
       const res = await fetch('/data/preguntas_inocuidad.csv');
       if (res.ok) {
         const csvData = await res.text();
         const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
-        rows = parsed.data;
-      } else {
-        return getFallbackQuestions(phase);
-      }
-    }
+        const rows = parsed.data || [];
+        
+        const filtered = rows.filter(item => {
+          const itemPhase = parseInt(item.fase || '1', 10);
+          return itemPhase === parseInt(phase, 10);
+        });
 
-    if (!rows || rows.length === 0) {
-      console.warn(`No se obtuvieron filas de datos. Usando preguntas de respaldo.`);
-      return getFallbackQuestions(phase);
-    }
-
-    // Filtrar por fase activa
-    const filtered = rows.filter(item => {
-      const itemPhase = parseInt(item.fase || '1', 10);
-      return itemPhase === parseInt(phase, 10);
-    });
-
-    if (filtered.length === 0) {
-      console.warn(`No se encontraron preguntas para la fase ${phase}. Usando fallback.`);
-      return getFallbackQuestions(phase);
-    }
-
-    // Normalizar formato de preguntas y opciones dinámicas (de 2 a 5 opciones)
-    const formattedQuestions = filtered.map((row, index) => {
-      const options = [];
-      for (let i = 1; i <= 5; i++) {
-        const optText = row[`opcion${i}`];
-        if (optText && String(optText).trim() !== '') {
-          options.push({
-            id: i,
-            text: String(optText).trim()
+        if (filtered.length > 0) {
+          const formattedQuestions = filtered.map((row, index) => {
+            const options = [];
+            for (let i = 1; i <= 5; i++) {
+              const optText = row[`opcion${i}`] || row[`opcion_${i}`];
+              if (optText && String(optText).trim() !== '') {
+                options.push({ id: i, text: String(optText).trim() });
+              }
+            }
+            return {
+              id: parseInt(row.id || index + 1, 10),
+              phase: parseInt(row.fase || phase, 10),
+              question: row.pregunta || '',
+              points: parseInt(row.puntos || '100', 10),
+              options
+            };
           });
+
+          return formattedQuestions;
         }
       }
-
-      return {
-        id: index + 1,
-        question: row.pregunta || `Pregunta ${index + 1}`,
-        options: options,
-        correctOptionId: parseInt(row.respuesta_correcta || '1', 10),
-        points: parseInt(row.puntos || '100', 10),
-        explanation: row.explicacion || '',
-        phase: parseInt(row.fase || '1', 10)
-      };
-    });
-
-    // Aleatorizar si la variable de entorno lo solicita
-    if (shuffle) {
-      return shuffleArray(formattedQuestions);
+    } catch (e) {
+      console.warn('Error leyendo CSV local:', e);
     }
-
-    return formattedQuestions;
-  } catch (error) {
-    console.error('Error al cargar preguntas de la trivia:', error);
-    return getFallbackQuestions(phase);
   }
+
+  return getFallbackQuestions(phase);
 }
 
 /**

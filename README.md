@@ -87,20 +87,17 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 
 ---
 
-## 🔌 Configuración de Google Sheets como Base de Datos
+## 🛡️ Arquitectura de Seguridad & Backend Serverless (Netlify Functions)
 
-La aplicación cuenta con un selector flexible mediante la variable de entorno `VITE_DATA_SOURCE`:
+Para garantizar la **máxima seguridad de datos y transparencia del concurso**:
+1. **Credenciales y Secretos 100% Protegidos**: La `API Key` de Google Sheets, el `Spreadsheet ID` y el webhook de Apps Script residen exclusivamente en el entorno seguro de **Netlify Functions** (`netlify/functions/`). NUNCA se exponen al navegador cliente ni viajan en peticiones de red del frontend.
+2. **Sanitización de Respuestas Correctas**: El endpoint `/api/questions` devuelve al frontend las preguntas y opciones **sin incluir la columna de respuesta correcta ni pistas**.
+3. **Evaluación de Respuestas en Servidor**: Al responder una pregunta, el frontend envía la selección a `POST /api/submit-answer`. La Serverless Function es la única que contrasta la opción elegida contra la respuesta correcta original, calcula el puntaje con bonificación de velocidad y persiste el resultado en Google Sheets en tiempo real.
 
-### Modo 1: Archivos Locales CSV (`VITE_DATA_SOURCE="csv"`)
-Modo por defecto para desarrollo u operación offline. Lee los archivos:
-- `/public/data/preguntas_inocuidad.csv`
-- `/public/data/usuarios_participantes.csv`
-
----
-
-### Modo 2: Google Sheets API v4 Oficial (`VITE_DATA_SOURCE="google_sheets_api"`)
-
-Este modo se conecta directamente a la API oficial de Google Cloud mediante tu `API Key` y el `Spreadsheet ID`.
+### 🌐 Endpoints Serverless Disponibles:
+- `GET /api/auth?token=...&phase=1`: Valida el hash/token del colaborador y obtiene su progreso sin exponer listas completas de nómina.
+- `GET /api/questions?phase=1`: Devuelve las preguntas de la fase activa sanitizadas.
+- `POST /api/submit-answer`: Evalúa en servidor el acierto/fallo de la respuesta y la persiste en Google Sheets vía Apps Script.
 
 #### Paso 1: Crear Proyecto y Habilitar Google Sheets API en Google Cloud
 1. Ingresa a [Google Cloud Console](https://console.cloud.google.com/).
