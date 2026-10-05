@@ -94,3 +94,119 @@ export async function sendToAppsScript(payload) {
     return false;
   }
 }
+
+/**
+ * Valores de configuración predeterminados de la trivia (Fallback Seguro)
+ */
+export const DEFAULT_TRIVIA_CONFIG = {
+  activePhase: 1,
+  isPhaseClosed: false,
+  isClassificationPublished: false,
+  classificationTopCount: 30,
+  showPartialInTable: true,
+  showUnansweredInTable: false,
+  classificationPublishedAt: null,
+  timePerQuestion: 45,
+  shuffleQuestions: false,
+  hideSummaryAnswered: true,
+  hideSummaryTime: false
+};
+
+/**
+ * Lee la configuración dinámica desde la pestaña 'Configuracion' de Google Sheets.
+ * El backend es la única fuente de verdad: el usuario no puede manipular estos datos.
+ */
+export async function fetchTriviaConfig() {
+  const configRange = getServerEnv('GOOGLE_SHEETS_CONFIG_RANGE') || 'Configuracion!A1:C30';
+
+  const config = { ...DEFAULT_TRIVIA_CONFIG };
+
+  try {
+    const rows = await fetchSheetValues(configRange);
+    if (!rows || rows.length === 0) {
+      return config;
+    }
+
+    rows.forEach(r => {
+      const rawKey = String(r.clave || r.key || r.parametro || '').trim().toUpperCase();
+      const rawValue = String(r.valor || r.value || '').trim();
+
+      if (!rawKey) return;
+
+      switch (rawKey) {
+        case 'FASE_ACTIVA':
+        case 'ACTIVE_PHASE': {
+          const p = parseInt(rawValue, 10);
+          if (!isNaN(p) && p >= 1 && p <= 3) config.activePhase = p;
+          break;
+        }
+        case 'FASE_CERRADA':
+        case 'IS_PHASE_CLOSED': {
+          config.isPhaseClosed = rawValue.toLowerCase() === 'true' || rawValue === '1' || rawValue.toLowerCase() === 'si';
+          break;
+        }
+        case 'CLASIFICACION_PUBLICADA':
+        case 'IS_CLASSIFICATION_PUBLISHED': {
+          config.isClassificationPublished = rawValue.toLowerCase() === 'true' || rawValue === '1' || rawValue.toLowerCase() === 'si';
+          break;
+        }
+        case 'CLASIFICACION_TOP_COUNT':
+        case 'TOP_COUNT': {
+          const c = parseInt(rawValue, 10);
+          if (!isNaN(c) && c >= 3) config.classificationTopCount = c;
+          break;
+        }
+        case 'MOSTRAR_PARCIALES_EN_TABLA': {
+          config.showPartialInTable = rawValue.toLowerCase() !== 'false' && rawValue !== '0' && rawValue.toLowerCase() !== 'no';
+          break;
+        }
+        case 'MOSTRAR_NO_RESPONDIDOS_EN_TABLA': {
+          config.showUnansweredInTable = rawValue.toLowerCase() === 'true' || rawValue === '1' || rawValue.toLowerCase() === 'si';
+          break;
+        }
+        case 'FECHA_PUBLICACION_CLASIFICACION':
+        case 'PUBLISHED_AT': {
+          config.classificationPublishedAt = rawValue || null;
+          break;
+        }
+        case 'TIEMPO_POR_PREGUNTA':
+        case 'TIME_PER_QUESTION': {
+          const t = parseInt(rawValue, 10);
+          if (!isNaN(t) && t >= 0) config.timePerQuestion = t;
+          break;
+        }
+        case 'MEZCLAR_PREGUNTAS':
+        case 'SHUFFLE_QUESTIONS': {
+          config.shuffleQuestions = rawValue.toLowerCase() === 'true' || rawValue === '1';
+          break;
+        }
+        case 'OCULTAR_RESUMEN_RESPONDIDAS':
+        case 'HIDE_SUMMARY_ANSWERED': {
+          config.hideSummaryAnswered = rawValue.toLowerCase() === 'true' || rawValue === '1' || rawValue.toLowerCase() === 'si';
+          break;
+        }
+        case 'OCULTAR_RESUMEN_TIEMPO':
+        case 'HIDE_SUMMARY_TIME': {
+          config.hideSummaryTime = rawValue.toLowerCase() === 'true' || rawValue === '1' || rawValue.toLowerCase() === 'si';
+          break;
+        }
+        default:
+          break;
+      }
+    });
+  } catch (err) {
+    console.warn('Advertencia: No se pudo leer la pestaña Configuracion de Google Sheets. Usando defaults seguros:', err.message);
+  }
+
+  return config;
+}
+
+/**
+ * Actualiza una o más claves en la pestaña 'Configuracion' de Google Sheets mediante Apps Script.
+ */
+export async function updateTriviaConfig(updates = {}) {
+  return await sendToAppsScript({
+    action: 'UPDATE_CONFIG',
+    updates
+  });
+}

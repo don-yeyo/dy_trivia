@@ -184,3 +184,31 @@ export async function recordPhaseQuestionAnswer(legajo, activePhase, answerData)
     isCorrect: false
   };
 }
+
+/**
+ * Registra en el servidor el inicio de una pregunta activa.
+ * Mecanismo antitrampa: si el participante recarga la pantalla o abandona,
+ * la pregunta ya queda asentada en el backend con 0 puntos y no se vuelve a presentar.
+ */
+export async function markQuestionStarted(legajo, activePhase, questionId, timeLimit = 45) {
+  if (!legajo || questionId === undefined) return false;
+
+  try {
+    const res = await fetch('/api/submit-answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'START_QUESTION',
+        legajo: String(legajo),
+        phase: parseInt(activePhase, 10),
+        questionId: parseInt(questionId, 10),
+        selectedOptionId: null,
+        timeSpent: timeLimit
+      })
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Advertencia registrando inicio de pregunta en backend:', err);
+    return false;
+  }
+}

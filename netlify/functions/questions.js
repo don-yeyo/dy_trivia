@@ -2,14 +2,15 @@
 // NETLIFY FUNCTION: QUESTIONS (/api/questions)
 // Devuelve las preguntas de la fase activa SANITIZADAS (sin la respuesta correcta)
 // ==============================================================================
-import { fetchSheetValues, getServerEnv } from './utils/googleSheets.js';
+import { fetchSheetValues, getServerEnv, fetchTriviaConfig } from './utils/googleSheets.js';
 
 export async function handler(event, context) {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -25,9 +26,19 @@ export async function handler(event, context) {
   }
 
   try {
-    const params = event.queryStringParameters || {};
-    const phase = parseInt(params.phase || getServerEnv('ACTIVE_PHASE') || '1', 10);
-    const shuffle = (params.shuffle || getServerEnv('SHUFFLE_QUESTIONS')) === 'true';
+    // 🛡️ Seguridad: El backend decide la fase activa y si la fase está abierta o cerrada
+    const config = await fetchTriviaConfig();
+
+    if (config.isPhaseClosed) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ isPhaseClosed: true, message: 'La fase activa ya ha sido cerrada.', questions: [] })
+      };
+    }
+
+    const phase = config.activePhase;
+    const shuffle = config.shuffleQuestions;
 
     const questionsRange = getServerEnv('GOOGLE_SHEETS_QUESTIONS_RANGE') || 'Preguntas!A1:Z100';
     const rows = await fetchSheetValues(questionsRange);

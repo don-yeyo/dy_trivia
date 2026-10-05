@@ -13,9 +13,10 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - Fórmula: `SHA256(SEED_PHRASE + legajo + APELLIDO + NOMBRE)`.
    - Ejemplo de enlace: `https://trivia.donyeyo.com.ar/?token=c7f8a9e1d2...`
 
-2. **Control Dinámico de Fases (Fases 1, 2 y 3)**:
+2. **Control Dinámico de Fases y Estado Centralizado (`Configuracion` en Google Sheets)**:
    - Las preguntas están organizadas en hasta 3 fases de dificultad o temáticas semanales.
-   - La fase activa se configura instantáneamente por variable de entorno (`VITE_ACTIVE_PHASE`).
+   - **Gobernanza desde Google Sheets:** La fase activa, el cierre de la jornada (`FASE_CERRADA`), la publicación de clasificados (`CLASIFICACION_PUBLICADA`), los cupos de clasificación (`CLASIFICACION_TOP_COUNT`), los tiempos y la visibilidad de métricas se configuran dinámicamente desde la pestaña **`Configuracion`** de Google Sheets, sin requerir redeploys.
+   - **🛡️ Verdad Absoluta en Backend (Inmune a Manipulación):** El backend serverless (`Netlify Functions`) custodia la configuración. El frontend siempre acata lo que el backend le instruye. Cualquier intento de modificar el DOM, `localStorage`, cookies o URL para forzar una fase distinta o evadir el cierre de la jornada es bloqueado y rechazado con código HTTP 403 en el servidor.
    - **Uso único por fase:** Una vez que un participante ingresa y finaliza la trivia en la fase habilitada, el enlace queda bloqueado para esa fase para evitar reintentos.
    - Cuando se habilita una nueva fase (ej. Fase 2), el **mismo enlace único** vuelve a quedar habilitado para responder la nueva fase.
 
@@ -38,9 +39,10 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 
 5. **Cronómetro y Tiempo de Permanencia**:
    - Barra de tiempo animada por pregunta con alerta visual cuando restan pocos segundos.
-   - Posibilidad de presentar preguntas de forma secuencial o aleatoria (`VITE_SHUFFLE_QUESTIONS`).
-   - Bonificación de puntaje por rapidez de respuesta.
+   - Tiempo y aleatoriedad gobernados por la pestaña `Configuracion` (`TIEMPO_POR_PREGUNTA`, `MEZCLAR_PREGUNTAS`).
+   - Bonificación de puntaje por rapidez de respuesta calculada exclusivamente en el servidor.
    - **Registro fidedigno de respuestas:** Si a un participante se le agota el tiempo en una pregunta, esta se registra como no contestada y no se contabiliza en el resumen de preguntas respondidas (ej. mostrando "4 de 5").
+   - **🛡️ Protección Antitrampa Blindada (Sin LocalStorage):** Al abrirse cada pregunta, se asienta en el servidor el inicio de la misma. Si un usuario intenta recargar la pantalla (`F5`), cerrar la pestaña o navegar hacia atrás para ganar tiempo o buscar respuestas, el navegador le advierte sobre el abandono y la pregunta queda automáticamente **consumida con 0 puntos** mediante `navigator.sendBeacon` y el registro de servidor. Al regresar a la trivia, el participante encuentra que esa pregunta ya fue perdida y pasa inmediatamente a la siguiente.
 
 6. **Soporte PWA & Vista Previa para WhatsApp / Redes (Open Graph)**:
    - Service Worker con soporte offline para assets base.
@@ -67,34 +69,56 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 
 ## 📋 Variables de Entorno (`.env`)
 
-| Variable | Descripción | Valores Ejemplo |
-| :--- | :--- | :--- |
-| `VITE_APP_TITLE` | Título institucional de la aplicación | `"Trivia Inocuidad 2026 - Don Yeyo"` |
-| `VITE_SEED_PHRASE` | Frase semilla para generar y validar hashes | `"DY_INOCUIDAD_2026_CALIDAD_Y_COMPROMISO"` |
-| `VITE_ACTIVE_PHASE` | Fase habilitada actualmente en la trivia | `1`, `2` o `3` |
-| `VITE_SHUFFLE_QUESTIONS` | Orden de preguntas aleatorio o secuencial | `true` / `false` |
-| `VITE_TIME_PER_QUESTION` | Tiempo límite en segundos por pregunta (0 = libre) | `45` |
-| `VITE_MAX_TIME_TOTAL` | Tiempo máximo de permanencia total en segundos | `600` |
-| `VITE_ALLOW_SESSION_RESET` | Modo desarrollo: permitir reinicio de sesión y acceso sin token | `false` (prod) / `true` (dev) |
-| `VITE_DATA_SOURCE` | Switch de origen de datos | `"csv"`, `"google_sheets_api"` o `"google_sheets"` |
-| `VITE_GOOGLE_SHEETS_SPREADSHEET_ID` | ID de la planilla de Google Sheets | `"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"` |
-| `VITE_GOOGLE_SHEETS_API_KEY` | Clave API de Google Cloud Console | `"TU_API_KEY_DE_GOOGLE"` |
-| `VITE_GOOGLE_SHEETS_QUESTIONS_RANGE` | Pestaña y rango de preguntas | `"Preguntas!A1:Z100"` |
-| `VITE_GOOGLE_SHEETS_USERS_RANGE` | Pestaña y rango de participantes | `"Participantes!A1:Z500"` |
-| `VITE_GOOGLE_SHEET_QUESTIONS_URL` | URL CSV publicada de preguntas | `"https://docs.google.com/..."` |
-| `VITE_GOOGLE_SHEET_USERS_URL` | URL CSV publicada de usuarios | `"https://docs.google.com/..."` |
-| `VITE_GOOGLE_APPS_SCRIPT_ENDPOINT` | Webhook de Apps Script para guardar resultados | `"https://script.google.com/macros/s/..."` |
+Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempos, visibilidad de métricas) fueron migradas a la pestaña **`Configuracion`** de Google Sheets con columna de descripción, quedando el archivo `.env` reservado para credenciales y rangos de conexión:
+
+| Variable | Alcance | Descripción | Valores Ejemplo |
+| :--- | :--- | :--- | :--- |
+| `ADMIN_USER` | 🔒 Backend | Usuario del Administrador para determinar clasificados | `"inocuadmin"` |
+| `ADMIN_PASSWORD` | 🔒 Backend | Contraseña del Administrador (NUNCA expuesta al cliente) | `"superpassword123"` |
+| `SEED_PHRASE` | 🔒 Backend | Frase semilla para cálculo y validación criptográfica de enlaces | `"DY_INOCUIDAD_2026_CALIDAD_Y_COMPROMISO"` |
+| `GOOGLE_SHEETS_SPREADSHEET_ID` | 🔒 Backend | ID de la planilla de Google Sheets | `"1txRiWnszPxjH0iixtr_zwHDFYAiArOyIaVlylXECJCw"` |
+| `GOOGLE_SHEETS_API_KEY` | 🔒 Backend | Clave API de Google Cloud Console (Sheets v4) | `"AIzaSy..."` |
+| `GOOGLE_SHEETS_CONFIG_RANGE` | 🔒 Backend | Pestaña y rango de configuración del juego | `"Configuracion!A1:C30"` |
+| `GOOGLE_SHEETS_QUESTIONS_RANGE` | 🔒 Backend | Pestaña y rango de preguntas | `"Preguntas!A1:Z100"` |
+| `GOOGLE_SHEETS_USERS_RANGE` | 🔒 Backend | Pestaña y rango de participantes | `"Participantes!A1:Z500"` |
+| `GOOGLE_SHEETS_RESULTS_RANGE` | 🔒 Backend | Pestaña y rango de resultados | `"Resultados!A1:Z1000"` |
+| `GOOGLE_APPS_SCRIPT_ENDPOINT` | 🔒 Backend | Webhook de Apps Script para persistencia | `"https://script.google.com/macros/s/.../exec"` |
+| `VITE_APP_TITLE` | 🌐 Frontend | Título institucional de la aplicación | `"Trivia Inocuidad 2026 - Don Yeyo"` |
+| `VITE_DATA_SOURCE` | 🌐 Frontend | Switch de origen de datos | `"google_sheets_api"` o `"csv"` |
+| `VITE_MAX_TIME_TOTAL` | 🌐 Frontend | Tiempo máximo de permanencia total en segundos | `600` |
+| `VITE_ALLOW_SESSION_RESET` | 🌐 Frontend | Modo desarrollo: permitir reinicio de sesión | `false` (prod) / `true` (dev) |
+| `VITE_GOOGLE_SHEETS_CONFIG_RANGE` | 🌐 Frontend | Fallback en modo local sin servidor | `"Configuracion!A1:C30"` |
+
+---
+
+## 🏆 Pantalla de Podio, Clasificación y Panel de Administración
+
+### 1. Panel de Administración (`/admin` o `?admin=1`)
+- **Acceso Directo Oculto por Seguridad:** No existe ningún botón ni ícono visible en la interfaz pública para acceder al panel de administración. El acceso se realiza exclusivamente escribiendo en la barra del navegador la URL `/admin` o `?admin=1`.
+- **Autenticación Segura en Servidor:** Las credenciales (`ADMIN_USER` y `ADMIN_PASSWORD`) residen exclusivamente en variables de entorno del backend (Netlify Functions) y **nunca** son expuestas al frontend ni bundle de cliente.
+- **Configuración Dinámica de Clasificados:** Permite definir la cantidad de participantes que clasifican (ej: Top 30) con selectores rápidos (10, 20, 30, 50) o valor numérico personalizado.
+- **Disparador Gamer "Determinar Clasificados":** Al hacer clic, activa una animación gamer de alta fidelidad que simula el escaneo de registros de la planta, auditoría de respuestas correctas, cálculo de tiempos y desempates.
+- **Publicación Oficial:** Al completar el cálculo, la clasificación y el podio quedan inmediatamente disponibles para que todos los colaboradores puedan ingresar a verla públicamente.
+- **Gestión:** Incluye botón para copiar el enlace público de clasificación y botón para reiniciar/recalcular.
+
+### 2. Pantalla Pública de Clasificación (`/clasificacion` o `?view=clasificacion`)
+- **Estado Previo (No publicada):** Si la administración aún no determinó los clasificados, muestra una pantalla amigable indicando que la evaluación está en curso y los resultados se publicarán pronto.
+- **Estado Publicado:** Despliega el **Podio de Honor 3D Gamer** (1° Puesto Oro, 2° Puesto Plata, 3° Puesto Bronce) con avatares, puntajes, tiempos y aciertos, junto con la **Tabla General de Clasificados** con buscador en tiempo real por nombre o legajo y línea de corte destacada.
 
 ---
 
 ## 🛡️ Arquitectura de Seguridad & Backend Serverless (Netlify Functions)
 
 Para garantizar la **máxima seguridad de datos y transparencia del concurso**:
-1. **Credenciales y Secretos 100% Protegidos**: La `API Key` de Google Sheets, el `Spreadsheet ID` y el webhook de Apps Script residen exclusivamente en el entorno seguro de **Netlify Functions** (`netlify/functions/`). NUNCA se exponen al navegador cliente ni viajan en peticiones de red del frontend.
+1. **Credenciales y Secretos 100% Protegidos**: La `API Key` de Google Sheets, el `Spreadsheet ID`, las credenciales de administrador (`ADMIN_USER`, `ADMIN_PASSWORD`) y el webhook de Apps Script residen exclusivamente en el entorno seguro de **Netlify Functions** (`netlify/functions/`). NUNCA se exponen al navegador cliente ni viajan en peticiones de red del frontend.
 2. **Sanitización de Respuestas Correctas**: El endpoint `/api/questions` devuelve al frontend las preguntas y opciones **sin incluir la columna de respuesta correcta ni pistas**.
 3. **Evaluación de Respuestas en Servidor**: Al responder una pregunta, el frontend envía la selección a `POST /api/submit-answer`. La Serverless Function es la única que contrasta la opción elegida contra la respuesta correcta original, calcula el puntaje con bonificación de velocidad y persiste el resultado en Google Sheets en tiempo real.
+4. **Cálculo y Auditoría de Clasificados**: `/api/classification` calcula las posiciones oficiales ponderando: 1° Mayor puntaje, 2° Menor tiempo total acumulado (desempate de velocidad), 3° Mayor cantidad de respuestas correctas, y 4° Fecha/hora de envío.
 
 ### 🌐 Endpoints Serverless Disponibles:
+- `POST /api/admin-auth`: Autentica al Administrador de forma segura y emite tokens de sesión firmados.
+- `GET /api/classification?phase=1&topCount=30`: Obtiene el podio y los clasificados (modo público si está publicado, o preview con token de admin).
+- `POST /api/classification`: Dispara la determinación de clasificados o el reinicio de publicación oficial (requiere token de admin).
 - `GET /api/auth?token=...&phase=1`: Valida el hash/token del colaborador y obtiene su progreso sin exponer listas completas de nómina.
 - `GET /api/questions?phase=1`: Devuelve las preguntas de la fase activa sanitizadas.
 - `POST /api/submit-answer`: Evalúa en servidor el acierto/fallo de la respuesta y la persiste en Google Sheets vía Apps Script.
@@ -179,6 +203,13 @@ function doPost(e) {
     if (data.action === "SAVE_QUESTION_ANSWER" && data.answer) {
       saveIndividualAnswer(ss, data);
       return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Pregunta guardada" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 3. Acción: Actualizar configuraciones en la pestaña 'Configuracion'
+    if (data.action === "UPDATE_CONFIG" && data.updates) {
+      updateConfigKeys(ss, data.updates);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Configuración actualizada" }))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -342,8 +373,74 @@ function poblarDatosDemo() {
     sheetParticipantes.appendRow(row);
   });
 
+  // 3. Crear pestaña "Configuracion" con columna obligatoria de "Descripcion"
+  crearPestanaConfiguracion(ss);
+
   SpreadsheetApp.flush();
-  Logger.log("✅ ¡Pestañas Preguntas y Participantes pobladas exitosamente!");
+  Logger.log("✅ ¡Pestañas Preguntas, Participantes y Configuracion preparadas exitosamente!");
+}
+
+/**
+ * Crea o inicializa la pestaña "Configuracion" con las claves del sistema y sus descripciones
+ */
+function crearPestanaConfiguracion(ss) {
+  var sheet = ss.getSheetByName("Configuracion");
+  if (!sheet) {
+    sheet = ss.insertSheet("Configuracion");
+  } else {
+    sheet.clear();
+  }
+
+  // Encabezados con columna de Descripción obligatoria
+  sheet.appendRow(["Clave", "Valor", "Descripcion"]);
+  sheet.getRange(1, 1, 1, 3).setFontWeight("bold").setBackground("#0d2c5c").setFontColor("#ffffff");
+
+  var configRows = [
+    ["FASE_ACTIVA", "1", "Fase del juego habilitada para participar (1, 2 o 3)"],
+    ["FASE_CERRADA", "false", "Indica si la fase actual cerró (true: bloquea nuevas respuestas)"],
+    ["CLASIFICACION_PUBLICADA", "false", "Indica si el podio oficial está visible públicamente (true/false)"],
+    ["CLASIFICACION_TOP_COUNT", "30", "Cantidad de participantes que clasifican a la tabla de honor"],
+    ["MOSTRAR_PARCIALES_EN_TABLA", "false", "Muestra en la tabla a quienes respondieron parcialmente sin terminar"],
+    ["MOSTRAR_NO_RESPONDIDOS_EN_TABLA", "false", "Muestra en la tabla a colaboradores inscriptos que aún no jugaron"],
+    ["FECHA_PUBLICACION_CLASIFICACION", "", "Fecha y hora ISO registrada al determinar y publicar la clasificación"],
+    ["TIEMPO_POR_PREGUNTA", "45", "Segundos disponibles para responder cada pregunta"],
+    ["MEZCLAR_PREGUNTAS", "false", "Orden aleatorio (true) o secuencial según planilla (false)"],
+    ["OCULTAR_RESUMEN_RESPONDIDAS", "true", "Oculta la métrica de 'Respondidas' en la pantalla final"],
+    ["OCULTAR_RESUMEN_TIEMPO", "false", "Oculta la métrica de 'Tiempo Total' en la pantalla final"]
+  ];
+
+  configRows.forEach(function(r) {
+    sheet.appendRow(r);
+  });
+}
+
+/**
+ * Actualiza claves de configuración en la pestaña 'Configuracion'
+ */
+function updateConfigKeys(ss, updates) {
+  var sheet = ss.getSheetByName("Configuracion");
+  if (!sheet) {
+    crearPestanaConfiguracion(ss);
+    sheet = ss.getSheetByName("Configuracion");
+  }
+
+  var data = sheet.getDataRange().getValues();
+  var keys = Object.keys(updates);
+
+  keys.forEach(function(key) {
+    var val = updates[key];
+    var found = false;
+    for (var r = 1; r < data.length; r++) {
+      if (String(data[r][0]).trim().toUpperCase() === key.toUpperCase()) {
+        sheet.getRange(r + 1, 2).setValue(val);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      sheet.appendRow([key, val, "Configuración dinámica del sistema"]);
+    }
+  });
 }
 
 function poblarDesdePayload(ss, data) {
@@ -365,6 +462,10 @@ function poblarDesdePayload(ss, data) {
     data.participantes.forEach(function(u) {
       sheetParticipantes.appendRow([u.legajo, u.apellido, u.nombre, u.token_hash, u.fase1 || "", u.fase2 || "", u.fase3 || ""]);
     });
+  }
+
+  if (data.configuracion) {
+    updateConfigKeys(ss, data.configuracion);
   }
 }
 ```
@@ -430,7 +531,36 @@ En el pie de página de la aplicación, el botón **"Enlaces RRHH"** abre un pan
 
 ## 📄 Estructura de Columnas en Google Sheets
 
-### 1. Pestaña de Preguntas (`Preguntas`)
+### 1. Pestaña de Configuración Centralizada (`Configuracion`)
+Esta pestaña es el **cerebro operacional dinámico** de la trivia. Permite alterar el estado de la competición en caliente desde la planilla o desde el panel de administración sin tocar variables de entorno ni redeployar la aplicación.
+
+| Columna | Nombre | Tipo | Descripción |
+| :--- | :--- | :--- | :--- |
+| **A** | `Clave` | Texto | Identificador único de la directiva o configuración |
+| **B** | `Valor` | Texto / Booleano / Número | Valor vigente de la directiva |
+| **C** | `Descripcion` | Texto | Explicación humana de la función e impacto de la variable |
+
+#### Claves soportadas en la hoja `Configuracion`:
+| Clave | Valor Inicial / Ejemplo | Descripción Obligatoria (Columna C) |
+| :--- | :--- | :--- |
+| `FASE_ACTIVA` | `1` | Fase del juego habilitada para participar (1, 2 o 3). |
+| `FASE_CERRADA` | `false` | Indica si la fase actual cerró (true: bloquea nuevas respuestas y muestra pantalla de fin de fase). |
+| `CLASIFICACION_PUBLICADA` | `false` | Indica si el podio oficial y ranking están visibles para todos los colaboradores (true/false). |
+| `CLASIFICACION_TOP_COUNT` | `30` | Cantidad de colaboradores que clasifican a la tabla de honor y podio. |
+| `MOSTRAR_PARCIALES_EN_TABLA` | `false` | Muestra en la tabla a quienes respondieron parcialmente pero no terminaron todas las preguntas. |
+| `MOSTRAR_NO_RESPONDIDOS_EN_TABLA`| `false` | Muestra en la tabla a los colaboradores inscriptos que aún no participaron de la fase. |
+| `FECHA_PUBLICACION_CLASIFICACION` | *vacío* | Marca de tiempo ISO registrada por el backend al oficializar la clasificación. |
+| `TIEMPO_POR_PREGUNTA` | `45` | Segundos disponibles para responder cada pregunta individual. |
+| `MEZCLAR_PREGUNTAS` | `false` | Presenta las preguntas en orden aleatorio (true) o secuencial según planilla (false). |
+| `OCULTAR_RESUMEN_RESPONDIDAS` | `true` | Oculta la tarjeta de "Preguntas Respondidas" en la pantalla de resumen final. |
+| `OCULTAR_RESUMEN_TIEMPO` | `false` | Oculta la tarjeta de "Tiempo Total" en la pantalla de resumen final. |
+
+> 🛡️ **Garantía de Seguridad Backend-First**:
+> Todas las peticiones al juego (`/api/config`, `/api/auth`, `/api/questions`, `/api/submit-answer`, `/api/classification`) leen directamente estas configuraciones en las Netlify Functions. Si un participante modifica el HTML, `localStorage` o cookies para enviar una fase distinta o enviar respuestas con la fase cerrada, el servidor rechaza automáticamente la acción con error `403 Forbidden`.
+
+---
+
+### 2. Pestaña de Preguntas (`Preguntas`)
 | Columna | Nombre | Tipo | Descripción |
 | :--- | :--- | :--- | :--- |
 | A | `pregunta` | Texto | Enunciado de la pregunta |
@@ -444,7 +574,9 @@ En el pie de página de la aplicación, el botón **"Enlaces RRHH"** abre un pan
 | I | `explicacion` | Texto | Justificación técnica de inocuidad |
 | J | `fase` | Número | Fase a la que pertenece (1, 2 o 3) |
 
-### 2. Pestaña de Participantes (`Participantes`)
+---
+
+### 3. Pestaña de Participantes (`Participantes`)
 | Columna | Nombre | Tipo | Descripción |
 | :--- | :--- | :--- | :--- |
 | A | `legajo` | Texto / Número | Legajo del colaborador |
@@ -462,8 +594,8 @@ En el pie de página de la aplicación, el botón **"Enlaces RRHH"** abre un pan
 1. Conectar el repositorio Git a Netlify.
 2. Build command: `npm run build`
 3. Publish directory: `dist`
-4. En **Site Settings > Environment Variables**, cargar las variables de entorno de `.env`.
-5. Al cambiar de fase en la empresa (ej: pasar de Fase 1 a Fase 2), solo basta con actualizar `VITE_ACTIVE_PHASE=2` en Netlify y redeployar.
+4. En **Site Settings > Environment Variables**, cargar las variables de conexión de `.env` (`GOOGLE_SHEETS_SPREADSHEET_ID`, `GOOGLE_SHEETS_API_KEY`, `GOOGLE_APPS_SCRIPT_ENDPOINT`, `ADMIN_USER`, `ADMIN_PASSWORD`, `SEED_PHRASE`).
+5. **Cero Redeploys Operativos:** Al cambiar de fase en la empresa o cerrar la jornada, **no hace falta redeployar**: solo basta con cambiar el valor de `FASE_ACTIVA` o `FASE_CERRADA` en la hoja `Configuracion` de Google Sheets. El backend lo aplicará inmediatamente a todos los dispositivos.
 
 ---
 **Don Yeyo S.A. &copy; 2026** - Dirección de Calidad e Inocuidad Alimentaria.

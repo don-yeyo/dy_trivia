@@ -83,7 +83,7 @@ export default function AdminLinksModal({ isOpen, onClose }) {
         <div className="pt-4 mt-4 border-t border-white/10 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer"
           >
             Cerrar
           </button>

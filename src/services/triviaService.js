@@ -23,8 +23,86 @@ export async function loadTriviaQuestions(phase = 1, shuffle = false) {
     console.warn('Backend serverless no disponible, evaluando fallback:', backendError);
   }
 
-  // 2. Modo Offline / Desarrollo con CSV local
+  // 2. Modo Desarrollo Local / Fallback si el backend serverless no está activo
   const dataSource = import.meta.env.VITE_DATA_SOURCE || 'csv';
+  const spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_SPREADSHEET_ID;
+  const apiKey = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
+  const range = import.meta.env.VITE_GOOGLE_SHEETS_QUESTIONS_RANGE || 'Preguntas!A1:Z100';
+  const googleSheetUrl = import.meta.env.VITE_GOOGLE_SHEET_QUESTIONS_URL;
+
+  // Opción A: Google Sheets API v4 oficial directa desde cliente en localhost
+  if (dataSource === 'google_sheets_api' && spreadsheetId && apiKey) {
+    try {
+      const rows = await fetchFromGoogleSheetsAPI(spreadsheetId, range, apiKey);
+      if (rows && rows.length > 0) {
+        const filtered = rows.filter(item => {
+          const itemPhase = parseInt(item.fase || item.phase || '1', 10);
+          return itemPhase === parseInt(phase, 10);
+        });
+
+        if (filtered.length > 0) {
+          const formattedQuestions = filtered.map((row, index) => {
+            const options = [];
+            for (let i = 1; i <= 5; i++) {
+              const optText = row[`opcion${i}`] || row[`opcion_${i}`];
+              if (optText && String(optText).trim() !== '') {
+                options.push({ id: i, text: String(optText).trim() });
+              }
+            }
+            return {
+              id: parseInt(row.id || index + 1, 10),
+              phase: parseInt(row.fase || itemPhase || phase, 10),
+              question: row.pregunta || '',
+              points: parseInt(row.puntos || '100', 10),
+              options
+            };
+          });
+
+          return shuffle ? shuffleArray(formattedQuestions) : formattedQuestions;
+        }
+      }
+    } catch (sheetError) {
+      console.warn('Error cargando preguntas desde Google Sheets API en cliente:', sheetError);
+    }
+  }
+
+  // Opción B: Google Sheets publicado como CSV
+  if ((dataSource === 'google_sheets' || dataSource === 'google_sheets_csv') && googleSheetUrl) {
+    try {
+      const rows = await fetchFromPublishedCSV(googleSheetUrl);
+      if (rows && rows.length > 0) {
+        const filtered = rows.filter(item => {
+          const itemPhase = parseInt(item.fase || item.phase || '1', 10);
+          return itemPhase === parseInt(phase, 10);
+        });
+
+        if (filtered.length > 0) {
+          const formattedQuestions = filtered.map((row, index) => {
+            const options = [];
+            for (let i = 1; i <= 5; i++) {
+              const optText = row[`opcion${i}`] || row[`opcion_${i}`];
+              if (optText && String(optText).trim() !== '') {
+                options.push({ id: i, text: String(optText).trim() });
+              }
+            }
+            return {
+              id: parseInt(row.id || index + 1, 10),
+              phase: parseInt(row.fase || phase, 10),
+              question: row.pregunta || '',
+              points: parseInt(row.puntos || '100', 10),
+              options
+            };
+          });
+
+          return shuffle ? shuffleArray(formattedQuestions) : formattedQuestions;
+        }
+      }
+    } catch (csvSheetError) {
+      console.warn('Error cargando preguntas desde CSV publicado:', csvSheetError);
+    }
+  }
+
+  // Opción C: Archivo CSV local en /public/data/preguntas_inocuidad.csv
   if (dataSource === 'csv') {
     try {
       const res = await fetch('/data/preguntas_inocuidad.csv');
@@ -56,7 +134,7 @@ export async function loadTriviaQuestions(phase = 1, shuffle = false) {
             };
           });
 
-          return formattedQuestions;
+          return shuffle ? shuffleArray(formattedQuestions) : formattedQuestions;
         }
       }
     } catch (e) {

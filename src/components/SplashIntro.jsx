@@ -53,7 +53,7 @@ export default function SplashIntro({
             <span className="text-sm sm:text-base text-slate-900 font-medium">
               {isResuming ? (
                 <>
-                  Te {pendingQuestionsCount === 1 ? 'resta' : 'restan'} <strong className="text-slate-950 font-bold">{pendingQuestionsCount} {pendingQuestionsCount === 1 ? 'pregunta' : 'preguntas'}</strong> sobre calidad e higiene operativa.
+                  Ya respondiste <strong className="text-slate-950 font-black">{Math.max(0, totalQuestions - pendingQuestionsCount)}</strong> de las <strong className="text-slate-950 font-black">{totalQuestions}</strong>, te {pendingQuestionsCount === 1 ? 'resta' : 'restan'} <strong className="text-slate-950 font-black">{pendingQuestionsCount} {pendingQuestionsCount === 1 ? 'pregunta' : 'preguntas'}</strong> sobre calidad e higiene operativa.
                 </>
               ) : (
                 <>

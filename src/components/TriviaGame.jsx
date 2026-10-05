@@ -6,8 +6,11 @@ import { Zap, RefreshCw } from 'lucide-react';
 export default function TriviaGame({
   questions = [],
   timePerQuestion = 45,
+  userLegajo,
+  activePhase = 1,
   onFinishGame,
-  onAnswerSubmit
+  onAnswerSubmit,
+  onQuestionStart
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState(null);
@@ -18,6 +21,7 @@ export default function TriviaGame({
   const timerRef = useRef(null);
   const isTransitioningRef = useRef(false);
   const questionStartTimeRef = useRef(Date.now());
+  const isAnswerLockedRef = useRef(false);
 
   const currentQuestion = questions && questions.length > 0 && currentIndex < questions.length 
     ? questions[currentIndex] 
@@ -58,6 +62,7 @@ export default function TriviaGame({
   const handleTimeExpired = useCallback(() => {
     if (isTransitioningRef.current) return;
     isTransitioningRef.current = true;
+    isAnswerLockedRef.current = true;
     setIsAnswerLocked(true);
     sounds.playSelect();
 
@@ -78,7 +83,7 @@ export default function TriviaGame({
     }, 300);
   }, [currentQuestion, timePerQuestion, onAnswerSubmit, transitionToNext]);
 
-  // Iniciar temporizador por pregunta
+  // Iniciar temporizador por pregunta y registrar listeners antitrampa
   useEffect(() => {
     if (!questions || questions.length === 0) return;
 
@@ -90,10 +95,46 @@ export default function TriviaGame({
     // Resetear estados al cambiar de pregunta
     setTimeLeft(timePerQuestion > 0 ? timePerQuestion : 45);
     setIsAnswerLocked(false);
+    isAnswerLockedRef.current = false;
     setSelectedOptionId(null);
     setIsAnimatingOut(false);
     isTransitioningRef.current = false;
     questionStartTimeRef.current = Date.now();
+
+    // 🛡️ Mecanismo Antitrampa 1: Registrar inmediatamente en servidor que la pregunta fue abierta
+    if (currentQuestion && onQuestionStart) {
+      onQuestionStart(currentQuestion.id);
+    }
+
+    // 🛡️ Mecanismo Antitrampa 2: Advertir si intenta recargar o salir
+    const handleBeforeUnload = (e) => {
+      if (!isAnswerLockedRef.current && currentQuestion) {
+        e.preventDefault();
+        e.returnValue = 'Si sales o recargas la pantalla, perderás esta pregunta con 0 puntos.';
+        return e.returnValue;
+      }
+    };
+
+    // 🛡️ Mecanismo Antitrampa 3: Si se concreta la recarga o abandono, asentar pérdida definitiva
+    const handlePageHide = () => {
+      if (!isAnswerLockedRef.current && currentQuestion && userLegajo) {
+        const payload = JSON.stringify({
+          legajo: String(userLegajo),
+          phase: parseInt(activePhase, 10),
+          questionId: currentQuestion.id,
+          selectedOptionId: null,
+          timeSpent: timePerQuestion,
+          isAborted: true
+        });
+
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon('/api/submit-answer', new Blob([payload], { type: 'application/json' }));
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
 
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -119,13 +160,16 @@ export default function TriviaGame({
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [currentIndex, questions, timePerQuestion, handleTimeExpired, onFinishGame]);
+  }, [currentIndex, questions, timePerQuestion, handleTimeExpired, onFinishGame, currentQuestion, onQuestionStart, userLegajo, activePhase]);
 
   // Manejo de selección de opción con feedback visual y transición fluida
   const handleOptionSelect = (optionId) => {
     if (isAnswerLocked || isTransitioningRef.current || !currentQuestion) return;
     isTransitioningRef.current = true;
+    isAnswerLockedRef.current = true;
 
     if (timerRef.current) {
       clearInterval(timerRef.current);

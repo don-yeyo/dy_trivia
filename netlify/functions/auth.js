@@ -2,7 +2,7 @@
 // NETLIFY FUNCTION: AUTH & USER PROGRESS (/api/auth)
 // Valida el token del colaborador y obtiene su progreso de forma segura en servidor
 // ==============================================================================
-import { fetchSheetValues, getServerEnv } from './utils/googleSheets.js';
+import { fetchSheetValues, getServerEnv, fetchTriviaConfig } from './utils/googleSheets.js';
 
 export async function handler(event, context) {
   // Configurar cabeceras CORS y JSON
@@ -10,7 +10,8 @@ export async function handler(event, context) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -28,8 +29,11 @@ export async function handler(event, context) {
   try {
     const params = event.queryStringParameters || {};
     const token = (params.token || params.hash || params.legajo || '').trim().toLowerCase();
-    const phase = parseInt(params.phase || getServerEnv('ACTIVE_PHASE') || '1', 10);
     const allowSessionReset = getServerEnv('ALLOW_SESSION_RESET') === 'true';
+
+    // Leer la configuración autorizada desde la pestaña 'Configuracion' de Google Sheets
+    const config = await fetchTriviaConfig();
+    const phase = config.activePhase;
 
     if (!token) {
       return {
@@ -128,7 +132,7 @@ export async function handler(event, context) {
       console.warn('Advertencia leyendo resultados:', err);
     }
 
-    // 3. Responder solo con los datos públicos necesarios
+    // 3. Responder solo con los datos públicos necesarios y la configuración autorizada
     return {
       statusCode: 200,
       headers,
@@ -139,7 +143,16 @@ export async function handler(event, context) {
           nombre: String(foundUser.nombre),
           apellido: String(foundUser.apellido)
         },
-        progress
+        progress,
+        config: {
+          activePhase: config.activePhase,
+          isPhaseClosed: config.isPhaseClosed,
+          timePerQuestion: config.timePerQuestion,
+          shuffleQuestions: config.shuffleQuestions,
+          hideSummaryAnswered: config.hideSummaryAnswered,
+          hideSummaryTime: config.hideSummaryTime,
+          isClassificationPublished: config.isClassificationPublished
+        }
       })
     };
 

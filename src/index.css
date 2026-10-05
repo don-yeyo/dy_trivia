@@ -48,6 +48,27 @@
   --radius-option: 22px;
 }
 
+/* ========================================================================
+   PANELES Y TARJETAS DE VIDRIO ESMERILADO (GLASSMORPHISM GAMER)
+   ======================================================================== */
+.glass-panel {
+  background: rgba(13, 44, 92, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-radius: 24px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 22px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
 /* Reset y Base */
 * {
   margin: 0;
@@ -200,7 +221,7 @@ h4,
 /* Header compacto con Safe Area */
 .app-header {
   width: 100%;
-  max-width: 960px;
+  max-width: 1040px;
   margin: 0 auto 6px auto;
   padding: calc(6px + env(safe-area-inset-top, 0px)) 16px 4px 16px;
   display: flex;
@@ -222,6 +243,31 @@ h4,
   padding: 0 8px;
   position: relative;
   z-index: 10;
+}
+
+/* Variante amplia para pantallas de Clasificación, Tablas y Administración */
+.app-main--wide {
+  max-width: 1080px;
+  justify-content: flex-start;
+  padding: 16px 20px 48px 20px;
+  margin: 0 auto;
+}
+
+/* Paneles y Cards de Cristal Gamer (Glassmorphism de Alto Nivel) */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.glass-card {
+  background: rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 /* ==========================================================================
@@ -745,9 +791,13 @@ h4,
   }
 
   .casual-card {
-    padding: 16px 16px;
-    margin-bottom: 14px;
-    border-radius: 20px;
+    padding: 22px 18px;
+    margin-bottom: 18px;
+    border-radius: 24px;
+  }
+
+  .app-main--wide {
+    padding: 12px 12px 44px 12px;
   }
 
   .user-profile-header {

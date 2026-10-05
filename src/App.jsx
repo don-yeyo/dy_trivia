@@ -6,17 +6,36 @@ import TriviaGame from './components/TriviaGame';
 import GameOver from './components/GameOver';
 import PhaseLocked from './components/PhaseLocked';
 import SunburstBackground from './components/SunburstBackground';
-import { validateUserToken, recordPhaseQuestionAnswer } from './services/authService';
+import AdminClassificationView from './components/AdminClassificationView';
+import PublicClassificationView from './components/PublicClassificationView';
+import ProjectionView from './components/ProjectionView';
+import { validateUserToken, recordPhaseQuestionAnswer, markQuestionStarted } from './services/authService';
 import { loadTriviaQuestions } from './services/triviaService';
 import { fetchUserProgressFromResults } from './services/googleSheetsService';
+import { fetchAppConfig, DEFAULT_CONFIG } from './services/configService';
 import { RefreshCw } from 'lucide-react';
 
 export default function App() {
-  const activePhase = parseInt(import.meta.env.VITE_ACTIVE_PHASE || '1', 10);
-  const shuffleQuestions = import.meta.env.VITE_SHUFFLE_QUESTIONS === 'true';
-  const timePerQuestion = parseInt(import.meta.env.VITE_TIME_PER_QUESTION || '45', 10);
+  // Configuración dinámica gobernada por Google Sheets (Backend First)
+  const [appConfig, setAppConfig] = useState(DEFAULT_CONFIG);
 
-  const [gameState, setGameState] = useState('LOADING'); // LOADING | SPLASH | COUNTDOWN | PLAYING | FINISHED | LOCKED | INVALID_TOKEN
+  // Selector de vista principal: GAME | ADMIN | PUBLIC_CLASSIFICATION | PROJECTION
+  const [currentView, setCurrentView] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const path = window.location.pathname.toLowerCase();
+    if (params.get('proyeccion') === '1' || params.get('view') === 'proyeccion' || path === '/proyeccion') {
+      return 'PROJECTION';
+    }
+    if (params.get('admin') === '1' || params.get('admin') === 'true' || params.get('view') === 'admin' || path === '/admin') {
+      return 'ADMIN';
+    }
+    if (params.get('clasificacion') === '1' || params.get('view') === 'clasificacion' || params.get('ranking') === '1' || path === '/clasificacion') {
+      return 'PUBLIC_CLASSIFICATION';
+    }
+    return 'GAME';
+  });
+
+  const [gameState, setGameState] = useState('LOADING'); // LOADING | SPLASH | COUNTDOWN | PLAYING | FINISHED | LOCKED | PHASE_CLOSED | INVALID_TOKEN
   const [currentUser, setCurrentUser] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [totalPhaseQuestionsCount, setTotalPhaseQuestionsCount] = useState(0);
@@ -28,6 +47,26 @@ export default function App() {
   const [playedDate, setPlayedDate] = useState(null);
   const [gameSessionId, setGameSessionId] = useState(Date.now());
 
+  // Sincronizar cambios en la barra de URL o historial
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const path = window.location.pathname.toLowerCase();
+      if (params.get('proyeccion') === '1' || params.get('view') === 'proyeccion' || path === '/proyeccion') {
+        setCurrentView('PROJECTION');
+      } else if (params.get('admin') === '1' || params.get('admin') === 'true' || params.get('view') === 'admin' || path === '/admin') {
+        setCurrentView('ADMIN');
+      } else if (params.get('clasificacion') === '1' || params.get('view') === 'clasificacion' || params.get('ranking') === '1' || path === '/clasificacion') {
+        setCurrentView('PUBLIC_CLASSIFICATION');
+      } else {
+        setCurrentView('GAME');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => {
     async function initApp() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -35,7 +74,22 @@ export default function App() {
       const allowSessionReset = import.meta.env.VITE_ALLOW_SESSION_RESET === 'true';
       const effectiveToken = token || (allowSessionReset ? 'demo' : null);
 
-      const validation = await validateUserToken(effectiveToken, activePhase);
+      // 1. Cargar la configuración autorizada desde la pestaña 'Configuracion' de Google Sheets
+      const config = await fetchAppConfig();
+      setAppConfig(config);
+
+      // 🛡️ Si la fase activa está marcada como cerrada en Google Sheets
+      if (config.isPhaseClosed) {
+        if (effectiveToken) {
+          const quickVal = await validateUserToken(effectiveToken, config.activePhase);
+          if (quickVal.isValid) setCurrentUser(quickVal.user);
+        }
+        setGameState('PHASE_CLOSED');
+        return;
+      }
+
+      // 2. Validar token del colaborador
+      const validation = await validateUserToken(effectiveToken, config.activePhase);
 
       if (!validation.isValid) {
         setGameState('INVALID_TOKEN');
@@ -44,8 +98,8 @@ export default function App() {
 
       setCurrentUser(validation.user);
 
-      // Cargar todas las preguntas sanitizadas de la fase activa desde el backend
-      const allPhaseQuestions = await loadTriviaQuestions(activePhase, shuffleQuestions);
+      // 3. Cargar todas las preguntas sanitizadas de la fase activa
+      const allPhaseQuestions = await loadTriviaQuestions(config.activePhase, config.shuffleQuestions);
       setTotalPhaseQuestionsCount(allPhaseQuestions.length);
 
       // El progreso ya viene verificado desde el backend seguro
@@ -81,12 +135,12 @@ export default function App() {
     }
 
     initApp();
-  }, [activePhase, shuffleQuestions]);
+  }, []);
 
   // Al presionar Comenzar, iniciar cuenta regresiva
   const handleTriggerCountdown = async () => {
     if (!questions || questions.length === 0) {
-      const loaded = await loadTriviaQuestions(activePhase, shuffleQuestions);
+      const loaded = await loadTriviaQuestions(appConfig.activePhase, appConfig.shuffleQuestions);
       setQuestions(loaded);
     }
     setGameSessionId(Date.now());
@@ -106,11 +160,18 @@ export default function App() {
     setAnswersLog(prev => [...prev, answerData]);
 
     if (currentUser?.legajo) {
-      const serverResult = await recordPhaseQuestionAnswer(currentUser.legajo, activePhase, answerData);
+      const serverResult = await recordPhaseQuestionAnswer(currentUser.legajo, appConfig.activePhase, answerData);
       if (serverResult && serverResult.isCorrect) {
         setUserScore(prev => prev + (serverResult.pointsEarned || 0));
         setCorrectAnswersCount(prev => prev + 1);
       }
+    }
+  };
+
+  // 🛡️ Mecanismo Antitrampa: Asentar en el servidor el inicio de la pregunta
+  const handleQuestionStart = async (questionId) => {
+    if (currentUser?.legajo) {
+      await markQuestionStarted(currentUser.legajo, appConfig.activePhase, questionId);
     }
   };
 
@@ -121,7 +182,7 @@ export default function App() {
     setPlayedDate(null);
     setGameSessionId(Date.now());
 
-    const loadedQuestions = await loadTriviaQuestions(activePhase, shuffleQuestions);
+    const loadedQuestions = await loadTriviaQuestions(appConfig.activePhase, appConfig.shuffleQuestions);
     setQuestions(loadedQuestions);
     setGameState('SPLASH');
   };
@@ -130,77 +191,150 @@ export default function App() {
     setGameState('FINISHED');
   };
 
+  // Si está en modo PROYECCIÓN: Pantalla completa cinematográfica 100% limpia para proyector
+  if (currentView === 'PROJECTION') {
+    return (
+      <ProjectionView
+        appConfig={appConfig}
+        onOpenConfig={() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('view', 'admin');
+          window.history.pushState({}, '', url.toString());
+          setCurrentView('ADMIN');
+        }}
+        onBackToGame={() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('proyeccion');
+          url.searchParams.delete('view');
+          window.history.pushState({}, '', url.toString());
+          setCurrentView('GAME');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-layout relative overflow-hidden">
       {/* Fondo de rayos rectos giratorios reactivo en todas las pantallas */}
-      <SunburstBackground screenKey={gameState} />
+      <SunburstBackground screenKey={currentView === 'GAME' ? gameState : currentView} />
 
-      {/* Header superior limpio */}
-      <Header />
+      {/* Header superior con botones de navegación */}
+      <Header
+        currentView={currentView}
+        onOpenClassification={() => setCurrentView('PUBLIC_CLASSIFICATION')}
+      />
 
-      {/* Contenido Principal */}
-      <main className="app-main">
-        {gameState === 'LOADING' && (
-          <div className="flex flex-col items-center gap-5 text-white py-16">
-            <div className="w-24 h-24 rounded-3xl p-4 bg-white shadow-2xl flex items-center justify-center animate-soft-pulse">
-              <img src="/logo-donyeyo.svg" alt="Cargando" className="w-full h-full object-contain" />
-            </div>
-            <div className="flex items-center gap-3 text-base text-slate-100 font-semibold tracking-wide mt-2">
-              <RefreshCw size={18} className="animate-spin text-red-500" />
-              <span>Cargando Trivia de Inocuidad...</span>
-            </div>
-          </div>
-        )}
-
-        {gameState === 'SPLASH' && (
-          <SplashIntro
-            user={currentUser}
-            totalQuestions={totalPhaseQuestionsCount || questions.length}
-            pendingQuestionsCount={questions.length}
-            isResuming={answersLog && answersLog.length > 0}
-            onStartGame={handleTriggerCountdown}
+      {/* Contenido Principal según Vista Activa */}
+      <main className={`app-main ${currentView !== 'GAME' ? 'app-main--wide' : ''}`}>
+        {/* ================================================================= */}
+        {/* VISTA 1: PANEL DE ADMINISTRACIÓN                                   */}
+        {/* ================================================================= */}
+        {currentView === 'ADMIN' && (
+          <AdminClassificationView
+            appConfig={appConfig}
+            onBackToGame={() => {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('admin');
+              url.searchParams.delete('view');
+              window.history.pushState({}, '', url.toString());
+              setCurrentView('GAME');
+            }}
           />
         )}
 
-        {gameState === 'COUNTDOWN' && (
-          <CountdownIntro
-            onCountdownComplete={handleStartGame}
+        {/* ================================================================= */}
+        {/* VISTA 2: CLASIFICACIÓN PÚBLICA Y PODIO                             */}
+        {/* ================================================================= */}
+        {currentView === 'PUBLIC_CLASSIFICATION' && (
+          <PublicClassificationView
+            appConfig={appConfig}
+            onBackToGame={() => {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('clasificacion');
+              url.searchParams.delete('ranking');
+              url.searchParams.delete('view');
+              window.history.pushState({}, '', url.toString());
+              setCurrentView('GAME');
+            }}
           />
         )}
 
-        {gameState === 'PLAYING' && (
-          <TriviaGame
-            key={gameSessionId}
-            questions={questions}
-            timePerQuestion={timePerQuestion}
-            onFinishGame={handleFinishGame}
-            onAnswerSubmit={handleAnswerSubmit}
-          />
-        )}
+        {/* ================================================================= */}
+        {/* VISTA 3: TRIVIA / JUEGO TRADICIONAL                                */}
+        {/* ================================================================= */}
+        {currentView === 'GAME' && (
+          <>
+            {gameState === 'LOADING' && (
+              <div className="flex flex-col items-center gap-5 text-white py-16">
+                <div className="w-24 h-24 rounded-3xl p-4 bg-white shadow-2xl flex items-center justify-center animate-soft-pulse">
+                  <img src="/logo-donyeyo.svg" alt="Cargando" className="w-full h-full object-contain" />
+                </div>
+                <div className="flex items-center gap-3 text-base text-slate-100 font-semibold tracking-wide mt-2">
+                  <RefreshCw size={18} className="animate-spin text-red-500" />
+                  <span>Cargando Trivia de Inocuidad...</span>
+                </div>
+              </div>
+            )}
 
-        {gameState === 'FINISHED' && (
-          <GameOver
-            user={currentUser}
-            totalQuestions={totalPhaseQuestionsCount || questions.length}
-            answeredQuestions={answersLog.filter(a => a.selectedOptionId !== null && a.selectedOptionId !== undefined).length}
-            totalTime={totalElapsedTime}
-          />
-        )}
+            {gameState === 'SPLASH' && (
+              <SplashIntro
+                user={currentUser}
+                totalQuestions={totalPhaseQuestionsCount || questions.length}
+                pendingQuestionsCount={questions.length}
+                isResuming={answersLog && answersLog.length > 0}
+                onStartGame={handleTriggerCountdown}
+              />
+            )}
 
-        {gameState === 'LOCKED' && (
-          <PhaseLocked
-            user={currentUser}
-            playedDate={playedDate}
-            isTokenInvalid={false}
-            allowReset={import.meta.env.VITE_ALLOW_SESSION_RESET === 'true'}
-            onResetSession={handleResetSession}
-          />
-        )}
+            {gameState === 'COUNTDOWN' && (
+              <CountdownIntro
+                onCountdownComplete={handleStartGame}
+              />
+            )}
 
-        {gameState === 'INVALID_TOKEN' && (
-          <PhaseLocked
-            isTokenInvalid={true}
-          />
+            {gameState === 'PLAYING' && (
+              <TriviaGame
+                key={gameSessionId}
+                questions={questions}
+                timePerQuestion={appConfig.timePerQuestion}
+                userLegajo={currentUser?.legajo}
+                activePhase={appConfig.activePhase}
+                onFinishGame={handleFinishGame}
+                onAnswerSubmit={handleAnswerSubmit}
+                onQuestionStart={handleQuestionStart}
+              />
+            )}
+
+            {gameState === 'FINISHED' && (
+              <GameOver
+                user={currentUser}
+                totalQuestions={totalPhaseQuestionsCount || questions.length}
+                answeredQuestions={answersLog.filter(a => a.selectedOptionId !== null && a.selectedOptionId !== undefined).length}
+                totalTime={totalElapsedTime}
+                hideAnswered={appConfig.hideSummaryAnswered}
+                hideTime={appConfig.hideSummaryTime}
+                onViewClassification={() => setCurrentView('PUBLIC_CLASSIFICATION')}
+              />
+            )}
+
+            {(gameState === 'LOCKED' || gameState === 'PHASE_CLOSED') && (
+              <PhaseLocked
+                user={currentUser}
+                playedDate={playedDate}
+                isTokenInvalid={false}
+                isPhaseClosed={gameState === 'PHASE_CLOSED'}
+                phaseNumber={appConfig.activePhase}
+                allowReset={import.meta.env.VITE_ALLOW_SESSION_RESET === 'true'}
+                onResetSession={handleResetSession}
+              />
+            )}
+
+            {gameState === 'INVALID_TOKEN' && (
+              <PhaseLocked
+                isTokenInvalid={true}
+              />
+            )}
+          </>
         )}
       </main>
     </div>

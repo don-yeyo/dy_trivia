@@ -2,14 +2,15 @@
 // NETLIFY FUNCTION: SUBMIT ANSWER (/api/submit-answer)
 // Evalúa en el servidor si la respuesta es correcta y la persiste en Google Sheets
 // ==============================================================================
-import { fetchSheetValues, sendToAppsScript, getServerEnv } from './utils/googleSheets.js';
+import { fetchSheetValues, sendToAppsScript, getServerEnv, fetchTriviaConfig } from './utils/googleSheets.js';
 
 export async function handler(event, context) {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Cache-Control': 'no-cache, no-store, must-revalidate'
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -25,8 +26,31 @@ export async function handler(event, context) {
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
-    const { legajo, phase = 1, questionId, selectedOptionId, timeSpent = 0 } = body;
+    let body = {};
+    if (typeof event.body === 'string') {
+      try {
+        body = JSON.parse(event.body);
+      } catch (e) {
+        body = {};
+      }
+    } else if (typeof event.body === 'object' && event.body !== null) {
+      body = event.body;
+    }
+
+    const { legajo, questionId, selectedOptionId = null, timeSpent = 0, isAborted = false } = body;
+
+    // 🛡️ Seguridad en Servidor: Validar contra la configuración autorizada de Google Sheets
+    const config = await fetchTriviaConfig();
+
+    if (config.isPhaseClosed) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ error: 'La fase actual se encuentra cerrada. No se admiten nuevas respuestas.' })
+      };
+    }
+
+    const phase = config.activePhase;
 
     if (!legajo || questionId === undefined) {
       return {
@@ -78,7 +102,7 @@ export async function handler(event, context) {
     // 3. Evaluar acierto y cálculo de puntaje en servidor
     const isCorrect = selectedOptionId !== null && selectedOptionId !== undefined && parseInt(selectedOptionId, 10) === correctOptionId;
     const basePoints = parseInt(questionRow.puntos || questionRow.points || '100', 10);
-    const timeLimit = parseInt(getServerEnv('TIME_PER_QUESTION') || '45', 10);
+    const timeLimit = parseInt(config.timePerQuestion || '45', 10);
 
     let pointsEarned = 0;
     if (isCorrect) {
