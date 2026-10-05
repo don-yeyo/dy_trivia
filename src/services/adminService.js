@@ -70,9 +70,9 @@ export async function loginAdmin(username, password) {
   }
 
   // Fallback para modo desarrollo local si no está corriendo netlify dev:
-  // Permite probar con admin / yeyo2026 (o el configurado en DEV)
+  // Permite probar con admin / admin o admin / dev en desarrollo local
   if (import.meta.env.DEV) {
-    if (username === 'admin' && (password === 'superpassword123' || password === 'admin' || password === 'yeyo2026')) {
+    if (username === 'admin' && (password === 'admin' || password === 'dev')) {
       const mockToken = `mock_token_${Date.now()}`;
       saveAdminSession(mockToken, username);
       return { success: true, token: mockToken, username };

@@ -73,8 +73,8 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
 
 | Variable | Alcance | Descripción | Valores Ejemplo |
 | :--- | :--- | :--- | :--- |
-| `ADMIN_USER` | 🔒 Backend | Usuario del Administrador para determinar clasificados | `"inocuadmin"` |
-| `ADMIN_PASSWORD` | 🔒 Backend | Contraseña del Administrador (NUNCA expuesta al cliente) | `"superpassword123"` |
+| `ADMIN_USER` | 🔒 Backend | Usuario del Administrador para determinar clasificados | `"usuario_admin"` |
+| `ADMIN_PASSWORD` | 🔒 Backend | Contraseña del Administrador (NUNCA expuesta al cliente) | `"contraseña_segura_aqui"` |
 | `SEED_PHRASE` | 🔒 Backend | Frase semilla para cálculo y validación criptográfica de enlaces | `"DY_INOCUIDAD_2026_CALIDAD_Y_COMPROMISO"` |
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | 🔒 Backend | ID de la planilla de Google Sheets | `"1txRiWnszPxjH0iixtr_zwHDFYAiArOyIaVlylXECJCw"` |
 | `GOOGLE_SHEETS_API_KEY` | 🔒 Backend | Clave API de Google Cloud Console (Sheets v4) | `"AIzaSy..."` |

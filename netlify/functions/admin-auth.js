@@ -33,9 +33,18 @@ export async function handler(event, context) {
 
     // Obtener credenciales estrictamente desde las variables de entorno del servidor
     // NUNCA expuestas al frontend (sin prefijo VITE_)
-    const envUser = getServerEnv('ADMIN_USER') || 'admin';
-    const envPass = getServerEnv('ADMIN_PASSWORD') || 'superpassword123';
+    const envUser = getServerEnv('ADMIN_USER');
+    const envPass = getServerEnv('ADMIN_PASSWORD');
     const seedPhrase = getServerEnv('SEED_PHRASE') || 'DY_INOCUIDAD_2026_CALIDAD_Y_COMPROMISO';
+
+    if (!envUser || !envPass) {
+      console.error('[admin-auth] ADMIN_USER o ADMIN_PASSWORD no están configurados en el servidor.');
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: 'Configuración de credenciales de administrador no disponible en el servidor' })
+      };
+    }
 
     if (!username || !password) {
       return {
