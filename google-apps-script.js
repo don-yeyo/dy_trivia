@@ -75,6 +75,7 @@ function doPost(e) {
 
 /**
  * Actualiza o inserta claves en la pestaña 'Configuracion'
+ * Soporta de manera transparente pestañas con o sin fila de encabezado.
  */
 function updateConfigKeys(ss, updates) {
   var sheetConfig = ss.getSheetByName("Configuracion");
@@ -85,29 +86,35 @@ function updateConfigKeys(ss, updates) {
   }
 
   var data = sheetConfig.getDataRange().getValues();
-  if (data.length <= 1) {
+  if (!data || data.length === 0) {
     for (var k in updates) {
       sheetConfig.appendRow([k, updates[k], "Parámetro configurado desde Admin"]);
     }
     return;
   }
 
-  var headerRow = data[0];
+  // Detectar inteligentemente si la primera fila es encabezado o dato real
+  var firstCell = String(data[0][0] || '').toLowerCase().trim();
+  var isHeader = (firstCell === "clave" || firstCell === "key" || firstCell === "parametro");
+  var startRow = isHeader ? 1 : 0;
+
   var keyColIndex = 0; // Columna A por defecto
   var valColIndex = 1; // Columna B por defecto
 
-  for (var c = 0; c < headerRow.length; c++) {
-    var h = String(headerRow[c]).toLowerCase().trim();
-    if (h === "clave" || h === "key" || h === "parametro") keyColIndex = c;
-    if (h === "valor" || h === "value") valColIndex = c;
+  if (isHeader) {
+    for (var c = 0; c < data[0].length; c++) {
+      var h = String(data[0][c]).toLowerCase().trim();
+      if (h === "clave" || h === "key" || h === "parametro") keyColIndex = c;
+      if (h === "valor" || h === "value") valColIndex = c;
+    }
   }
 
-  // Mapear filas existentes por clave
+  // Mapear filas existentes por clave (1-based para getRange de Google Sheets)
   var existingKeys = {};
-  for (var r = 1; r < data.length; r++) {
+  for (var r = startRow; r < data.length; r++) {
     var rowKey = String(data[r][keyColIndex]).trim().toUpperCase();
     if (rowKey) {
-      existingKeys[rowKey] = r + 1; // Fila 1-based para getRange
+      existingKeys[rowKey] = r + 1; // Fila 1-based
     }
   }
 

@@ -98,14 +98,28 @@ export async function handler(event, context) {
         frontendOverrides.hideSummaryTime = val;
       }
 
-      await updateTriviaConfig(sheetUpdates, frontendOverrides);
+      const synced = await updateTriviaConfig(sheetUpdates, frontendOverrides);
       const updatedConfig = await fetchTriviaConfig();
+
+      if (!synced) {
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            syncedWithSheet: false,
+            warning: 'La configuración se actualizó en el servidor Netlify pero no se pudo sincronizar con Google Sheets. Verifique la implementación del webhook en Google Apps Script.',
+            config: updatedConfig
+          })
+        };
+      }
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
+          syncedWithSheet: true,
           message: 'Configuración actualizada exitosamente en Google Sheets',
           config: updatedConfig
         })

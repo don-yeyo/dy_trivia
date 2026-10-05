@@ -193,18 +193,22 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
 
       const result = await saveAppConfig(configPayload);
       if (result && result.success) {
-        setSaveSuccessMsg('¡Configuración guardada y sincronizada con Google Sheets exitosamente!');
+        if (result.syncedWithSheet) {
+          setSaveSuccessMsg('¡Configuración guardada y sincronizada con Google Sheets exitosamente!');
+        } else {
+          setSaveSuccessMsg(`⚠️ Configuración aplicada en la sesión, pero Google Sheets no se actualizó: ${result.warning || 'Webhook no respondió'}`);
+        }
         // Recargar vista previa con el cupo y fase actualizados
         const res = await fetchClassification(activePhase, topCount);
         if (res && (res.data || res.previewData)) {
           setClassificationData(res.data || res.previewData);
         }
       } else {
-        setSaveSuccessMsg('Configuración guardada localmente.');
+        setSaveSuccessMsg(`❌ No se pudo guardar la configuración: ${result?.error || 'Error de conexión o autenticación'}`);
       }
     } catch (err) {
       console.error('Error guardando configuración:', err);
-      setSaveSuccessMsg('Ocurrió un error al guardar la configuración.');
+      setSaveSuccessMsg(`❌ Ocurrió un error al guardar: ${err.message}`);
     } finally {
       setIsSavingConfig(false);
       setTimeout(() => setSaveSuccessMsg(''), 5000);

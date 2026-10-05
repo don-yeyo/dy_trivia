@@ -81,15 +81,35 @@ export function generateUserHash(legajo, apellido, nombre) {
  */
 export async function sendToAppsScript(payload) {
   const endpoint = getServerEnv('GOOGLE_APPS_SCRIPT_ENDPOINT');
-  if (!endpoint) return false;
+  if (!endpoint) {
+    console.warn('[sendToAppsScript] GOOGLE_APPS_SCRIPT_ENDPOINT no está configurada.');
+    return false;
+  }
 
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      redirect: 'follow'
     });
-    return response.ok;
+
+    if (!response.ok) {
+      console.error(`[sendToAppsScript] Error HTTP de Apps Script: ${response.status}`);
+      return false;
+    }
+
+    const data = await response.json().catch(() => null);
+    if (data && data.status === 'error') {
+      console.error('[sendToAppsScript] Error reportado por Apps Script:', data.message);
+      return false;
+    }
+
+    if (payload.action === 'UPDATE_CONFIG' && data && data.message === 'OK') {
+      console.warn('[sendToAppsScript] El Webhook respondió OK pero no procesó UPDATE_CONFIG. Requiere desplegar la nueva versión en Google Apps Script.');
+    }
+
+    return true;
   } catch (err) {
     console.error('Error enviando a Apps Script:', err);
     return false;

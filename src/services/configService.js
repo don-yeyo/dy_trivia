@@ -176,18 +176,33 @@ export async function saveAppConfig(updates = {}) {
       body: JSON.stringify(updates)
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.success && data.config) {
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.success) {
+      if (data.config) {
         try {
           localStorage.setItem('dy_trivia_app_config', JSON.stringify(data.config));
         } catch (e) {}
-        return { success: true, config: data.config };
       }
+      return {
+        success: true,
+        syncedWithSheet: data.syncedWithSheet !== false,
+        warning: data.warning || '',
+        message: data.message || '',
+        config: data.config || updates
+      };
     }
+
+    // Fallo de autorización (403), servidor (500) u otro
+    const errMsg = data.error || (res.status === 403 ? 'Sesión de administrador inválida o expirada. Por favor vuelva a iniciar sesión.' : `Error del servidor (${res.status})`);
+    return {
+      success: false,
+      syncedWithSheet: false,
+      error: errMsg,
+      config: updates
+    };
   } catch (err) {
     console.warn('Error guardando en backend /api/config, usando persistencia local:', err);
+    return { success: false, syncedWithSheet: false, error: err.message, config: updates };
   }
-
-  return { success: true, config: updates };
 }
