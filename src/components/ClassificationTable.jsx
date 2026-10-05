@@ -57,10 +57,10 @@ export default function ClassificationTable({
         </div>
 
         {/* Tabs de Filtro */}
-        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           <button
             onClick={() => setFilterMode('ALL')}
-            className={`px-4 sm:px-5 py-3 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex-1 sm:flex-none px-3 sm:px-5 py-2.5 sm:py-3 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap text-center ${
               filterMode === 'ALL'
                 ? 'bg-red-600 text-white shadow-md'
                 : 'bg-white/10 text-slate-300 hover:bg-white/20'
@@ -70,18 +70,19 @@ export default function ClassificationTable({
           </button>
           <button
             onClick={() => setFilterMode('QUALIFIED')}
-            className={`px-4 sm:px-5 py-3 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+            className={`flex-1 sm:flex-none px-3 sm:px-5 py-2.5 sm:py-3 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
               filterMode === 'QUALIFIED'
                 ? 'bg-emerald-600 text-white shadow-md'
                 : 'bg-white/10 text-slate-300 hover:bg-white/20'
             }`}
           >
-            <Flame size={15} className="text-yellow-300" />
-            <span>Top {topCount} Clasificados</span>
+            <Flame size={14} className="text-yellow-300" />
+            <span className="hidden sm:inline">Top {topCount} Clasificados</span>
+            <span className="sm:hidden">Top {topCount}</span>
           </button>
           <button
             onClick={() => setFilterMode('REST')}
-            className={`px-4 sm:px-5 py-3 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex-1 sm:flex-none px-3 sm:px-5 py-2.5 sm:py-3 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap text-center ${
               filterMode === 'REST'
                 ? 'bg-slate-700 text-white shadow-md'
                 : 'bg-white/10 text-slate-300 hover:bg-white/20'
@@ -94,18 +95,18 @@ export default function ClassificationTable({
 
       {/* Contenedor de la Lista Gamer */}
       <div className="glass-card rounded-2xl border border-white/20 shadow-2xl overflow-hidden backdrop-blur-md">
-        {/* Cabecera de la Tabla */}
-        <div className="grid grid-cols-12 gap-2 px-5 sm:px-8 py-4 sm:py-5 bg-slate-900/90 border-b border-white/10 text-xs sm:text-sm font-black text-slate-300 uppercase tracking-wider text-left">
-          <div className="col-span-2 sm:col-span-1 text-center">Pos.</div>
-          <div className="col-span-6 sm:col-span-6">Colaborador</div>
-          <div className="col-span-2 sm:col-span-3 text-right">Puntaje</div>
-          <div className="col-span-2 sm:col-span-2 text-right">Tiempo</div>
+        {/* Cabecera de la Tabla (EXCLUSIVA DESKTOP) */}
+        <div className="hidden sm:grid sm:grid-cols-12 sm:gap-2 px-8 py-5 bg-slate-900/90 border-b border-white/10 text-sm font-black text-slate-300 uppercase tracking-wider text-left">
+          <div className="sm:col-span-1 text-center">Pos.</div>
+          <div className="sm:col-span-6">Colaborador</div>
+          <div className="sm:col-span-3 text-right">Puntaje</div>
+          <div className="sm:col-span-2 text-right">Tiempo</div>
         </div>
 
         {/* Filas de Participantes */}
         <div className="divide-y divide-white/5 max-h-[520px] overflow-y-auto">
           {filteredList.length === 0 ? (
-            <div className="p-10 text-center text-slate-400 text-sm font-medium">
+            <div className="p-8 sm:p-10 text-center text-slate-400 text-xs sm:text-sm font-medium">
               No se encontraron participantes que coincidan con la búsqueda.
             </div>
           ) : (
@@ -114,17 +115,80 @@ export default function ClassificationTable({
 
               return (
                 <React.Fragment key={p.legajo || idx}>
+                  {/* ========================================================= */}
+                  {/* VISTA MOBILE: Fila Flex Compacta, Clara y Sin Desbordes   */}
+                  {/* ========================================================= */}
                   <div
-                    className={`grid grid-cols-12 gap-2 px-5 sm:px-8 py-4 sm:py-5 items-center text-xs sm:text-sm transition-colors ${
+                    className={`sm:hidden p-3.5 flex items-center justify-between gap-2.5 transition-colors ${
+                      isTopQualified
+                        ? 'bg-slate-900/40 hover:bg-white/10'
+                        : 'bg-slate-950/40 hover:bg-white/5 opacity-80'
+                    }`}
+                  >
+                    {/* Posición con Badge */}
+                    <div className="shrink-0">
+                      <span
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${
+                          p.rank === 1
+                            ? 'bg-yellow-400 text-slate-950 shadow-md shadow-yellow-400/30'
+                            : p.rank === 2
+                            ? 'bg-slate-300 text-slate-950 shadow-md shadow-slate-300/30'
+                            : p.rank === 3
+                            ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                            : isTopQualified
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        #{p.rank}
+                      </span>
+                    </div>
+
+                    {/* Nombre y Sector */}
+                    <div className="flex-1 min-w-0 pr-1">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="font-bold text-white text-xs truncate">
+                          {p.nombre} {p.apellido}
+                        </span>
+                        {isTopQualified && (
+                          <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[9px] font-black uppercase">
+                            Top
+                          </span>
+                        )}
+                      </div>
+                      {p.sector && (
+                        <span className="text-[10px] text-slate-400 block truncate mt-0.5">
+                          {p.sector}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Puntaje y Tiempo */}
+                    <div className="text-right shrink-0">
+                      <div className="font-black text-yellow-300 text-xs">
+                        {p.score || 0} <span className="text-[9px] font-bold text-yellow-400/70">pts</span>
+                      </div>
+                      <div className="text-[10px] text-slate-300 font-mono flex items-center justify-end gap-1 mt-0.5">
+                        <Clock size={10} className="text-slate-400" />
+                        <span>{formatTime(p.totalTime)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ========================================================= */}
+                  {/* VISTA DESKTOP: Grid de 12 Columnas [100% INTACTA]        */}
+                  {/* ========================================================= */}
+                  <div
+                    className={`hidden sm:grid sm:grid-cols-12 sm:gap-2 px-8 py-5 items-center text-sm transition-colors ${
                       isTopQualified
                         ? 'hover:bg-white/10 bg-slate-900/30'
                         : 'hover:bg-white/5 bg-slate-950/40 opacity-75'
                     }`}
                   >
                     {/* Posición / Rank con Badge Gamer */}
-                    <div className="col-span-2 sm:col-span-1 flex items-center justify-center">
+                    <div className="sm:col-span-1 flex items-center justify-center">
                       <span
-                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-black text-xs sm:text-sm ${
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm ${
                           p.rank === 1
                             ? 'bg-yellow-400 text-slate-950 shadow-md shadow-yellow-400/30'
                             : p.rank === 2
@@ -141,41 +205,41 @@ export default function ClassificationTable({
                     </div>
 
                     {/* Colaborador */}
-                    <div className="col-span-6 sm:col-span-6 flex flex-col justify-center min-w-0 pr-2">
+                    <div className="sm:col-span-6 flex flex-col justify-center min-w-0 pr-2">
                       <div className="flex items-center gap-2 truncate">
-                        <span className="font-bold text-white truncate text-xs sm:text-base">
+                        <span className="font-bold text-white truncate text-base">
                           {p.nombre} {p.apellido}
                         </span>
                         {isTopQualified && (
-                          <span className="shrink-0 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-black uppercase hidden sm:inline-block">
+                          <span className="shrink-0 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-black uppercase inline-block">
                             Clasificado
                           </span>
                         )}
                       </div>
                       {p.sector && (
-                        <span className="text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
+                        <span className="text-xs text-slate-400 mt-0.5 truncate">
                           {p.sector}
                         </span>
                       )}
                     </div>
 
                     {/* Puntaje */}
-                    <div className="col-span-2 sm:col-span-3 text-right">
-                      <span className="font-black text-yellow-300 text-sm sm:text-lg">
+                    <div className="sm:col-span-3 text-right">
+                      <span className="font-black text-yellow-300 text-lg">
                         {p.score || 0}
                       </span>
-                      <span className="text-[10px] sm:text-xs text-slate-400 block font-normal">
+                      <span className="text-xs text-slate-400 block font-normal">
                         pts
                       </span>
                     </div>
 
                     {/* Tiempo */}
-                    <div className="col-span-2 sm:col-span-2 text-right">
-                      <span className="font-semibold text-slate-200 text-xs sm:text-sm flex items-center justify-end gap-1.5">
-                        <Clock size={13} className="text-slate-400 hidden sm:inline" />
+                    <div className="sm:col-span-2 text-right">
+                      <span className="font-semibold text-slate-200 text-sm flex items-center justify-end gap-1.5">
+                        <Clock size={13} className="text-slate-400 inline" />
                         {formatTime(p.totalTime)}
                       </span>
-                      <span className="text-[11px] sm:text-xs text-emerald-400 block mt-0.5 font-medium">
+                      <span className="text-xs text-emerald-400 block mt-0.5 font-medium">
                         {p.correctCount || 0} aciertos
                       </span>
                     </div>

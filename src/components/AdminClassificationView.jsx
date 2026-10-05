@@ -15,11 +15,20 @@ import {
   Sparkles,
   ArrowLeft,
   Sliders,
-  Tv
+  Tv,
+  Save,
+  Clock,
+  Shuffle,
+  FileSpreadsheet,
+  CheckCircle2,
+  AlertCircle,
+  Download,
+  UserPlus
 } from 'lucide-react';
 import Podium from './Podium';
 import ClassificationTable from './ClassificationTable';
 import ProjectionView from './ProjectionView';
+import ImportParticipantsModal from './ImportParticipantsModal';
 import {
   loginAdmin,
   getStoredAdminToken,
@@ -28,11 +37,10 @@ import {
   fetchClassification,
   resetClassification
 } from '../services/adminService';
+import { saveAppConfig, fetchAppConfig } from '../services/configService';
+import { exportClassificationToExcel } from '../services/exportExcelService';
 
 export default function AdminClassificationView({ onBackToGame, appConfig }) {
-  const initialTopCount = appConfig?.classificationTopCount || 30;
-  const [activePhase, setActivePhase] = useState(appConfig?.activePhase || 1);
-
   // Estados de autenticación
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminUsername, setAdminUsername] = useState('');
@@ -41,11 +49,27 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Modal de importación de participantes
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
   // Modo del admin: 'CONFIG' (panel técnico) o 'PROJECTION' (pantalla limpia para proyector)
   const [adminMode, setAdminMode] = useState('CONFIG');
 
-  // Estados de clasificación
-  const [topCount, setTopCount] = useState(initialTopCount);
+  // Estados de configuración de Google Sheets
+  const [activePhase, setActivePhase] = useState(appConfig?.activePhase || 1);
+  const [topCount, setTopCount] = useState(appConfig?.classificationTopCount || 30);
+  const [isPhaseClosed, setIsPhaseClosed] = useState(appConfig?.isPhaseClosed || false);
+  const [timePerQuestion, setTimePerQuestion] = useState(appConfig?.timePerQuestion ?? 30);
+  const [shuffleQuestions, setShuffleQuestions] = useState(appConfig?.shuffleQuestions ?? true);
+  const [showPartialInTable, setShowPartialInTable] = useState(appConfig?.showPartialInTable ?? true);
+  const [showUnansweredInTable, setShowUnansweredInTable] = useState(appConfig?.showUnansweredInTable ?? false);
+  const [hideSummaryAnswered, setHideSummaryAnswered] = useState(appConfig?.hideSummaryAnswered ?? false);
+  const [hideSummaryTime, setHideSummaryTime] = useState(appConfig?.hideSummaryTime ?? false);
+
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+
+  // Estados de clasificación y datos
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [publishedAt, setPublishedAt] = useState(null);
@@ -66,17 +90,39 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
   const loadData = async (token) => {
     setIsLoadingData(true);
     try {
-      const res = await fetchClassification(activePhase, topCount);
+      // 1. Obtener configuración fresca desde la API / Google Sheets
+      const freshConfig = await fetchAppConfig();
+      let currentPhase = activePhase;
+      let currentTop = topCount;
+
+      if (freshConfig) {
+        if (freshConfig.activePhase) {
+          setActivePhase(freshConfig.activePhase);
+          currentPhase = freshConfig.activePhase;
+        }
+        if (freshConfig.classificationTopCount) {
+          setTopCount(freshConfig.classificationTopCount);
+          currentTop = freshConfig.classificationTopCount;
+        }
+        if (freshConfig.isPhaseClosed !== undefined) setIsPhaseClosed(freshConfig.isPhaseClosed);
+        if (freshConfig.timePerQuestion !== undefined) setTimePerQuestion(freshConfig.timePerQuestion);
+        if (freshConfig.shuffleQuestions !== undefined) setShuffleQuestions(freshConfig.shuffleQuestions);
+        if (freshConfig.showPartialInTable !== undefined) setShowPartialInTable(freshConfig.showPartialInTable);
+        if (freshConfig.showUnansweredInTable !== undefined) setShowUnansweredInTable(freshConfig.showUnansweredInTable);
+        if (freshConfig.hideSummaryAnswered !== undefined) setHideSummaryAnswered(freshConfig.hideSummaryAnswered);
+        if (freshConfig.hideSummaryTime !== undefined) setHideSummaryTime(freshConfig.hideSummaryTime);
+      }
+
+      // 2. Cargar clasificación para la fase y cupo actuales
+      const res = await fetchClassification(currentPhase, currentTop);
       if (res) {
-        if (res.activePhase) setActivePhase(res.activePhase);
         setIsPublished(res.isPublished || false);
         setPublishedAt(res.publishedAt || null);
         const data = res.data || res.previewData;
         setClassificationData(data);
-        if (res.topCount) setTopCount(res.topCount);
       }
     } catch (e) {
-      console.warn('Error cargando clasificación:', e);
+      console.warn('Error cargando clasificación y configuración:', e);
     } finally {
       setIsLoadingData(false);
     }
@@ -127,6 +173,84 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
     navigator.clipboard.writeText(url.toString());
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleSaveConfig = async () => {
+    setIsSavingConfig(true);
+    setSaveSuccessMsg('');
+    try {
+      const configPayload = {
+        activePhase: Number(activePhase),
+        classificationTopCount: Number(topCount),
+        isPhaseClosed: Boolean(isPhaseClosed),
+        timePerQuestion: Number(timePerQuestion),
+        shuffleQuestions: Boolean(shuffleQuestions),
+        showPartialInTable: Boolean(showPartialInTable),
+        showUnansweredInTable: Boolean(showUnansweredInTable),
+        hideSummaryAnswered: Boolean(hideSummaryAnswered),
+        hideSummaryTime: Boolean(hideSummaryTime)
+      };
+
+      const result = await saveAppConfig(configPayload);
+      if (result && result.success) {
+        setSaveSuccessMsg('¡Configuración guardada y sincronizada con Google Sheets exitosamente!');
+        // Recargar vista previa con el cupo y fase actualizados
+        const res = await fetchClassification(activePhase, topCount);
+        if (res && (res.data || res.previewData)) {
+          setClassificationData(res.data || res.previewData);
+        }
+      } else {
+        setSaveSuccessMsg('Configuración guardada localmente.');
+      }
+    } catch (err) {
+      console.error('Error guardando configuración:', err);
+      setSaveSuccessMsg('Ocurrió un error al guardar la configuración.');
+    } finally {
+      setIsSavingConfig(false);
+      setTimeout(() => setSaveSuccessMsg(''), 5000);
+    }
+  };
+
+  const handlePhaseChange = async (newPhase) => {
+    setActivePhase(newPhase);
+    setIsLoadingData(true);
+    try {
+      const res = await fetchClassification(newPhase, topCount);
+      if (res) {
+        setIsPublished(res.isPublished || false);
+        setPublishedAt(res.publishedAt || null);
+        setClassificationData(res.data || res.previewData);
+      }
+    } catch (e) {
+      console.warn('Error al cambiar de fase en admin:', e);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  const handleExportExcel = () => {
+    try {
+      if (!classificationData) {
+        setStatusMessage('No hay datos de clasificación disponibles para exportar.');
+        setTimeout(() => setStatusMessage(''), 4000);
+        return;
+      }
+      const res = exportClassificationToExcel({
+        phase: activePhase,
+        topCount,
+        classificationData,
+        publishedAt,
+        adminUsername
+      });
+      if (res && res.success) {
+        setStatusMessage(`¡Planilla Excel exportada con éxito: ${res.fileName}!`);
+        setTimeout(() => setStatusMessage(''), 5000);
+      }
+    } catch (err) {
+      console.error('Error exportando clasificación a Excel:', err);
+      setStatusMessage(err.message || 'Error al exportar a Excel.');
+      setTimeout(() => setStatusMessage(''), 5000);
+    }
   };
 
   // =========================================================================
@@ -290,6 +414,16 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
             <span>{isPublished ? 'Publicada Oficialmente' : 'Borrador / No Publicada'}</span>
           </div>
 
+          {/* Botón Importar Participantes CSV */}
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white border border-blue-400/50 text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-2 transform hover:scale-105 active:scale-95"
+            title="Importar lista de colaboradores desde archivo CSV a Google Sheets"
+          >
+            <UserPlus size={16} />
+            <span className="hidden sm:inline">Importar CSV</span>
+          </button>
+
           <button
             onClick={onBackToGame}
             className="p-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer border border-white/20 shadow"
@@ -334,7 +468,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
 
         <button
           onClick={() => {
-            window.open(`${window.location.origin}${window.location.pathname}?view=proyeccion`, '_blank');
+            window.open(
+              `${window.location.origin}${window.location.pathname}?view=proyeccion&topCount=${topCount}&phase=${activePhase}`,
+              '_blank'
+            );
           }}
           type="button"
           className="w-full sm:w-auto px-8 py-5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-200 text-slate-950 font-black text-sm sm:text-base uppercase tracking-wider shadow-2xl transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3 shrink-0 cursor-pointer border-2 border-white"
@@ -346,17 +483,24 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
       </div>
 
       {/* =========================================================================
-          PANEL DE CONFIGURACIÓN TÉCNICA DEL ADMINISTRADOR
+          PANEL INTEGRAL DE CONFIGURACIÓN DE LA TRIVIA (PESTAÑA GOOGLE SHEETS)
           ========================================================================= */}
-      <div className="casual-card text-left shadow-2xl w-full p-6 sm:p-10 rounded-3xl mb-8 sm:mb-12">
+      <div className="casual-card text-left shadow-2xl w-full p-6 sm:p-10 rounded-3xl mb-8 sm:mb-12 border-2 border-slate-200/90">
+        {/* Cabecera del Panel */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 mb-6 sm:mb-8 border-b border-slate-200/80 gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-red-100 text-red-600">
+            <div className="p-2.5 rounded-2xl bg-red-100 text-red-600 shadow-sm">
               <Sliders size={24} />
             </div>
-            <span className="font-black text-slate-950 text-lg sm:text-2xl tracking-tight">
-              Parámetros de Clasificación
-            </span>
+            <div>
+              <span className="font-black text-slate-950 text-lg sm:text-2xl tracking-tight block">
+                Configuración Integral de la Trivia
+              </span>
+              <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
+                <FileSpreadsheet size={14} className="text-emerald-600" />
+                Sincronizado con la pestaña <strong>"Configuracion"</strong> de Google Sheets
+              </span>
+            </div>
           </div>
           {publishedAt && (
             <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3.5 py-1.5 rounded-xl border border-slate-200">
@@ -365,54 +509,358 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-          {/* Selector de cantidad de clasificados */}
-          <div className="md:col-span-6 bg-slate-50/90 p-5 sm:p-6 rounded-2xl border-2 border-slate-200/80 shadow-inner">
-            <label className="block text-xs font-black text-slate-800 uppercase tracking-wide mb-2.5">
-              Cupo de Clasificados (Top N a Seleccionar)
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="3"
-                max="500"
-                value={topCount}
-                onChange={(e) => setTopCount(Math.max(3, parseInt(e.target.value || '3', 10)))}
-                className="w-24 px-3 py-2.5 rounded-xl bg-white border-2 border-slate-300 font-black text-slate-950 text-base text-center focus:outline-none focus:border-red-600 shadow-sm"
-              />
-              <div className="flex gap-2 flex-wrap">
-                {[10, 20, 30, 50].map((num) => (
+        {/* Mensaje de confirmación de guardado */}
+        {saveSuccessMsg && (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-800 text-sm font-bold flex items-center gap-3 shadow-md animate-casual-in">
+            <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+            <span>{saveSuccessMsg}</span>
+          </div>
+        )}
+
+        {/* Bloque de Secciones de Configuración */}
+        <div className="space-y-6">
+          {/* SECCIÓN 1: FASE ACTIVA Y CUPO DE CLASIFICADOS */}
+          <div className="p-5 sm:p-6 rounded-2xl bg-slate-50 border border-slate-200/90">
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-600" />
+              Fase del Torneo y Cupo de Clasificación
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+              {/* Selector de Fase Activa */}
+              <div className="md:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wide mb-2">
+                  FASE_ACTIVA
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3].map((fase) => (
+                    <button
+                      key={fase}
+                      type="button"
+                      onClick={() => handlePhaseChange(fase)}
+                      className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                        activePhase === fase
+                          ? 'bg-red-600 text-white shadow-md'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                      }`}
+                    >
+                      Fase {fase}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  Define qué preguntas e inscriptos juegan actualmente.
+                </p>
+              </div>
+
+              {/* Estado de la Fase: Abierta vs Cerrada */}
+              <div className="md:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wide mb-2">
+                  FASE_CERRADA (Estado de Respuestas)
+                </label>
+                <div className="flex gap-2">
                   <button
-                    key={num}
                     type="button"
-                    onClick={() => setTopCount(num)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-black cursor-pointer transition-all ${
-                      topCount === num
-                        ? 'bg-red-600 text-white shadow-md'
-                        : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                    onClick={() => setIsPhaseClosed(false)}
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                      !isPhaseClosed
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                     }`}
                   >
-                    {num}
+                    Abierta
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setIsPhaseClosed(true)}
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                      isPhaseClosed
+                        ? 'bg-rose-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    }`}
+                  >
+                    Cerrada
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  {isPhaseClosed
+                    ? 'Fase cerrada: nadie más puede enviar respuestas.'
+                    : 'Fase abierta: los participantes pueden jugar.'}
+                </p>
+                {isPhaseClosed && (
+                  <button
+                    onClick={handleExportExcel}
+                    type="button"
+                    className="mt-3 w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all transform hover:scale-[1.01] active:scale-[0.99]"
+                    title="Descargar clasificación de la fase cerrada en Excel"
+                  >
+                    <FileSpreadsheet size={15} />
+                    <span>Exportar Clasificación a Excel</span>
+                    <Download size={13} className="text-emerald-200" />
+                  </button>
+                )}
+              </div>
+
+              {/* Cupo de Clasificados */}
+              <div className="md:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wide mb-2">
+                  CLASIFICACION_TOP_COUNT (Cupo)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="3"
+                    max="500"
+                    value={topCount}
+                    onChange={(e) => setTopCount(Math.max(3, parseInt(e.target.value || '3', 10)))}
+                    className="w-20 px-2.5 py-2 rounded-xl bg-slate-50 border-2 border-slate-300 font-black text-slate-950 text-sm text-center focus:outline-none focus:border-red-600"
+                  />
+                  <div className="flex gap-1 flex-wrap">
+                    {[5, 10, 20, 30].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setTopCount(num)}
+                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black cursor-pointer transition-all ${
+                          topCount === num
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  Cantidad de clasificados oficiales en la tabla y proyección.
+                </p>
               </div>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium mt-2.5">
-              Este valor determina cuántos participantes clasificarán a la siguiente fase cuando se dispare la proyección.
-            </p>
           </div>
 
-          {/* Acciones de gestión y enlace */}
-          <div className="md:col-span-6 flex flex-col sm:flex-row items-center gap-4">
+          {/* SECCIÓN 2: TIEMPOS Y PREGUNTAS */}
+          <div className="p-5 sm:p-6 rounded-2xl bg-slate-50 border border-slate-200/90">
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-600" />
+              Dinámica de Preguntas y Límites de Tiempo
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+              {/* Tiempo por Pregunta */}
+              <div className="md:col-span-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                  <Clock size={13} className="text-slate-600" />
+                  TIEMPO_POR_PREGUNTA (Segundos)
+                </label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    type="number"
+                    min="0"
+                    max="600"
+                    value={timePerQuestion}
+                    onChange={(e) => setTimePerQuestion(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                    className="w-20 px-2.5 py-2 rounded-xl bg-slate-50 border-2 border-slate-300 font-black text-slate-950 text-sm text-center focus:outline-none focus:border-red-600"
+                  />
+                  {[0, 15, 20, 30, 45].map((seg) => (
+                    <button
+                      key={seg}
+                      type="button"
+                      onClick={() => setTimePerQuestion(seg)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black cursor-pointer transition-all ${
+                        timePerQuestion === seg
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                      }`}
+                    >
+                      {seg === 0 ? 'Sin límite' : `${seg}s`}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  0 = tiempo ilimitado. Mayor a 0 activa la cuenta regresiva en cada pregunta.
+                </p>
+              </div>
+
+              {/* Mezclar Preguntas */}
+              <div className="md:col-span-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <Shuffle size={13} className="text-slate-600" />
+                    MEZCLAR_PREGUNTAS
+                  </label>
+                  <p className="text-[11px] text-slate-600 font-semibold mb-3">
+                    Presentar las preguntas en orden aleatorio para cada participante.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShuffleQuestions(true)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      shuffleQuestions
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    }`}
+                  >
+                    Activado (Sí)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShuffleQuestions(false)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      !shuffleQuestions
+                        ? 'bg-slate-800 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    }`}
+                  >
+                    Desactivado (No)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECCIÓN 3: VISIBILIDAD EN TABLAS Y PANTALLAS */}
+          <div className="p-5 sm:p-6 rounded-2xl bg-slate-50 border border-slate-200/90">
+            <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              Visibilidad de Datos en Tablas y Pantallas Públicas
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Parciales en Tabla */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <span className="text-[11px] font-black text-slate-800 block mb-1">
+                  MOSTRAR_PARCIALES_EN_TABLA
+                </span>
+                <span className="text-[10px] text-slate-500 block mb-2">
+                  Mostrar desglose de aciertos y fallos en las filas.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowPartialInTable(!showPartialInTable)}
+                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
+                    showPartialInTable
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {showPartialInTable ? 'Visible' : 'Oculto'}
+                </button>
+              </div>
+
+              {/* No Respondidos en Tabla */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <span className="text-[11px] font-black text-slate-800 block mb-1">
+                  MOSTRAR_NO_RESPONDIDOS_EN_TABLA
+                </span>
+                <span className="text-[10px] text-slate-500 block mb-2">
+                  Incluir en la tabla a quienes no respondieron.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowUnansweredInTable(!showUnansweredInTable)}
+                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
+                    showUnansweredInTable
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {showUnansweredInTable ? 'Incluir' : 'Omitir'}
+                </button>
+              </div>
+
+              {/* Ocultar Resumen Respondidas */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <span className="text-[11px] font-black text-slate-800 block mb-1">
+                  OCULTAR_RESUMEN_RESPONDIDAS
+                </span>
+                <span className="text-[10px] text-slate-500 block mb-2">
+                  Ocultar tarjeta de "Preguntas Respondidas" al final.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setHideSummaryAnswered(!hideSummaryAnswered)}
+                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
+                    hideSummaryAnswered
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {hideSummaryAnswered ? 'Ocultar' : 'Mostrar'}
+                </button>
+              </div>
+
+              {/* Ocultar Resumen Tiempo */}
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <span className="text-[11px] font-black text-slate-800 block mb-1">
+                  OCULTAR_RESUMEN_TIEMPO
+                </span>
+                <span className="text-[10px] text-slate-500 block mb-2">
+                  Ocultar tarjeta de "Tiempo Total Empleado".
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setHideSummaryTime(!hideSummaryTime)}
+                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
+                    hideSummaryTime
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {hideSummaryTime ? 'Ocultar' : 'Mostrar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* BARRA DE ACCIÓN: GUARDAR EN GOOGLE SHEETS */}
+        <div className="mt-8 pt-6 border-t-2 border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <button
+            onClick={handleSaveConfig}
+            disabled={isSavingConfig}
+            type="button"
+            className="w-full sm:w-auto px-8 py-4 min-h-[56px] rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-sm uppercase tracking-wider shadow-xl shadow-emerald-700/30 flex items-center justify-center gap-3 cursor-pointer transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+          >
+            {isSavingConfig ? (
+              <>
+                <RefreshCw size={18} className="animate-spin" />
+                <span>Guardando en Google Sheets...</span>
+              </>
+            ) : (
+              <>
+                <Save size={20} />
+                <span>Guardar Configuración en Google Sheets</span>
+              </>
+            )}
+          </button>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
+            {/* Botón de Exportar a Excel (para fases cerradas) */}
+            {isPhaseClosed && (
+              <button
+                onClick={handleExportExcel}
+                type="button"
+                className="flex-1 sm:flex-none py-3.5 px-5 min-h-[48px] rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all border border-emerald-500 transform hover:scale-105 active:scale-95"
+                title="Descargar clasificación de la fase en formato Excel (.xlsx)"
+              >
+                <FileSpreadsheet size={16} />
+                <span>Exportar Excel</span>
+                <Download size={14} className="text-emerald-200" />
+              </button>
+            )}
+
             {/* Botón de Enlace Público */}
             <button
               onClick={handleCopyPublicLink}
               type="button"
-              className="w-full py-4 px-6 min-h-[56px] rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2.5 cursor-pointer shadow-lg transition-all border border-slate-700"
-              title="Copiar enlace para compartir con colaboradores"
+              className="flex-1 sm:flex-none py-3.5 px-5 min-h-[48px] rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all border border-slate-700"
+              title="Copiar enlace público de la clasificación"
             >
-              {copiedLink ? <Check size={18} className="text-emerald-400" /> : <Share2 size={18} />}
-              <span>{copiedLink ? '¡Enlace Copiado!' : 'Copiar Enlace Público'}</span>
+              {copiedLink ? <Check size={16} className="text-emerald-400" /> : <Share2 size={16} />}
+              <span>{copiedLink ? '¡Enlace Copiado!' : 'Copiar Enlace'}</span>
             </button>
 
             {/* Reiniciar si ya está publicado */}
@@ -420,11 +868,11 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
               <button
                 onClick={handleReset}
                 type="button"
-                className="w-full py-4 px-5 min-h-[56px] rounded-2xl bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors border border-slate-200"
+                className="flex-1 sm:flex-none py-3.5 px-4 min-h-[48px] rounded-xl bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors border border-slate-200"
                 title="Despublicar clasificación"
               >
-                <RefreshCw size={15} />
-                <span>Reiniciar Publicación</span>
+                <RefreshCw size={14} />
+                <span>Reiniciar</span>
               </button>
             )}
           </div>
@@ -436,13 +884,29 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           ========================================================================= */}
       {classificationData ? (
         <div className="space-y-12 sm:space-y-16">
-          <div className="flex items-center justify-between pb-3 border-b border-white/20">
-            <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">
-              Vista Previa de Clasificación
-            </h3>
-            <span className="text-xs text-yellow-300 font-bold">
-              {classificationData.totalJugados || 0} evaluados de {classificationData.totalInscriptos || 0} inscriptos
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-white/20 gap-3">
+            <div>
+              <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">
+                Vista Previa de Clasificación
+              </h3>
+              <span className="text-xs text-yellow-300 font-bold">
+                {classificationData.totalJugados || 0} evaluados de {classificationData.totalInscriptos || 0} inscriptos
+              </span>
+            </div>
+
+            {/* Botón destacado de Exportación a Excel para Fases Cerradas */}
+            {isPhaseClosed && (
+              <button
+                onClick={handleExportExcel}
+                type="button"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2.5 cursor-pointer transition-all transform hover:scale-105 active:scale-95 border border-emerald-400/50"
+                title="Descargar planilla Excel (.xlsx) con clasificación completa, top clasificados y podio"
+              >
+                <FileSpreadsheet size={16} />
+                <span>Exportar a Excel (.xlsx)</span>
+                <Download size={14} className="text-emerald-200" />
+              </button>
+            )}
           </div>
 
           {/* Podio Gamer de los 3 Primeros (Sin solapamientos) */}
@@ -471,6 +935,16 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           </p>
         </div>
       )}
+
+      {/* Modal de Importación de Participantes (CSV) */}
+      <ImportParticipantsModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={(result) => {
+          setStatusMessage(`¡${result.total || 'Lista de'} colaboradores importados exitosamente a Google Sheets!`);
+          setTimeout(() => setStatusMessage(''), 8000);
+        }}
+      />
     </div>
   );
 }

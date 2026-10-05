@@ -12,8 +12,12 @@ export default function ProjectionView({
   onOpenConfig,
   onBackToGame
 }) {
-  const activePhase = appConfig?.activePhase || 1;
-  const topCount = appConfig?.classificationTopCount || 30;
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlTop = parseInt(urlParams.get('topCount'), 10);
+  const urlPhase = parseInt(urlParams.get('phase'), 10);
+
+  const activePhase = !isNaN(urlPhase) && urlPhase > 0 ? urlPhase : (appConfig?.activePhase || 1);
+  const topCount = !isNaN(urlTop) && urlTop > 0 ? urlTop : (appConfig?.classificationTopCount || 30);
 
   // Estados de la proyección
   // 'IDLE': Pantalla limpia inicial con logo y botón "Clasificados Fase X"

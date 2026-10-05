@@ -115,50 +115,19 @@ export default function PublicClassificationView({ onBackToGame, appConfig }) {
   // CASO 2: CLASIFICACIÓN PUBLICADA OFICIALMENTE
   // =========================================================================
   return (
-    <div className="w-full max-w-5xl mx-auto py-4 sm:py-8 px-2 sm:px-6 animate-casual-in">
-      {/* Barra de Cabecera Pública */}
-      <div className="glass-panel p-5 sm:p-6 rounded-2xl mb-8 sm:mb-10 shadow-2xl flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-13 h-13 rounded-2xl bg-white p-2.5 shadow-md flex items-center justify-center shrink-0">
-            <img src="/logo-donyeyo.svg" alt="Don Yeyo" className="w-full h-full object-contain" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-3 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-black uppercase tracking-wider">
-                Oficial
-              </span>
-              <span className="text-xs text-yellow-300 font-bold">
-                Semana de la Inocuidad 2026
-              </span>
-            </div>
-            <h1 className="text-base sm:text-xl font-black text-white !mb-0 tracking-tight">
-              Podio y Clasificación General
-            </h1>
-          </div>
-        </div>
-
-        <button
-          onClick={onBackToGame}
-          type="button"
-          className="px-5 py-3 min-h-[44px] rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer border border-white/20 shadow"
-        >
-          <ArrowLeft size={16} />
-          <span>Volver a la Trivia</span>
-        </button>
-      </div>
-
+    <div className="w-full max-w-5xl mx-auto py-2 sm:py-8 px-2 sm:px-6 animate-casual-in">
       {/* Podio Gamer de Ganadores */}
-      <div className="my-8 sm:my-16">
+      <div className="mb-8 sm:mb-16">
         <Podium podiumUsers={classificationData.podio || []} />
       </div>
 
       {/* Tabla de Clasificados restantes con separación holgada */}
-      <div className="mt-14 sm:mt-24 pt-8 border-t border-white/15">
-        <div className="text-center mb-8 sm:mb-12">
-          <h3 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-wide drop-shadow-lg">
+      <div className="mt-8 sm:mt-24 pt-6 sm:pt-8 border-t border-white/15">
+        <div className="text-center mb-6 sm:mb-12">
+          <h3 className="text-xl sm:text-4xl font-black text-white uppercase tracking-wide drop-shadow-lg">
             Tabla General de Clasificados (Top {topCount})
           </h3>
-          <p className="text-xs sm:text-sm text-yellow-300 font-bold mt-2">
+          <p className="text-xs sm:text-sm text-yellow-300 font-bold mt-1.5 sm:mt-2">
             {classificationData.totalJugados || 0} colaboradores evaluados de {classificationData.totalInscriptos || 0} inscriptos
           </p>
         </div>

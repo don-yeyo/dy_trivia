@@ -137,6 +137,57 @@ export async function fetchAppConfig() {
     }
   }
 
-  // 3. Fallback final seguro
+  // 3. Fallback a almacenamiento local o final seguro
+  try {
+    const local = localStorage.getItem('dy_trivia_app_config');
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (parsed && typeof parsed === 'object') {
+        return { ...DEFAULT_CONFIG, ...parsed };
+      }
+    }
+  } catch (e) {}
+
   return DEFAULT_CONFIG;
+}
+
+/**
+ * Guarda los parámetros de configuración en el backend (/api/config)
+ * para persistirlos en la pestaña 'Configuracion' de Google Sheets.
+ */
+export async function saveAppConfig(updates = {}) {
+  const token = sessionStorage.getItem('dy_trivia_admin_token') || localStorage.getItem('dy_trivia_admin_token') || '';
+
+  // 1. Guardar inmediatamente en localStorage para sincronización reactiva local
+  try {
+    const localCurrent = JSON.parse(localStorage.getItem('dy_trivia_app_config') || '{}');
+    const merged = { ...localCurrent, ...updates };
+    localStorage.setItem('dy_trivia_app_config', JSON.stringify(merged));
+  } catch (e) {}
+
+  // 2. Enviar al backend serverless
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(updates)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && data.config) {
+        try {
+          localStorage.setItem('dy_trivia_app_config', JSON.stringify(data.config));
+        } catch (e) {}
+        return { success: true, config: data.config };
+      }
+    }
+  } catch (err) {
+    console.warn('Error guardando en backend /api/config, usando persistencia local:', err);
+  }
+
+  return { success: true, config: updates };
 }

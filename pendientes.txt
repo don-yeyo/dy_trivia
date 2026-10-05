@@ -1,6 +1,3 @@
-[x] cuando la fase esta cerrada y algún participante ingresa a su link único: mostrar el mensaje de fase terminada y el botón de ver clasificación
-[x] exportar clasificación desde el admin para fases cerradas
-
-- importar legajos
-
-- cuando enviar un email?
+- [x] exportar clasificacion desde el admin (Completado: Botón de exportación a Excel .xlsx en panel de admin y proyección)
+- [x] importar legajos (Completado: Pantalla/Modal en Admin con textarea/selector de archivo + scripts/importarLegajos.js + export CSV limpio)
+- [ ] cuando enviar un email?

@@ -98,8 +98,142 @@ export default function Podium({ podiumUsers = [], isAnimatedReveal = false }) {
         <Sparkles size={28} className="text-yellow-400 animate-spin" style={{ animationDuration: '6s' }} />
       </div>
 
-      {/* Grid del Podio Gamer (2° - 1° - 3°) */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-8 items-end max-w-4xl mx-auto pt-6 sm:pt-8">
+      {/* VISTA MOBILE: Tarjetas de Podio Gamer Verticales Ordenadas y Responsivas */}
+      <div className="sm:hidden flex flex-col gap-3.5 w-full max-w-sm mx-auto pt-2">
+        {/* 1° PUESTO: CAMPEÓN DE ORO */}
+        {showFirst ? (
+          <div className="w-full rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-500/10 to-slate-900 border-2 border-yellow-400 p-4 shadow-xl shadow-yellow-500/15 relative overflow-hidden animate-casual-in">
+            <div className="flex items-center gap-3">
+              <div className="relative shrink-0">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-200 to-white p-1 shadow-lg flex items-center justify-center">
+                  <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center text-yellow-400 font-black text-base border border-yellow-400">
+                    {getInitials(firstPlace?.nombre, firstPlace?.apellido)}
+                  </div>
+                </div>
+                <div className="absolute -top-2.5 -right-1">
+                  <Crown size={18} className="text-yellow-400 drop-shadow animate-bounce" />
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                    <Trophy size={11} className="text-slate-950" />
+                    1° Campeón
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-white uppercase truncate">
+                  {firstPlace ? `${firstPlace.nombre} ${firstPlace.apellido}` : 'Vacante'}
+                </h3>
+                {firstPlace?.sector && (
+                  <p className="text-[11px] text-slate-300 truncate">{firstPlace.sector}</p>
+                )}
+              </div>
+
+              <div className="text-right shrink-0">
+                <div className="text-base font-black text-yellow-300">
+                  {firstPlace?.score || 0} <span className="text-[10px] font-bold text-yellow-400/80">pts</span>
+                </div>
+                <div className="text-[10px] text-slate-300 font-mono flex items-center justify-end gap-1 mt-0.5">
+                  <Clock size={11} />
+                  <span>{formatTime(firstPlace?.totalTime)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full p-4 rounded-2xl border-2 border-dashed border-yellow-400/30 bg-yellow-500/5 text-center text-yellow-300 text-xs font-bold animate-pulse">
+            1° Puesto Campeón...
+          </div>
+        )}
+
+        {/* 2° PUESTO: PLATA */}
+        {showSecond ? (
+          <div className="w-full rounded-2xl bg-gradient-to-r from-slate-400/15 via-slate-500/10 to-slate-900 border-2 border-slate-300/80 p-3.5 shadow-lg relative overflow-hidden animate-casual-in">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-slate-400 via-slate-100 to-white p-0.5 shadow-md flex items-center justify-center shrink-0">
+                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-slate-100 font-black text-sm border border-slate-300">
+                  {getInitials(secondPlace?.nombre, secondPlace?.apellido)}
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 mb-0.5">
+                  <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-900 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                    <Medal size={11} className="text-slate-700" />
+                    2° Puesto
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-white uppercase truncate">
+                  {secondPlace ? `${secondPlace.nombre} ${secondPlace.apellido}` : 'Vacante'}
+                </h3>
+                {secondPlace?.sector && (
+                  <p className="text-[11px] text-slate-300 truncate">{secondPlace.sector}</p>
+                )}
+              </div>
+
+              <div className="text-right shrink-0">
+                <div className="text-sm font-black text-yellow-300">
+                  {secondPlace?.score || 0} <span className="text-[10px] font-bold text-yellow-400/80">pts</span>
+                </div>
+                <div className="text-[10px] text-slate-300 font-mono flex items-center justify-end gap-1 mt-0.5">
+                  <Clock size={11} />
+                  <span>{formatTime(secondPlace?.totalTime)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full p-4 rounded-2xl border-2 border-dashed border-white/20 bg-white/5 text-center text-slate-400 text-xs font-bold animate-pulse">
+            2° Puesto...
+          </div>
+        )}
+
+        {/* 3° PUESTO: BRONCE */}
+        {showThird ? (
+          <div className="w-full rounded-2xl bg-gradient-to-r from-amber-700/20 via-amber-800/10 to-slate-900 border-2 border-amber-500/70 p-3.5 shadow-lg relative overflow-hidden animate-casual-in">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-700 via-amber-400 to-amber-200 p-0.5 shadow-md flex items-center justify-center shrink-0">
+                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-amber-200 font-black text-sm border border-amber-500">
+                  {getInitials(thirdPlace?.nombre, thirdPlace?.apellido)}
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 mb-0.5">
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                    <Medal size={11} className="text-amber-950" />
+                    3° Puesto
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-white uppercase truncate">
+                  {thirdPlace ? `${thirdPlace.nombre} ${thirdPlace.apellido}` : 'Vacante'}
+                </h3>
+                {thirdPlace?.sector && (
+                  <p className="text-[11px] text-slate-300 truncate">{thirdPlace.sector}</p>
+                )}
+              </div>
+
+              <div className="text-right shrink-0">
+                <div className="text-sm font-black text-yellow-300">
+                  {thirdPlace?.score || 0} <span className="text-[10px] font-bold text-yellow-400/80">pts</span>
+                </div>
+                <div className="text-[10px] text-slate-300 font-mono flex items-center justify-end gap-1 mt-0.5">
+                  <Clock size={11} />
+                  <span>{formatTime(thirdPlace?.totalTime)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full p-4 rounded-2xl border-2 border-dashed border-white/20 bg-white/5 text-center text-slate-400 text-xs font-bold animate-pulse">
+            3° Puesto...
+          </div>
+        )}
+      </div>
+
+      {/* VISTA DESKTOP: Grid del Podio Gamer 3D (2° - 1° - 3°) [INTACTO] */}
+      <div className="hidden sm:grid sm:grid-cols-3 sm:gap-8 items-end max-w-4xl mx-auto pt-6 sm:pt-8">
 
         {/* ================= 2° PUESTO (PLATA) ================= */}
         <div className="flex flex-col items-center order-1 w-full">

@@ -96,14 +96,32 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
 ### 1. Panel de Administración (`/admin` o `?admin=1`)
 - **Acceso Directo Oculto por Seguridad:** No existe ningún botón ni ícono visible en la interfaz pública para acceder al panel de administración. El acceso se realiza exclusivamente escribiendo en la barra del navegador la URL `/admin` o `?admin=1`.
 - **Autenticación Segura en Servidor:** Las credenciales (`ADMIN_USER` y `ADMIN_PASSWORD`) residen exclusivamente en variables de entorno del backend (Netlify Functions) y **nunca** son expuestas al frontend ni bundle de cliente.
-- **Configuración Dinámica de Clasificados:** Permite definir la cantidad de participantes que clasifican (ej: Top 30) con selectores rápidos (10, 20, 30, 50) o valor numérico personalizado.
-- **Disparador Gamer "Determinar Clasificados":** Al hacer clic, activa una animación gamer de alta fidelidad que simula el escaneo de registros de la planta, auditoría de respuestas correctas, cálculo de tiempos y desempates.
+- **Configuración Integral Sincronizada con Google Sheets:**
+  - **Fase del Torneo (`FASE_ACTIVA`):** Selector de Fase 1, Fase 2 o Fase 3 con actualización reactiva inmediata de la clasificación.
+  - **Estado de Fase (`FASE_CERRADA`):** Switch para conmutar entre Fase Abierta (permite ingreso y respuestas) y Fase Cerrada (finalizada para corte oficial).
+  - **Cupo de Clasificados (`CLASIFICACION_TOP_COUNT`):** Campo numérico con presets rápidos (5, 10, 20, 30...) que define el corte oficial de clasificados para la tabla y la proyección.
+  - **Tiempo por Pregunta (`TIEMPO_POR_PREGUNTA`):** Configuración en segundos (presets: 15s, 20s, 30s, 45s, o 0 para tiempo ilimitado).
+  - **Mezclar Preguntas (`MEZCLAR_PREGUNTAS`):** Aleatorización del orden de preguntas por participante.
+  - **Visibilidad en Tablas y Pantallas Públicas:** Toggles para `MOSTRAR_PARCIALES_EN_TABLA`, `MOSTRAR_NO_RESPONDIDOS_EN_TABLA`, `OCULTAR_RESUMEN_RESPONDIDAS` y `OCULTAR_RESUMEN_TIEMPO`.
+  - **Botón "Guardar Configuración en Google Sheets":** Persiste todos los cambios directamente en el backend y los sincroniza con la pestaña `Configuracion` de Google Sheets vía Apps Script.
+- **Apertura de Pantalla de Proyección:** Botón destacado que abre en pestaña independiente (`_blank`) la vista de proyección cinematográfica transmitiendo los parámetros de `topCount` y `phase` activos.
+- **Disparador Gamer "Determinar Clasificados":** Al hacer clic en la proyección o en el panel, activa una animación gamer de alta fidelidad que simula el escaneo de registros de la planta, auditoría de respuestas correctas, cálculo de tiempos y desempates.
 - **Publicación Oficial:** Al completar el cálculo, la clasificación y el podio quedan inmediatamente disponibles para que todos los colaboradores puedan ingresar a verla públicamente.
+- **Exportación a Excel (.xlsx) para Fases Cerradas:**
+  - Cuando una fase se encuentra cerrada (`FASE_CERRADA`), se habilita automáticamente el botón **"Exportar a Excel (.xlsx)"** en la barra de acciones y en la cabecera de la vista previa.
+  - Genera un archivo `.xlsx` profesional compuesto por 3 pestañas:
+    1. **Clasificación Fase X:** Nómina general completa con posición, estado de clasificación (`CLASIFICADO (TOP N)` / `NO CLASIFICADO`), legajo, nombre, sector, puntaje, aciertos, tiempo en segundos y tiempo formateado.
+    2. **Top N Clasificados:** Nómina exclusiva de colaboradores que obtuvieron el cupo para la siguiente instancia.
+    3. **Podio Fase X:** Detalle de los 3 puestos de honor (Oro, Plata, Bronce).
+  - Incluye columnas con anchos ajustados automáticamente y metadatos de auditoría (administrador que exportó y fecha de corte).
 - **Gestión:** Incluye botón para copiar el enlace público de clasificación y botón para reiniciar/recalcular.
 
 ### 2. Pantalla Pública de Clasificación (`/clasificacion` o `?view=clasificacion`)
 - **Estado Previo (No publicada):** Si la administración aún no determinó los clasificados, muestra una pantalla amigable indicando que la evaluación está en curso y los resultados se publicarán pronto.
-- **Estado Publicado:** Despliega el **Podio de Honor 3D Gamer** (1° Puesto Oro, 2° Puesto Plata, 3° Puesto Bronce) con avatares, puntajes, tiempos y aciertos, junto con la **Tabla General de Clasificados** con buscador en tiempo real por nombre o legajo y línea de corte destacada.
+- **Estado Publicado:**
+  - **Experiencia Desktop Intacta:** Despliega el **Podio de Honor 3D Gamer** en cuadrícula con pedestales volumétricos (1° Puesto Oro en el centro, 2° Plata y 3° Bronce a los costados) junto a la **Tabla General de Clasificados** con 12 columnas informativas completas.
+  - **Experiencia Mobile Optimizada (100% Responsive):** En dispositivos móviles, el podio se transforma automáticamente en tarjetas horizontales ordenadas por mérito (1° Oro Campeón con corona animada, 2° Plata y 3° Bronce) con avatares, medallas, nombres sin truncamientos y métricas nítidas. La tabla de clasificados se adapta a una lista de items flex compactos y legibles, evitando desbordes horizontales o textos cortados.
+  - **Cabecera Limpia:** Se eliminó la barra redundante en la pantalla del participante para maximizar el área visible y respetar el encabezado principal de navegación.
 
 ---
 
@@ -122,6 +140,25 @@ Para garantizar la **máxima seguridad de datos y transparencia del concurso**:
 - `GET /api/auth?token=...&phase=1`: Valida el hash/token del colaborador y obtiene su progreso sin exponer listas completas de nómina.
 - `GET /api/questions?phase=1`: Devuelve las preguntas de la fase activa sanitizadas.
 - `POST /api/submit-answer`: Evalúa en servidor el acierto/fallo de la respuesta y la persiste en Google Sheets vía Apps Script.
+- `POST /api/import-participants`: Endpoint exclusivo de administración para importar masivamente el padrón de colaboradores desde CSV a la hoja "Participantes" de Google Sheets con hashes SHA-256 únicos y desduplicación.
+
+### 📥 Herramienta de Importación de Colaboradores (CSV a Google Sheets):
+- **Panel Administrativo Visual:** En `/admin`, botón **"Importar CSV"** que abre un modal interactivo donde se puede:
+  1. Subir el archivo `legajos.csv` o pegar su contenido en un área de texto.
+  2. Detección automática de delimitador (`;` o `,`).
+  3. Desduplicación estricta utilizando el número de **legajo** como clave primaria.
+  4. Mapeo de campos:
+     - `legajo` <- `Leg`
+     - `apellido` <- texto antes de la coma de `Apellido y Nombre` (con trim).
+     - `nombre` <- texto después de la coma de `Apellido y Nombre` (con trim).
+     - `token_hash` <- hash único determinista SHA-256 (`SHA256(SEED_PHRASE_legajo_APELLIDO_NOMBRE)`).
+     - `documento` <- `Nro. de Documento`.
+     - `sector` <- `Sector`.
+     - `telefono` <- `Telefono`.
+     - `email` <- `E-mail`.
+  5. Vista previa inmediata con los primeros registros mapeados y contadores de validados/duplicados.
+  6. Descarga directa del CSV procesado (`usuarios_participantes.csv`) para importación manual instantánea en Google Sheets o sincronización remota mediante Apps Script.
+- **Script Local Automatizado:** Se puede ejecutar directamente `node scripts/importarLegajos.js` en consola para parsear el archivo `data/legajos.csv`, generar los 475 hashes únicos deterministas y actualizar la copia local sincronizada en `public/data/usuarios_participantes.csv`.
 
 #### Paso 1: Crear Proyecto y Habilitar Google Sheets API en Google Cloud
 1. Ingresa a [Google Cloud Console](https://console.cloud.google.com/).
@@ -304,6 +341,62 @@ function saveIndividualAnswer(ss, data) {
       totalSeconds,
       JSON.stringify(existingAnswers)
     ]);
+  }
+}
+
+/**
+ * Actualiza o inserta claves en la pestaña 'Configuracion'
+ */
+function updateConfigKeys(ss, updates) {
+  var sheetConfig = ss.getSheetByName("Configuracion");
+  if (!sheetConfig) {
+    sheetConfig = ss.insertSheet("Configuracion");
+    sheetConfig.appendRow(["clave", "valor", "descripcion"]);
+    sheetConfig.getRange(1, 1, 1, 3).setFontWeight("bold").setBackground("#0d2c5c").setFontColor("#ffffff");
+  }
+
+  var data = sheetConfig.getDataRange().getValues();
+  if (data.length <= 1) {
+    for (var k in updates) {
+      sheetConfig.appendRow([k, updates[k], "Parámetro configurado desde Admin"]);
+    }
+    return;
+  }
+
+  var headerRow = data[0];
+  var keyColIndex = 0; // Columna A por defecto
+  var valColIndex = 1; // Columna B por defecto
+
+  for (var c = 0; c < headerRow.length; c++) {
+    var h = String(headerRow[c]).toLowerCase().trim();
+    if (h === "clave" || h === "key" || h === "parametro") keyColIndex = c;
+    if (h === "valor" || h === "value") valColIndex = c;
+  }
+
+  // Mapear filas existentes por clave
+  var existingKeys = {};
+  for (var r = 1; r < data.length; r++) {
+    var rowKey = String(data[r][keyColIndex]).trim().toUpperCase();
+    if (rowKey) {
+      existingKeys[rowKey] = r + 1; // Fila 1-based para getRange
+    }
+  }
+
+  for (var keyToUpdate in updates) {
+    var normalizedKey = String(keyToUpdate).trim().toUpperCase();
+    var valToSet = String(updates[keyToUpdate]);
+
+    if (existingKeys[normalizedKey]) {
+      var targetRow = existingKeys[normalizedKey];
+      sheetConfig.getRange(targetRow, valColIndex + 1).setValue(valToSet);
+    } else {
+      var newRow = [];
+      newRow[keyColIndex] = normalizedKey;
+      newRow[valColIndex] = valToSet;
+      newRow[2] = "Parámetro configurado desde Admin";
+      sheetConfig.appendRow(newRow);
+      existingKeys[normalizedKey] = sheetConfig.getLastRow();
+    }
   }
 }
 

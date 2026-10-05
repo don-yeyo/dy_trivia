@@ -13,6 +13,7 @@ import { validateUserToken, recordPhaseQuestionAnswer, markQuestionStarted } fro
 import { loadTriviaQuestions } from './services/triviaService';
 import { fetchUserProgressFromResults } from './services/googleSheetsService';
 import { fetchAppConfig, DEFAULT_CONFIG } from './services/configService';
+import { fetchClassification } from './services/adminService';
 import { RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -78,8 +79,19 @@ export default function App() {
       const config = await fetchAppConfig();
       setAppConfig(config);
 
-      // 🛡️ Si la fase activa está marcada como cerrada en Google Sheets
-      if (config.isPhaseClosed) {
+      // 🛡️ Comprobar si la clasificación ya fue publicada oficialmente para esta fase
+      let isPublished = config.isClassificationPublished || false;
+      try {
+        const classCheck = await fetchClassification(config.activePhase);
+        if (classCheck && classCheck.isPublished) {
+          isPublished = true;
+          config.isClassificationPublished = true;
+          setAppConfig({ ...config, isClassificationPublished: true });
+        }
+      } catch (e) {}
+
+      // 🛡️ Si la fase activa está marcada como cerrada o ya fue publicada la clasificación
+      if (config.isPhaseClosed || isPublished) {
         if (effectiveToken) {
           const quickVal = await validateUserToken(effectiveToken, config.activePhase);
           if (quickVal.isValid) setCurrentUser(quickVal.user);
@@ -326,9 +338,11 @@ export default function App() {
                 playedDate={playedDate}
                 isTokenInvalid={false}
                 isPhaseClosed={gameState === 'PHASE_CLOSED'}
+                isClassificationPublished={appConfig.isClassificationPublished}
                 phaseNumber={appConfig.activePhase}
                 allowReset={import.meta.env.VITE_ALLOW_SESSION_RESET === 'true'}
                 onResetSession={handleResetSession}
+                onViewClassification={() => setCurrentView('PUBLIC_CLASSIFICATION')}
               />
             )}
 

@@ -3,6 +3,7 @@
 // Don Yeyo S.A. | Trivia Inocuidad 2026 (Serverless Backend)
 // ==============================================================================
 import crypto from 'crypto';
+import fs from 'fs';
 
 /**
  * Obtiene variables de entorno del servidor (soporta tanto formato SERVER como VITE_ en Netlify)
@@ -198,15 +199,84 @@ export async function fetchTriviaConfig() {
     console.warn('Advertencia: No se pudo leer la pestaña Configuracion de Google Sheets. Usando defaults seguros:', err.message);
   }
 
+  // 🛡️ Aplicar overrides en memoria / archivo temporal si existen
+  const overrides = loadConfigOverrides();
+  Object.keys(overrides).forEach(k => {
+    if (overrides[k] !== undefined && overrides[k] !== null) {
+      config[k] = overrides[k];
+    }
+  });
+
   return config;
+}
+
+const CONFIG_OVERRIDE_PATH = '/tmp/dy_config_override.json';
+let memoryConfigOverrides = null;
+
+function loadConfigOverrides() {
+  if (memoryConfigOverrides) return memoryConfigOverrides;
+  try {
+    if (fs.existsSync(CONFIG_OVERRIDE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(CONFIG_OVERRIDE_PATH, 'utf8'));
+      if (data && typeof data === 'object') {
+        memoryConfigOverrides = data;
+        return memoryConfigOverrides;
+      }
+    }
+  } catch (e) {}
+  memoryConfigOverrides = {};
+  return memoryConfigOverrides;
+}
+
+function saveConfigOverrides(overrides) {
+  const current = loadConfigOverrides();
+  memoryConfigOverrides = { ...current, ...overrides };
+  try {
+    fs.writeFileSync(CONFIG_OVERRIDE_PATH, JSON.stringify(memoryConfigOverrides), 'utf8');
+  } catch (e) {}
 }
 
 /**
  * Actualiza una o más claves en la pestaña 'Configuracion' de Google Sheets mediante Apps Script.
+ * Además guarda en memoria/archivo temporal para respuesta inmediata garantizada.
  */
-export async function updateTriviaConfig(updates = {}) {
+export async function updateTriviaConfig(updates = {}, frontendOverrides = {}) {
+  // Guardar overrides inmediatamente
+  saveConfigOverrides(frontendOverrides);
+
   return await sendToAppsScript({
     action: 'UPDATE_CONFIG',
     updates
   });
 }
+
+/**
+ * Valida un token de sesión de admin generado por /api/admin-auth
+ */
+export function verifyAdminToken(token) {
+  if (!token) return false;
+
+  try {
+    const cleanToken = token.startsWith('Bearer ') ? token.slice(7).trim() : token.trim();
+    const parts = cleanToken.split('.');
+    if (parts.length !== 2) return false;
+
+    const [encodedPayload, receivedSig] = parts;
+    const payload = Buffer.from(encodedPayload, 'base64').toString('utf8');
+    const [username, expiresStr] = payload.split('_');
+
+    const expiresAt = parseInt(expiresStr, 10);
+    if (isNaN(expiresAt) || Date.now() > expiresAt) {
+      return false; // Token expirado
+    }
+
+    const seedPhrase = getServerEnv('SEED_PHRASE') || 'DY_INOCUIDAD_2026_CALIDAD_Y_COMPROMISO';
+    const expectedSig = crypto.createHmac('sha256', seedPhrase).update(payload).digest('hex');
+
+    const expectedUser = getServerEnv('ADMIN_USER') || 'admin';
+    return (username === expectedUser && crypto.timingSafeEqual(Buffer.from(receivedSig), Buffer.from(expectedSig)));
+  } catch (e) {
+    return false;
+  }
+}
+
