@@ -26,7 +26,6 @@ export default function ClassificationTable({
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
       list = list.filter(p =>
-        String(p.legajo || '').toLowerCase().includes(term) ||
         String(p.nombre || '').toLowerCase().includes(term) ||
         String(p.apellido || '').toLowerCase().includes(term)
       );
@@ -52,7 +51,7 @@ export default function ClassificationTable({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por legajo o nombre..."
+            placeholder="Buscar participante..."
             className="w-full pl-11 pr-4 py-3.5 sm:py-4 rounded-xl bg-slate-900/60 border border-slate-700 text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:border-red-500 transition-colors shadow-inner"
           />
         </div>
@@ -98,7 +97,7 @@ export default function ClassificationTable({
         {/* Cabecera de la Tabla */}
         <div className="grid grid-cols-12 gap-2 px-5 sm:px-8 py-4 sm:py-5 bg-slate-900/90 border-b border-white/10 text-xs sm:text-sm font-black text-slate-300 uppercase tracking-wider text-left">
           <div className="col-span-2 sm:col-span-1 text-center">Pos.</div>
-          <div className="col-span-6 sm:col-span-6">Colaborador / Legajo</div>
+          <div className="col-span-6 sm:col-span-6">Colaborador</div>
           <div className="col-span-2 sm:col-span-3 text-right">Puntaje</div>
           <div className="col-span-2 sm:col-span-2 text-right">Tiempo</div>
         </div>
@@ -112,7 +111,6 @@ export default function ClassificationTable({
           ) : (
             filteredList.map((p, idx) => {
               const isTopQualified = p.rank <= topCount;
-              const isBoundary = p.rank === topCount;
 
               return (
                 <React.Fragment key={p.legajo || idx}>
@@ -142,7 +140,7 @@ export default function ClassificationTable({
                       </span>
                     </div>
 
-                    {/* Colaborador / Legajo */}
+                    {/* Colaborador */}
                     <div className="col-span-6 sm:col-span-6 flex flex-col justify-center min-w-0 pr-2">
                       <div className="flex items-center gap-2 truncate">
                         <span className="font-bold text-white truncate text-xs sm:text-base">
@@ -154,9 +152,11 @@ export default function ClassificationTable({
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] sm:text-xs text-slate-400 font-mono mt-0.5">
-                        Legajo: {p.legajo}
-                      </span>
+                      {p.sector && (
+                        <span className="text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
+                          {p.sector}
+                        </span>
+                      )}
                     </div>
 
                     {/* Puntaje */}
@@ -180,15 +180,6 @@ export default function ClassificationTable({
                       </span>
                     </div>
                   </div>
-
-                  {/* Línea Divisoria de Corte de Clasificación */}
-                  {isBoundary && filterMode === 'ALL' && (
-                    <div className="bg-gradient-to-r from-red-600 via-amber-500 to-red-600 px-6 py-2.5 text-center text-white text-xs sm:text-sm font-black tracking-wide flex items-center justify-center gap-2.5 shadow-inner">
-                      <Flame size={16} className="animate-bounce" />
-                      <span>⚡ LÍNEA DE CORTE: TOP {topCount} CLASIFICADOS OFICIALES ⚡</span>
-                      <Flame size={16} className="animate-bounce" />
-                    </div>
-                  )}
                 </React.Fragment>
               );
             })

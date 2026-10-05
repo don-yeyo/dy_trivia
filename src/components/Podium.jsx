@@ -112,27 +112,19 @@ export default function Podium({ podiumUsers = [], isAnimatedReveal = false }) {
                 </div>
               </div>
 
-              {/* Badge de Medalla con espacio propio (sin solapamiento) */}
-              <div className="mt-2.5 mb-2.5 px-3 py-1 rounded-full bg-gradient-to-r from-slate-300 via-white to-slate-300 border border-slate-400 text-slate-900 text-xs sm:text-sm font-black shadow-md flex items-center gap-1.5 shrink-0">
+              {/* Badge de Medalla con espacio propio hacia el pedestal */}
+              <div className="mt-2.5 mb-4 sm:mb-6 px-3 py-1 rounded-full bg-gradient-to-r from-slate-300 via-white to-slate-300 border border-slate-400 text-slate-900 text-xs sm:text-sm font-black shadow-md flex items-center gap-1.5 shrink-0">
                 <Medal size={15} className="text-slate-700" />
-                <span>2° PLATA</span>
-              </div>
-
-              {/* Nombre y Legajo con separación despejada */}
-              <div className="text-center w-full px-1 mb-4 min-h-[46px] flex flex-col justify-center">
-                <h4 className="text-xs sm:text-base font-black text-white truncate drop-shadow-md leading-tight">
-                  {secondPlace ? `${secondPlace.nombre} ${secondPlace.apellido}` : 'Vacante'}
-                </h4>
-                <span className="text-[11px] sm:text-xs text-slate-300 font-semibold block mt-1">
-                  Legajo {secondPlace?.legajo || '----'}
-                </span>
+                <span>2° PUESTO</span>
               </div>
 
               {/* Pedestal Plateado */}
               <div className="w-full h-44 sm:h-60 md:h-68 rounded-t-3xl bg-gradient-to-b from-slate-300 via-slate-400 to-slate-700 p-3.5 sm:p-5 flex flex-col items-center justify-between shadow-2xl border-t-4 border-slate-200">
-                <div className="flex flex-col items-center gap-1 mt-1 text-slate-950 font-black">
+                <div className="flex flex-col items-center gap-1.5 mt-1 text-slate-950 font-black w-full px-1 text-center">
                   <Trophy size={28} className="text-slate-800 drop-shadow sm:w-9 sm:h-9" />
-                  <span className="text-sm sm:text-xl tracking-tight font-black">PLATA</span>
+                  <span className="text-xs sm:text-sm md:text-base tracking-tight font-black text-slate-950 uppercase truncate max-w-full leading-tight">
+                    {secondPlace ? `${secondPlace.nombre} ${secondPlace.apellido}` : 'Vacante'}
+                  </span>
                 </div>
                 <div className="w-full bg-slate-900/85 rounded-2xl p-2.5 sm:p-3.5 text-center text-white backdrop-blur-md border border-slate-400/30 shadow-lg">
                   <div className="text-sm sm:text-lg font-black text-yellow-300">
@@ -169,28 +161,20 @@ export default function Podium({ podiumUsers = [], isAnimatedReveal = false }) {
                 </div>
               </div>
 
-              {/* Badge de Campeón con espacio propio (sin tapar el nombre) */}
-              <div className="mt-2.5 mb-2.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 border-2 border-yellow-500 text-slate-950 text-xs sm:text-sm font-black shadow-xl flex items-center gap-1.5 shrink-0">
+              {/* Badge de Campeón con espacio propio hacia el pedestal */}
+              <div className="mt-2.5 mb-4 sm:mb-6 px-4 py-1.5 rounded-full bg-gradient-to-r from-yellow-300 via-amber-200 to-yellow-400 border-2 border-yellow-500 text-slate-950 text-xs sm:text-sm font-black shadow-xl flex items-center gap-1.5 shrink-0">
                 <Trophy size={16} className="text-amber-800" />
                 <span>1° CAMPEÓN</span>
-              </div>
-
-              {/* Nombre y Legajo nítido y 100% visible */}
-              <div className="text-center w-full px-1 mb-4 min-h-[50px] flex flex-col justify-center">
-                <h4 className="text-sm sm:text-xl font-black text-yellow-300 truncate drop-shadow-xl leading-tight">
-                  {firstPlace ? `${firstPlace.nombre} ${firstPlace.apellido}` : 'Vacante'}
-                </h4>
-                <span className="text-xs sm:text-sm text-white/90 font-bold block mt-1">
-                  Legajo {firstPlace?.legajo || '----'}
-                </span>
               </div>
 
               {/* Pedestal Dorado más alto */}
               <div className="w-full h-56 sm:h-76 md:h-88 rounded-t-3xl bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-700 p-4 sm:p-6 flex flex-col items-center justify-between shadow-2xl border-t-4 border-yellow-200 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/25 to-transparent pointer-events-none" />
-                <div className="flex flex-col items-center gap-1 mt-1 text-slate-950 font-black">
+                <div className="flex flex-col items-center gap-1.5 mt-1 text-slate-950 font-black w-full px-1 text-center">
                   <Crown size={36} className="text-amber-950 drop-shadow sm:w-12 sm:h-12" />
-                  <span className="text-lg sm:text-3xl tracking-tight font-black">ORO</span>
+                  <span className="text-sm sm:text-base md:text-xl tracking-tight font-black text-slate-950 uppercase truncate max-w-full leading-tight">
+                    {firstPlace ? `${firstPlace.nombre} ${firstPlace.apellido}` : 'Vacante'}
+                  </span>
                 </div>
                 <div className="w-full bg-slate-950/90 rounded-2xl p-3 sm:p-4 text-center text-white backdrop-blur-md border border-yellow-400/50 shadow-xl">
                   <div className="text-base sm:text-2xl font-black text-yellow-300">
@@ -225,27 +209,19 @@ export default function Podium({ podiumUsers = [], isAnimatedReveal = false }) {
                 </div>
               </div>
 
-              {/* Badge de Medalla con espacio propio (sin solapamiento) */}
-              <div className="mt-2.5 mb-2.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 border border-amber-600 text-slate-950 text-xs sm:text-sm font-black shadow-md flex items-center gap-1.5 shrink-0">
+              {/* Badge de Medalla con espacio propio hacia el pedestal */}
+              <div className="mt-2.5 mb-4 sm:mb-6 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500 border border-amber-600 text-slate-950 text-xs sm:text-sm font-black shadow-md flex items-center gap-1.5 shrink-0">
                 <Medal size={15} className="text-amber-900" />
-                <span>3° BRONCE</span>
-              </div>
-
-              {/* Nombre y Legajo sin obstrucción */}
-              <div className="text-center w-full px-1 mb-4 min-h-[46px] flex flex-col justify-center">
-                <h4 className="text-xs sm:text-base font-black text-white truncate drop-shadow-md leading-tight">
-                  {thirdPlace ? `${thirdPlace.nombre} ${thirdPlace.apellido}` : 'Vacante'}
-                </h4>
-                <span className="text-[11px] sm:text-xs text-slate-300 font-semibold block mt-1">
-                  Legajo {thirdPlace?.legajo || '----'}
-                </span>
+                <span>3° PUESTO</span>
               </div>
 
               {/* Pedestal Cobrizo */}
               <div className="w-full h-36 sm:h-52 md:h-60 rounded-t-3xl bg-gradient-to-b from-amber-500 via-amber-600 to-amber-900 p-3.5 sm:p-5 flex flex-col items-center justify-between shadow-2xl border-t-4 border-amber-300">
-                <div className="flex flex-col items-center gap-1 mt-1 text-slate-950 font-black">
+                <div className="flex flex-col items-center gap-1.5 mt-1 text-slate-950 font-black w-full px-1 text-center">
                   <Trophy size={26} className="text-amber-950 drop-shadow sm:w-8 sm:h-8" />
-                  <span className="text-sm sm:text-lg tracking-tight font-black text-white">BRONCE</span>
+                  <span className="text-xs sm:text-sm md:text-base tracking-tight font-black text-white uppercase truncate max-w-full leading-tight">
+                    {thirdPlace ? `${thirdPlace.nombre} ${thirdPlace.apellido}` : 'Vacante'}
+                  </span>
                 </div>
                 <div className="w-full bg-slate-900/85 rounded-2xl p-2.5 sm:p-3.5 text-center text-white backdrop-blur-md border border-amber-400/30 shadow-lg">
                   <div className="text-sm sm:text-lg font-black text-yellow-300">

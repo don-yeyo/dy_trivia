@@ -1,0 +1,6 @@
+[x] cuando la fase esta cerrada y algún participante ingresa a su link único: mostrar el mensaje de fase terminada y el botón de ver clasificación
+[x] exportar clasificación desde el admin para fases cerradas
+
+- importar legajos
+
+- cuando enviar un email?

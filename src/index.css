@@ -71,11 +71,13 @@
 
 /* Reset y Base */
 * {
+  /*
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  */
 }
 
 body {
@@ -86,10 +88,10 @@ body {
   overflow-x: hidden;
   position: relative;
   /* Fondo degradé puro de azules corporativos Don Yeyo de alta profundidad */
-  background-color: #061224;
+  background-color: #07152b;
   background-image:
-    radial-gradient(circle at 50% 20%, rgba(30, 80, 160, 1) 0%, transparent 65%),
-    linear-gradient(180deg, #002561 0%, #0066ff 40%, #12366b 100%);
+    radial-gradient(circle at 50% 25%, rgba(26, 68, 128, 0.45) 0%, transparent 65%),
+    linear-gradient(180deg, #091a36 0%, #0d2c5c 45%, #081730 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }
@@ -127,12 +129,14 @@ body {
   height: 320vmax;
   min-width: 3200px;
   min-height: 3200px;
-  /* Rayos rectos nítidos con mayor contraste */
-  background: repeating-conic-gradient(from 0deg at 50% 50%,
-      rgba(255, 255, 255, 0.14) 0deg 7.5deg,
-      rgba(255, 255, 255, 0.01) 7.5deg 15deg);
-  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.55) 50%, transparent 80%);
-  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.55) 50%, transparent 80%);
+  /* Rayos rectos nítidos con conic-gradient */
+  background: repeating-conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(255, 255, 255, 0.08) 0deg 7.5deg,
+    rgba(255, 255, 255, 0.005) 7.5deg 15deg
+  );
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 75%);
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.5) 45%, transparent 75%);
   animation: spinRays 45s linear infinite;
   transform-origin: center center;
   pointer-events: none;
@@ -140,12 +144,12 @@ body {
 
 .sunburst-glow {
   position: absolute;
-  width: 700px;
-  height: 700px;
-  max-width: 95vw;
-  max-height: 95vw;
+  width: 650px;
+  height: 650px;
+  max-width: 90vw;
+  max-height: 90vw;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(25, 0, 255, 0.16) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.14) 0%, rgba(229, 53, 59, 0.08) 40%, transparent 70%);
   pointer-events: none;
 }
 

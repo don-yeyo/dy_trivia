@@ -194,22 +194,25 @@ export default function App() {
   // Si está en modo PROYECCIÓN: Pantalla completa cinematográfica 100% limpia para proyector
   if (currentView === 'PROJECTION') {
     return (
-      <ProjectionView
-        appConfig={appConfig}
-        onOpenConfig={() => {
-          const url = new URL(window.location.href);
-          url.searchParams.set('view', 'admin');
-          window.history.pushState({}, '', url.toString());
-          setCurrentView('ADMIN');
-        }}
-        onBackToGame={() => {
-          const url = new URL(window.location.href);
-          url.searchParams.delete('proyeccion');
-          url.searchParams.delete('view');
-          window.history.pushState({}, '', url.toString());
-          setCurrentView('GAME');
-        }}
-      />
+      <div className="relative min-h-screen w-full overflow-hidden text-white font-sans selection:bg-red-500 selection:text-white">
+        <SunburstBackground screenKey="PROJECTION" />
+        <ProjectionView
+          appConfig={appConfig}
+          onOpenConfig={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('view', 'admin');
+            window.history.pushState({}, '', url.toString());
+            setCurrentView('ADMIN');
+          }}
+          onBackToGame={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('proyeccion');
+            url.searchParams.delete('view');
+            window.history.pushState({}, '', url.toString());
+            setCurrentView('GAME');
+          }}
+        />
+      </div>
     );
   }
 

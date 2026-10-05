@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, Sparkles, ArrowLeft, Sliders, RefreshCw, Flame, Volume2, VolumeX } from 'lucide-react';
-import SunburstBackground from './SunburstBackground';
+import { Trophy, Sparkles, ArrowLeft, RefreshCw, Flame, Volume2, VolumeX } from 'lucide-react';
 import CalculatingAnimation from './CalculatingAnimation';
 import Podium from './Podium';
 import ClassificationTable from './ClassificationTable';
@@ -40,14 +39,27 @@ export default function ProjectionView({
     checkExisting();
   }, [activePhase, topCount]);
 
+  // Reiniciar scroll a 0 al cambiar a revelación o iniciar cálculo
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, [projectionState]);
+
   // Disparar el evento épico de cálculo
   const handleStartProjection = async () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
     setErrorMessage('');
     setProjectionState('CALCULATING');
   };
 
   // Callback cuando termina la animación de cálculo
   const handleCalculationFinished = async () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
     setIsLoading(true);
     try {
       const result = await determineClassification(activePhase, topCount);
@@ -119,30 +131,13 @@ export default function ProjectionView({
 
   return (
     <div className="relative min-h-screen w-full flex flex-col justify-between overflow-x-hidden text-white font-sans selection:bg-red-500 selection:text-white">
-      {/* Fondo de Rayos de Sol Animado (Sunburst) */}
-      <SunburstBackground />
-
       {/* =====================================================================
           1. PANTALLA LIMPIA INICIAL (ANTES DE DISPARAR)
           ===================================================================== */}
       {projectionState === 'IDLE' && (
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-16 text-center animate-casual-in">
-          {/* Logo Don Yeyo Oficial en Grande */}
-          <div className="w-48 sm:w-72 md:w-84 max-w-[85vw] mb-8 sm:mb-12 p-5 sm:p-7 rounded-3xl bg-white/95 shadow-2xl shadow-blue-950/60 backdrop-blur-md border-4 border-white/80 animate-soft-pulse">
-            <img
-              src="/logo-donyeyo.svg"
-              alt="Don Yeyo"
-              className="w-full h-auto object-contain drop-shadow-md"
-            />
-          </div>
-
-          {/* Subtítulo institucional del evento */}
+          {/* Título de Revelación */}
           <div className="mb-10 sm:mb-16">
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-red-600/90 border border-red-400 text-white text-xs sm:text-base font-black tracking-widest uppercase shadow-xl mb-3">
-              <Sparkles size={18} className="text-yellow-300 animate-spin" style={{ animationDuration: '4s' }} />
-              <span>Semana de la Inocuidad 2026</span>
-              <Sparkles size={18} className="text-yellow-300 animate-spin" style={{ animationDuration: '4s' }} />
-            </div>
             <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight uppercase drop-shadow-2xl">
               Gran Revelación de Clasificación
             </h1>
@@ -160,9 +155,6 @@ export default function ProjectionView({
               <span>Clasificados Fase {activePhase}</span>
               <Flame size={36} className="text-yellow-300 shrink-0 sm:w-12 sm:h-12" />
             </button>
-            <p className="text-xs sm:text-sm text-yellow-200/90 font-bold mt-4 drop-shadow">
-              Presione para iniciar el cálculo oficial y revelar el podio en vivo
-            </p>
           </div>
         </div>
       )}
@@ -182,34 +174,6 @@ export default function ProjectionView({
           ===================================================================== */}
       {projectionState === 'REVEALED' && (
         <div className="relative z-10 flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-6 sm:py-10 animate-casual-in">
-          {/* Cabecera Limpia para Proyección */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 sm:mb-12 pb-4 border-b border-white/15">
-            <div className="flex items-center gap-4">
-              <div className="w-16 sm:w-20 p-2 rounded-2xl bg-white shadow-xl">
-                <img src="/logo-donyeyo.svg" alt="Don Yeyo" className="w-full h-auto object-contain" />
-              </div>
-              <div>
-                <span className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-widest">
-                  Resultados Oficiales • Fase {activePhase}
-                </span>
-                <h2 className="text-xl sm:text-3xl font-black text-white">
-                  Clasificación General y Podio de Honor
-                </h2>
-              </div>
-            </div>
-
-            {/* Botón Discreto para Repetir la Revelación en Vivo */}
-            <button
-              onClick={handleStartProjection}
-              type="button"
-              className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg"
-              title="Volver a ejecutar la animación de cálculo y revelación del podio"
-            >
-              <RefreshCw size={16} />
-              <span>Repetir Revelación</span>
-            </button>
-          </div>
-
           {errorMessage && (
             <div className="p-4 rounded-2xl bg-amber-500/30 border border-amber-400 text-yellow-200 text-sm font-bold text-center mb-6">
               {errorMessage}
@@ -218,7 +182,7 @@ export default function ProjectionView({
 
           {/* Podio con Revelación Progresiva Cinematográfica (3° -> 2° -> 1°) */}
           {classificationData?.podio && (
-            <div className="mb-14 sm:mb-20">
+            <div className="mb-8 sm:mb-12">
               <Podium
                 podiumUsers={classificationData.podio}
                 isAnimatedReveal={true}
@@ -226,16 +190,26 @@ export default function ProjectionView({
             </div>
           )}
 
+          {/* Botón de Repetir Revelación Abajo del Podio (Centrado) */}
+          <div className="flex justify-center mb-10 sm:mb-14">
+            <button
+              onClick={handleStartProjection}
+              type="button"
+              className="px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl bg-white/10 hover:bg-white/20 border-2 border-white/25 text-white font-extrabold text-sm sm:text-base flex items-center gap-3 transition-all cursor-pointer shadow-xl hover:scale-105 active:scale-95 backdrop-blur-md"
+              title="Volver a ejecutar la animación de cálculo y revelación del podio"
+            >
+              <RefreshCw size={18} className="text-yellow-400" />
+              <span>Repetir Revelación</span>
+            </button>
+          </div>
+
           {/* Tabla General de Clasificados con Espaciado Generoso */}
           {classificationData && (
-            <div className="mt-12 sm:mt-16 pt-8 border-t border-white/15">
+            <div className="mt-8 sm:mt-12 pt-8 border-t border-white/15">
               <div className="text-center mb-8 sm:mb-10">
                 <h3 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-wide drop-shadow-lg">
                   Tabla General de Clasificados (Top {topCount})
                 </h3>
-                <p className="text-sm sm:text-base text-yellow-300 font-bold mt-2">
-                  Total Evaluados: {classificationData.totalJugados || 0} de {classificationData.totalInscriptos || 0} inscriptos
-                </p>
               </div>
 
               <ClassificationTable
@@ -251,7 +225,7 @@ export default function ProjectionView({
       {/* =====================================================================
           CONTROLES DE PIE DISCRETOS (SOLO PARA EL OPERADOR / ADMIN)
           ===================================================================== */}
-      <div className="relative z-20 w-full py-4 px-6 flex items-center justify-between opacity-40 hover:opacity-100 transition-opacity duration-300">
+      <div className="relative z-20 w-full py-4 px-6 flex items-center justify-start opacity-40 hover:opacity-100 transition-opacity duration-300">
         <button
           onClick={onBackToGame}
           className="text-xs text-white/80 hover:text-white font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -259,16 +233,6 @@ export default function ProjectionView({
           <ArrowLeft size={14} />
           <span>Volver al inicio</span>
         </button>
-
-        {onOpenConfig && (
-          <button
-            onClick={onOpenConfig}
-            className="text-xs text-yellow-300 hover:text-yellow-200 font-bold flex items-center gap-1.5 transition-colors cursor-pointer bg-black/40 px-3.5 py-1.5 rounded-xl border border-white/20"
-          >
-            <Sliders size={14} />
-            <span>Configuración de Admin</span>
-          </button>
-        )}
       </div>
     </div>
   );

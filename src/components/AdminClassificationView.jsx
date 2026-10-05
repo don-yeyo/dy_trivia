@@ -333,7 +333,9 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
         </div>
 
         <button
-          onClick={() => setAdminMode('PROJECTION')}
+          onClick={() => {
+            window.open(`${window.location.origin}${window.location.pathname}?view=proyeccion`, '_blank');
+          }}
           type="button"
           className="w-full sm:w-auto px-8 py-5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-200 text-slate-950 font-black text-sm sm:text-base uppercase tracking-wider shadow-2xl transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3 shrink-0 cursor-pointer border-2 border-white"
         >
