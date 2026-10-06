@@ -35,6 +35,7 @@ import {
   getStoredAdminUsername,
   clearAdminSession,
   fetchClassification,
+  determineClassification,
   resetClassification
 } from '../services/adminService';
 import { saveAppConfig, fetchAppConfig } from '../services/configService';
@@ -105,6 +106,8 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           currentTop = freshConfig.classificationTopCount;
         }
         if (freshConfig.isPhaseClosed !== undefined) setIsPhaseClosed(freshConfig.isPhaseClosed);
+        if (freshConfig.isClassificationPublished !== undefined) setIsPublished(freshConfig.isClassificationPublished);
+        if (freshConfig.publishedAt !== undefined) setPublishedAt(freshConfig.publishedAt);
         if (freshConfig.timePerQuestion !== undefined) setTimePerQuestion(freshConfig.timePerQuestion);
         if (freshConfig.shuffleQuestions !== undefined) setShuffleQuestions(freshConfig.shuffleQuestions);
         if (freshConfig.showPartialInTable !== undefined) setShowPartialInTable(freshConfig.showPartialInTable);
@@ -132,7 +135,6 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
     e.preventDefault();
     setLoginError('');
     setIsLoggingIn(true);
-
     const result = await loginAdmin(loginForm.username, loginForm.password);
     setIsLoggingIn(false);
 
@@ -153,8 +155,41 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
     setIsPublished(false);
   };
 
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const handlePublish = async () => {
+    if (!window.confirm(`¿Confirmas la publicación oficial de la Fase ${activePhase}? Todos los participantes podrán ver el podio de 3 ganadores y los clasificados en sus dispositivos.`)) {
+      return;
+    }
+
+    setIsPublishing(true);
+    setStatusMessage('');
+    try {
+      const result = await determineClassification(activePhase, topCount);
+      if (result && result.success) {
+        setIsPublished(true);
+        const pubDate = result.publishedAt || new Date().toISOString();
+        setPublishedAt(pubDate);
+        if (result.data) {
+          setClassificationData(result.data);
+        }
+        setStatusMessage('🎉 ¡Clasificación publicada oficialmente! Los participantes ya pueden ver el podio y clasificados.');
+        setTimeout(() => setStatusMessage(''), 6000);
+      } else {
+        setStatusMessage('❌ Error al publicar: ' + (result?.error || 'No se pudo completar la operación'));
+        setTimeout(() => setStatusMessage(''), 5000);
+      }
+    } catch (err) {
+      console.error('Error publicando clasificación:', err);
+      setStatusMessage('❌ Error al publicar: ' + err.message);
+      setTimeout(() => setStatusMessage(''), 5000);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const handleReset = async () => {
-    if (!window.confirm('¿Estás seguro de que deseas reiniciar la publicación oficial de la clasificación?')) {
+    if (!window.confirm('¿Despublicar la clasificación oficial? Los participantes volverán a ver el mensaje de que los resultados están en proceso de auditoría y no podrán ver el podio.')) {
       return;
     }
     setIsLoadingData(true);
@@ -163,8 +198,8 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
     setPublishedAt(null);
     await loadData(getStoredAdminToken());
     setIsLoadingData(false);
-    setStatusMessage('La clasificación volvió al estado pendiente de publicación.');
-    setTimeout(() => setStatusMessage(''), 4000);
+    setStatusMessage('🔒 La clasificación se despublicó y volvió al estado de auditoría (oculta al público).');
+    setTimeout(() => setStatusMessage(''), 5000);
   };
 
   const handleCopyPublicLink = () => {
@@ -183,6 +218,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
         activePhase: Number(activePhase),
         classificationTopCount: Number(topCount),
         isPhaseClosed: Boolean(isPhaseClosed),
+        isClassificationPublished: Boolean(isPublished),
         timePerQuestion: Number(timePerQuestion),
         shuffleQuestions: Boolean(shuffleQuestions),
         showPartialInTable: Boolean(showPartialInTable),
@@ -487,6 +523,74 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
       </div>
 
       {/* =========================================================================
+          BANNER PRINCIPAL: CONTROL DE PUBLICACIÓN DE PODIO Y CLASIFICADOS
+          ========================================================================= */}
+      <div
+        className={`mb-8 p-6 sm:p-8 rounded-3xl border-2 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6 transition-all ${
+          isPublished
+            ? 'bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 border-emerald-400/80 text-white'
+            : 'bg-gradient-to-r from-amber-950 via-slate-900 to-red-950 border-amber-400/80 text-white'
+        }`}
+      >
+        <div className="flex-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 bg-white/10 border border-white/20">
+            <Trophy size={14} className={isPublished ? 'text-emerald-400' : 'text-amber-400'} />
+            <span>
+              {isPublished
+                ? 'Estado Actual: Visible a los Participantes'
+                : 'Estado Actual: Oculto a Participantes (En Auditoría)'}
+            </span>
+          </div>
+          <h3 className="text-xl sm:text-2xl font-black text-white">
+            {isPublished
+              ? `Podio y Clasificados de Fase ${activePhase} Publicados Oficialmente`
+              : `Resultados de Fase ${activePhase} en Borrador / Auditoría`}
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
+            {isPublished
+              ? `Los colaboradores ya pueden ver el podio de 3 ganadores y la tabla oficial en sus dispositivos. Publicado el: ${
+                  publishedAt ? new Date(publishedAt).toLocaleString() : 'Recientemente'
+                }.`
+              : 'La fase puede estar cerrada para responder, pero los participantes verán la pantalla de espera o fin de fase hasta que pulses este botón para oficializar el podio.'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
+          {isPublished ? (
+            <button
+              onClick={handleReset}
+              type="button"
+              className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white/10 hover:bg-rose-600/70 text-white font-black text-xs sm:text-sm uppercase tracking-wider border border-white/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer shadow-lg transform hover:scale-[1.01] active:scale-[0.99]"
+              title="Despublicar la clasificación para volver al modo auditoría"
+            >
+              <EyeOff size={18} />
+              <span>Despublicar (Volver a Auditoría)</span>
+            </button>
+          ) : (
+            <button
+              onClick={handlePublish}
+              disabled={isPublishing}
+              type="button"
+              className="w-full sm:w-auto px-8 py-5 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-200 text-slate-950 font-black text-sm sm:text-base uppercase tracking-wider shadow-2xl transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3 cursor-pointer border-2 border-white disabled:opacity-50"
+            >
+              {isPublishing ? (
+                <>
+                  <RefreshCw size={20} className="animate-spin text-slate-950" />
+                  <span>Publicando Podio...</span>
+                </>
+              ) : (
+                <>
+                  <Trophy size={22} className="text-slate-950" />
+                  <span>Publicar Podio y Clasificados</span>
+                  <Sparkles size={18} className="text-amber-800" />
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* =========================================================================
           PANEL INTEGRAL DE CONFIGURACIÓN DE LA TRIVIA (PESTAÑA GOOGLE SHEETS)
           ========================================================================= */}
       <div className="casual-card text-left shadow-2xl w-full p-6 sm:p-10 rounded-3xl mb-8 sm:mb-12 border-2 border-slate-200/90">
@@ -523,16 +627,16 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
 
         {/* Bloque de Secciones de Configuración */}
         <div className="space-y-6">
-          {/* SECCIÓN 1: FASE ACTIVA Y CUPO DE CLASIFICADOS */}
+          {/* SECCIÓN 1: FASE ACTIVA, ESTADOS DE RESPUESTAS Y PUBLICACIÓN */}
           <div className="p-5 sm:p-6 rounded-2xl bg-slate-50 border border-slate-200/90">
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-600" />
-              Fase del Torneo y Cupo de Clasificación
+              Fase del Torneo, Estado de Respuestas y Publicación de Resultados
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
               {/* Selector de Fase Activa */}
-              <div className="md:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div className="md:col-span-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wide mb-2">
                   FASE_ACTIVA
                 </label>
@@ -558,9 +662,9 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
               </div>
 
               {/* Estado de la Fase: Abierta vs Cerrada */}
-              <div className="md:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div className="md:col-span-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wide mb-2">
-                  FASE_CERRADA (Estado de Respuestas)
+                  FASE_CERRADA (Admisión de Respuestas)
                 </label>
                 <div className="flex gap-2">
                   <button
@@ -599,14 +703,52 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                     title="Descargar clasificación de la fase cerrada en Excel"
                   >
                     <FileSpreadsheet size={15} />
-                    <span>Exportar Clasificación a Excel</span>
+                    <span>Exportar a Excel</span>
                     <Download size={13} className="text-emerald-200" />
                   </button>
                 )}
               </div>
 
+              {/* Visibilidad de Clasificación para Participantes */}
+              <div className="md:col-span-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wide mb-2 flex items-center justify-between">
+                  <span>CLASIFICACION_PUBLICADA</span>
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPublished(false)}
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      !isPublished
+                        ? 'bg-amber-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    }`}
+                  >
+                    <EyeOff size={14} />
+                    <span>Oculta</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPublished(true)}
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      isPublished
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                    }`}
+                  >
+                    <Eye size={14} />
+                    <span>Publicada</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2">
+                  {isPublished
+                    ? 'Podio y ranking visibles a todos los colaboradores.'
+                    : 'Fase en auditoría: podio oculto a participantes.'}
+                </p>
+              </div>
+
               {/* Cupo de Clasificados */}
-              <div className="md:col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div className="md:col-span-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wide mb-2">
                   CLASIFICACION_TOP_COUNT (Cupo)
                 </label>
@@ -617,7 +759,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                     max="500"
                     value={topCount}
                     onChange={(e) => setTopCount(Math.max(3, parseInt(e.target.value || '3', 10)))}
-                    className="w-20 px-2.5 py-2 rounded-xl bg-slate-50 border-2 border-slate-300 font-black text-slate-950 text-sm text-center focus:outline-none focus:border-red-600"
+                    className="w-16 px-2 py-2 rounded-xl bg-slate-50 border-2 border-slate-300 font-black text-slate-950 text-sm text-center focus:outline-none focus:border-red-600"
                   />
                   <div className="flex gap-1 flex-wrap">
                     {[5, 10, 20, 30].map((num) => (
@@ -625,7 +767,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                         key={num}
                         type="button"
                         onClick={() => setTopCount(num)}
-                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black cursor-pointer transition-all ${
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black cursor-pointer transition-all ${
                           topCount === num
                             ? 'bg-red-600 text-white shadow-sm'
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
@@ -637,7 +779,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                   </div>
                 </div>
                 <p className="text-[10px] text-slate-500 mt-2">
-                  Cantidad de clasificados oficiales en la tabla y proyección.
+                  Cantidad oficial de clasificados a la final.
                 </p>
               </div>
             </div>
@@ -867,16 +1009,31 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
               <span>{copiedLink ? '¡Enlace Copiado!' : 'Copiar Enlace'}</span>
             </button>
 
-            {/* Reiniciar si ya está publicado */}
-            {isPublished && (
+            {/* Botón de Publicar / Despublicar en barra de acciones */}
+            {isPublished ? (
               <button
                 onClick={handleReset}
                 type="button"
-                className="flex-1 sm:flex-none py-3.5 px-4 min-h-[48px] rounded-xl bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors border border-slate-200"
-                title="Despublicar clasificación"
+                className="flex-1 sm:flex-none py-3.5 px-4 min-h-[48px] rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors border border-slate-200"
+                title="Despublicar clasificación y volver a modo auditoría"
               >
-                <RefreshCw size={14} />
-                <span>Reiniciar</span>
+                <EyeOff size={14} />
+                <span>Despublicar</span>
+              </button>
+            ) : (
+              <button
+                onClick={handlePublish}
+                disabled={isPublishing}
+                type="button"
+                className="flex-1 sm:flex-none py-3.5 px-5 min-h-[48px] rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all border border-amber-300 transform hover:scale-105 active:scale-95 disabled:opacity-50"
+                title="Publicar podio y clasificados para todos los participantes"
+              >
+                {isPublishing ? (
+                  <RefreshCw size={14} className="animate-spin text-slate-950" />
+                ) : (
+                  <Trophy size={14} className="text-slate-950" />
+                )}
+                <span>Publicar Clasificación</span>
               </button>
             )}
           </div>

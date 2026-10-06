@@ -52,6 +52,20 @@ export async function handler(event, context) {
         frontendOverrides.isPhaseClosed = val;
       }
 
+      if (body.isClassificationPublished !== undefined) {
+        const val = !!body.isClassificationPublished;
+        sheetUpdates['CLASIFICACION_PUBLICADA'] = val ? 'TRUE' : 'FALSE';
+        frontendOverrides.isClassificationPublished = val;
+        if (val) {
+          const pubDate = new Date().toISOString();
+          sheetUpdates['FECHA_PUBLICACION_CLASIFICACION'] = pubDate;
+          frontendOverrides.classificationPublishedAt = pubDate;
+        } else {
+          sheetUpdates['FECHA_PUBLICACION_CLASIFICACION'] = '';
+          frontendOverrides.classificationPublishedAt = null;
+        }
+      }
+
       if (body.classificationTopCount !== undefined) {
         const c = parseInt(body.classificationTopCount, 10);
         if (!isNaN(c) && c >= 3) {

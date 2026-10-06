@@ -98,7 +98,9 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
 - **Autenticación Segura en Servidor:** Las credenciales (`ADMIN_USER` y `ADMIN_PASSWORD`) residen exclusivamente en variables de entorno del backend (Netlify Functions) y **nunca** son expuestas al frontend ni bundle de cliente.
 - **Configuración Integral Sincronizada con Google Sheets:**
   - **Fase del Torneo (`FASE_ACTIVA`):** Selector de Fase 1, Fase 2 o Fase 3 con actualización reactiva inmediata de la clasificación.
-  - **Estado de Fase (`FASE_CERRADA`):** Switch para conmutar entre Fase Abierta (permite ingreso y respuestas) y Fase Cerrada (finalizada para corte oficial).
+  - **Estado de Fase (`FASE_CERRADA`):** Switch para conmutar entre Fase Abierta (permite ingreso y respuestas de participantes) y Fase Cerrada (bloquea envíos de respuestas para iniciar el corte oficial o auditoría).
+  - **Publicación Oficial de Clasificados (`CLASIFICACION_PUBLICADA`):** Switch y controles directos para alternar entre *Oculta (En Auditoría)* y *Publicada Oficial (Visible)*. **Importante:** Una fase puede estar cerrada (sin admitir más respuestas de participantes) pero aún no publicada (en revisión por Calidad/RRHH).
+  - **Banner Principal de Publicación Oficial y Botones de Acción:** En `/admin` se incluye un banner reactivo que indica claramente si los resultados son visibles en los dispositivos de los colaboradores o si permanecen privados para auditoría interna, con botones directos para **"Publicar Clasificación Ahora"** y **"Despublicar / Volver a Auditoría"** sin necesidad de abrir la vista de proyección.
   - **Cupo de Clasificados (`CLASIFICACION_TOP_COUNT`):** Campo numérico con presets rápidos (5, 10, 20, 30...) que define el corte oficial de clasificados para la tabla y la proyección.
   - **Tiempo por Pregunta (`TIEMPO_POR_PREGUNTA`):** Configuración en segundos (presets: 15s, 20s, 30s, 45s, o 0 para tiempo ilimitado).
   - **Mezclar Preguntas (`MEZCLAR_PREGUNTAS`):** Aleatorización del orden de preguntas por participante.
@@ -106,7 +108,7 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
   - **Botón "Guardar Configuración en Google Sheets":** Persiste todos los cambios directamente en el backend y los sincroniza con la pestaña `Configuracion` de Google Sheets vía Apps Script.
 - **Apertura de Pantalla de Proyección:** Botón destacado que abre en pestaña independiente (`_blank`) la vista de proyección cinematográfica transmitiendo los parámetros de `topCount` y `phase` activos.
 - **Disparador Gamer "Determinar Clasificados":** Al hacer clic en la proyección o en el panel, activa una animación gamer de alta fidelidad que simula el escaneo de registros de la planta, auditoría de respuestas correctas, cálculo de tiempos y desempates.
-- **Publicación Oficial:** Al completar el cálculo, la clasificación y el podio quedan inmediatamente disponibles para que todos los colaboradores puedan ingresar a verla públicamente.
+- **Publicación Oficial:** Al completar el cálculo o pulsar publicar, la clasificación y el podio quedan inmediatamente disponibles para que todos los colaboradores puedan ingresar a verla públicamente desde sus teléfonos celulares.
 - **Exportación a Excel (.xlsx) para Fases Cerradas:**
   - Cuando una fase se encuentra cerrada (`FASE_CERRADA`), se habilita automáticamente el botón **"Exportar a Excel (.xlsx)"** en la barra de acciones y en la cabecera de la vista previa.
   - Genera un archivo `.xlsx` profesional compuesto por 3 pestañas:
@@ -114,7 +116,7 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
     2. **Top N Clasificados:** Nómina exclusiva de colaboradores que obtuvieron el cupo para la siguiente instancia.
     3. **Podio Fase X:** Detalle de los 3 puestos de honor (Oro, Plata, Bronce).
   - Incluye columnas con anchos ajustados automáticamente y metadatos de auditoría (administrador que exportó y fecha de corte).
-- **Gestión:** Incluye botón para copiar el enlace público de clasificación y botón para reiniciar/recalcular.
+- **Gestión:** Incluye botón para copiar el enlace público de clasificación y botón para reiniciar/despublicar la clasificación.
 
 ### 2. Pantalla Pública de Clasificación (`/clasificacion` o `?view=clasificacion`)
 - **Estado Previo (No publicada):** Si la administración aún no determinó los clasificados, muestra una pantalla amigable indicando que la evaluación está en curso y los resultados se publicarán pronto.
