@@ -219,11 +219,7 @@ export default function App() {
       return (
         <div className="app-layout relative overflow-hidden">
           <SunburstBackground screenKey="ADMIN" />
-          <Header
-            currentView="ADMIN"
-            isGameActive={false}
-            onOpenClassification={() => setCurrentView('PUBLIC_CLASSIFICATION')}
-          />
+          <Header />
           <main className="app-main app-main--wide">
             <AdminClassificationView
               appConfig={appConfig}
@@ -270,13 +266,8 @@ export default function App() {
       {/* Fondo de rayos rectos giratorios reactivo en todas las pantallas */}
       <SunburstBackground screenKey={currentView === 'GAME' ? gameState : currentView} />
 
-      {/* Header superior con botones de navegación */}
-      <Header
-        currentView={currentView}
-        isGameActive={isGameActive}
-        isClassificationPublished={Boolean(appConfig?.isClassificationPublished)}
-        onOpenClassification={() => setCurrentView('PUBLIC_CLASSIFICATION')}
-      />
+      {/* Header superior limpio */}
+      <Header />
 
       {/* Contenido Principal según Vista Activa */}
       <main className={`app-main ${currentView !== 'GAME' ? 'app-main--wide' : ''}`}>
