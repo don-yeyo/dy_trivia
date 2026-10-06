@@ -38,8 +38,9 @@ export default function PublicClassificationView({ onBackToGame, appConfig }) {
       const res = await fetchClassification(currentPhase, currentTop);
       if (res) {
         if (res.activePhase || res.phase) setActivePhase(res.activePhase || res.phase);
-        setIsPublished(res.isPublished || false);
-        setPublishedAt(res.publishedAt || null);
+        const published = res.isPublished !== undefined ? res.isPublished : Boolean(freshConfig?.isClassificationPublished);
+        setIsPublished(published);
+        setPublishedAt(res.publishedAt || freshConfig?.publishedAt || null);
         const data = res.data || res.previewData;
         setClassificationData(data || null);
         const confirmedTop = res.topCount || data?.topCount || currentTop;

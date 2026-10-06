@@ -119,8 +119,9 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
       // 2. Cargar clasificación para la fase y cupo actuales
       const res = await fetchClassification(currentPhase, currentTop);
       if (res) {
-        setIsPublished(res.isPublished || false);
-        setPublishedAt(res.publishedAt || null);
+        const published = res.isPublished !== undefined ? res.isPublished : Boolean(freshConfig?.isClassificationPublished);
+        setIsPublished(published);
+        setPublishedAt(res.publishedAt || freshConfig?.publishedAt || null);
         const data = res.data || res.previewData;
         setClassificationData(data);
       }

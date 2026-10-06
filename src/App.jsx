@@ -274,6 +274,7 @@ export default function App() {
       <Header
         currentView={currentView}
         isGameActive={isGameActive}
+        isClassificationPublished={Boolean(appConfig?.isClassificationPublished)}
         onOpenClassification={() => setCurrentView('PUBLIC_CLASSIFICATION')}
       />
 

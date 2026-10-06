@@ -176,6 +176,10 @@ export async function determineClassification(phase = 1, topCount = 30) {
   }
 
   // Fallback si no está el backend activo
+  await saveAppConfig({
+    isClassificationPublished: true,
+    publishedAt: new Date().toISOString()
+  });
   const fallbackData = await computeFallbackClassification(phase, topCount, true);
   const result = {
     success: true,
@@ -218,6 +222,11 @@ export async function resetClassification(phase = 1) {
       return await res.json();
     }
   } catch (e) {}
+
+  await saveAppConfig({
+    isClassificationPublished: false,
+    publishedAt: null
+  });
 
   try {
     localStorage.removeItem(LOCAL_PUBLISHED_KEY);
@@ -332,9 +341,34 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
     allParticipants: ranked
   };
 
+  // 6. Consultar si la clasificación ya está publicada oficialmente en Google Sheets
+  let isPublished = false;
+  let publishedAt = null;
+  try {
+    const cfg = await fetchAppConfig();
+    if (cfg) {
+      isPublished = Boolean(cfg.isClassificationPublished);
+      publishedAt = cfg.publishedAt || null;
+    }
+  } catch (e) {}
+
+  if (isPublished) {
+    return {
+      success: true,
+      isPublished: true,
+      publishedAt,
+      phase: targetPhase,
+      topCount: topLimit,
+      data,
+      isAdmin: Boolean(isAdmin)
+    };
+  }
+
   if (isAdmin) {
     return {
+      success: true,
       isPublished: false,
+      publishedAt: null,
       isAdmin: true,
       previewData: data,
       message: 'Modo Administrador (Vista previa basada en Google Sheets)'
@@ -342,7 +376,9 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
   }
 
   return {
+    success: true,
     isPublished: false,
+    publishedAt: null,
     isAdmin: false,
     message: 'La clasificación y podio están en auditoría y se publicarán pronto.'
   };
