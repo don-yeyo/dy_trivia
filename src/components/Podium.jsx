@@ -122,12 +122,9 @@ export default function Podium({ podiumUsers = [], isAnimatedReveal = false }) {
                     1° Campeón
                   </span>
                 </div>
-                <h3 className="text-sm font-black text-white uppercase truncate">
+                <h3 className="text-sm font-black text-white uppercase break-words leading-tight">
                   {firstPlace ? `${firstPlace.nombre} ${firstPlace.apellido}` : 'Vacante'}
                 </h3>
-                {firstPlace?.sector && (
-                  <p className="text-[11px] text-slate-300 truncate">{firstPlace.sector}</p>
-                )}
               </div>
 
               <div className="text-right shrink-0">
@@ -164,12 +161,9 @@ export default function Podium({ podiumUsers = [], isAnimatedReveal = false }) {
                     2° Puesto
                   </span>
                 </div>
-                <h3 className="text-sm font-black text-white uppercase truncate">
+                <h3 className="text-sm font-black text-white uppercase break-words leading-tight">
                   {secondPlace ? `${secondPlace.nombre} ${secondPlace.apellido}` : 'Vacante'}
                 </h3>
-                {secondPlace?.sector && (
-                  <p className="text-[11px] text-slate-300 truncate">{secondPlace.sector}</p>
-                )}
               </div>
 
               <div className="text-right shrink-0">
@@ -206,12 +200,9 @@ export default function Podium({ podiumUsers = [], isAnimatedReveal = false }) {
                     3° Puesto
                   </span>
                 </div>
-                <h3 className="text-sm font-black text-white uppercase truncate">
+                <h3 className="text-sm font-black text-white uppercase break-words leading-tight">
                   {thirdPlace ? `${thirdPlace.nombre} ${thirdPlace.apellido}` : 'Vacante'}
                 </h3>
-                {thirdPlace?.sector && (
-                  <p className="text-[11px] text-slate-300 truncate">{thirdPlace.sector}</p>
-                )}
               </div>
 
               <div className="text-right shrink-0">

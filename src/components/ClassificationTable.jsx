@@ -57,7 +57,7 @@ export default function ClassificationTable({
         </div>
 
         {/* Tabs de Filtro */}
-        <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
           <button
             onClick={() => setFilterMode('ALL')}
             className={`flex-1 sm:flex-none px-3 sm:px-5 py-2.5 sm:py-3 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap text-center ${
@@ -144,10 +144,10 @@ export default function ClassificationTable({
                       </span>
                     </div>
 
-                    {/* Nombre y Sector */}
+                    {/* Nombre */}
                     <div className="flex-1 min-w-0 pr-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-white text-xs truncate">
+                        <span className="font-bold text-white text-xs break-words leading-tight">
                           {p.nombre} {p.apellido}
                         </span>
                         {isTopQualified && (
@@ -166,11 +166,6 @@ export default function ClassificationTable({
                           </span>
                         )}
                       </div>
-                      {p.sector && (
-                        <span className="text-[10px] text-slate-400 block truncate mt-0.5">
-                          {p.sector}
-                        </span>
-                      )}
                     </div>
 
                     {/* Puntaje y Tiempo */}
@@ -246,11 +241,6 @@ export default function ClassificationTable({
                           </span>
                         )}
                       </div>
-                      {p.sector && (
-                        <span className="text-xs text-slate-400 mt-0.5 truncate">
-                          {p.sector}
-                        </span>
-                      )}
                     </div>
 
                     {/* Puntaje */}
