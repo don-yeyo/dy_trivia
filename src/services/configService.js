@@ -3,7 +3,7 @@
 // Obtiene y sincroniza la configuración de la trivia desde Google Sheets (Backend First)
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
-import { fetchFromGoogleSheetsAPI } from './googleSheetsService';
+import { fetchRawFromGoogleSheetsAPI } from './googleSheetsService';
 
 export const DEFAULT_CONFIG = {
   activePhase: 1,
@@ -20,10 +20,16 @@ export const DEFAULT_CONFIG = {
 };
 
 /**
- * Consulta la configuración autorizada desde el backend (/api/config)
+ * Consulta la configuración autorizada viva desde el backend (/api/config)
  * con fallback de desarrollo local a Google Sheets API v4.
+ * 🛡️ REGLA: Nunca usa ni pisa con localStorage para garantizar seguridad y fidelidad con la planilla.
  */
 export async function fetchAppConfig() {
+  // Limpieza proactiva de cualquier residuo previo en almacenamiento local
+  try {
+    localStorage.removeItem('dy_trivia_app_config');
+  } catch (e) {}
+
   try {
     // 1. Intento primario: Backend Serverless (/api/config)
     const response = await fetch('/api/config');
@@ -34,39 +40,47 @@ export async function fetchAppConfig() {
       if (data && data.success) {
         return {
           activePhase: data.activePhase || 1,
-          isPhaseClosed: !!data.isPhaseClosed,
-          isClassificationPublished: !!data.isClassificationPublished,
+          isPhaseClosed: Boolean(data.isPhaseClosed),
+          isClassificationPublished: Boolean(data.isClassificationPublished),
           classificationTopCount: data.classificationTopCount || 30,
           showPartialInTable: data.showPartialInTable !== false,
-          showUnansweredInTable: !!data.showUnansweredInTable,
+          showUnansweredInTable: Boolean(data.showUnansweredInTable),
           timePerQuestion: data.timePerQuestion !== undefined ? data.timePerQuestion : 45,
-          shuffleQuestions: !!data.shuffleQuestions,
-          hideSummaryAnswered: !!data.hideSummaryAnswered,
-          hideSummaryTime: !!data.hideSummaryTime,
+          shuffleQuestions: Boolean(data.shuffleQuestions),
+          hideSummaryAnswered: Boolean(data.hideSummaryAnswered),
+          hideSummaryTime: Boolean(data.hideSummaryTime),
           publishedAt: data.classificationPublishedAt || null
         };
       }
     }
   } catch (err) {
-    // Si no está corriendo el backend serverless (ej: Vite puro en dev), se activa el fallback
+    // Si no está corriendo el backend serverless (ej: Vite en dev puro), se activa el fallback
   }
 
-  // 2. Fallback de desarrollo local: consultar Google Sheets API v4 directamente
+  // 2. Fallback de desarrollo local: consultar Google Sheets API v4 directamente en bruto
   const spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_SPREADSHEET_ID;
   const apiKey = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
   const configRange = import.meta.env.VITE_GOOGLE_SHEETS_CONFIG_RANGE || 'Configuracion!A1:C30';
 
   if (spreadsheetId && apiKey) {
     try {
-      const rows = await fetchFromGoogleSheetsAPI(spreadsheetId, configRange, apiKey);
-      if (rows && rows.length > 0) {
+      const rawRows = await fetchRawFromGoogleSheetsAPI(spreadsheetId, configRange, apiKey);
+      if (rawRows && rawRows.length > 0) {
         const config = { ...DEFAULT_CONFIG };
 
-        rows.forEach(r => {
-          const rawKey = String(r.clave || r.key || r.parametro || '').trim().toUpperCase();
-          const rawValue = String(r.valor || r.value || '').trim();
+        // Detectar si la primera fila es encabezado (ej: "clave", "valor") o ya es un dato (ej: "FASE_ACTIVA")
+        const firstCell = String((rawRows[0] && rawRows[0][0]) || '').toLowerCase().trim();
+        const isHeader = (firstCell === 'clave' || firstCell === 'key' || firstCell === 'parametro');
+        const startIdx = isHeader ? 1 : 0;
 
-          if (!rawKey) return;
+        for (let i = startIdx; i < rawRows.length; i++) {
+          const row = rawRows[i];
+          if (!row || row.length === 0) continue;
+
+          const rawKey = String(row[0] || '').trim().toUpperCase();
+          const rawValue = String(row[1] !== undefined ? row[1] : '').trim();
+
+          if (!rawKey) continue;
 
           switch (rawKey) {
             case 'FASE_ACTIVA':
@@ -128,7 +142,7 @@ export async function fetchAppConfig() {
             default:
               break;
           }
-        });
+        }
 
         return config;
       }
@@ -137,35 +151,18 @@ export async function fetchAppConfig() {
     }
   }
 
-  // 3. Fallback a almacenamiento local o final seguro
-  try {
-    const local = localStorage.getItem('dy_trivia_app_config');
-    if (local) {
-      const parsed = JSON.parse(local);
-      if (parsed && typeof parsed === 'object') {
-        return { ...DEFAULT_CONFIG, ...parsed };
-      }
-    }
-  } catch (e) {}
-
   return DEFAULT_CONFIG;
 }
 
 /**
  * Guarda los parámetros de configuración en el backend (/api/config)
  * para persistirlos en la pestaña 'Configuracion' de Google Sheets.
+ * 🛡️ REGLA: No utiliza localStorage para evitar desincronizaciones de datos.
  */
 export async function saveAppConfig(updates = {}) {
   const token = sessionStorage.getItem('dy_trivia_admin_token') || localStorage.getItem('dy_trivia_admin_token') || '';
 
-  // 1. Guardar inmediatamente en localStorage para sincronización reactiva local
-  try {
-    const localCurrent = JSON.parse(localStorage.getItem('dy_trivia_app_config') || '{}');
-    const merged = { ...localCurrent, ...updates };
-    localStorage.setItem('dy_trivia_app_config', JSON.stringify(merged));
-  } catch (e) {}
-
-  // 2. Enviar al backend serverless
+  // Enviar al backend serverless
   try {
     const res = await fetch('/api/config', {
       method: 'POST',
@@ -179,11 +176,6 @@ export async function saveAppConfig(updates = {}) {
     const data = await res.json().catch(() => ({}));
 
     if (res.ok && data.success) {
-      if (data.config) {
-        try {
-          localStorage.setItem('dy_trivia_app_config', JSON.stringify(data.config));
-        } catch (e) {}
-      }
       return {
         success: true,
         syncedWithSheet: data.syncedWithSheet !== false,
@@ -193,7 +185,6 @@ export async function saveAppConfig(updates = {}) {
       };
     }
 
-    // Fallo de autorización (403), servidor (500) u otro
     const errMsg = data.error || (res.status === 403 ? 'Sesión de administrador inválida o expirada. Por favor vuelva a iniciar sesión.' : `Error del servidor (${res.status})`);
     return {
       success: false,
@@ -202,7 +193,7 @@ export async function saveAppConfig(updates = {}) {
       config: updates
     };
   } catch (err) {
-    console.warn('Error guardando en backend /api/config, usando persistencia local:', err);
+    console.warn('Error guardando en backend /api/config:', err);
     return { success: false, syncedWithSheet: false, error: err.message, config: updates };
   }
 }

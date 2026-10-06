@@ -13,19 +13,18 @@ export function getServerEnv(key) {
 }
 
 /**
- * Consulta un rango de Google Sheets API v4 usando credenciales de backend
+ * Consulta un rango de Google Sheets API v4 devolviendo las filas en bruto (values)
  */
-export async function fetchSheetValues(range) {
+export async function fetchRawSheetValues(range) {
   const spreadsheetId = getServerEnv('GOOGLE_SHEETS_SPREADSHEET_ID');
   const apiKey = getServerEnv('GOOGLE_SHEETS_API_KEY');
 
   if (!spreadsheetId || !apiKey) {
-    throw new Error('Faltan credenciales de Google Sheets en las variables de entorno de Netlify (GOOGLE_SHEETS_SPREADSHEET_ID / GOOGLE_SHEETS_API_KEY).');
+    throw new Error('Faltan credenciales de Google Sheets en variables de entorno (GOOGLE_SHEETS_SPREADSHEET_ID / GOOGLE_SHEETS_API_KEY).');
   }
 
   const encodedRange = encodeURIComponent(range);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}?key=${apiKey}`;
-
   const appUrl = getServerEnv('URL') || getServerEnv('DEPLOY_URL') || 'https://dy-inocuidad.netlify.app';
 
   const response = await fetch(url, {
@@ -41,8 +40,15 @@ export async function fetchSheetValues(range) {
   }
 
   const data = await response.json();
-  const rows = data.values || [];
-  if (rows.length === 0) return [];
+  return data.values || [];
+}
+
+/**
+ * Consulta un rango de Google Sheets API v4 usando credenciales de backend y mapeando a objetos según headers
+ */
+export async function fetchSheetValues(range) {
+  const rows = await fetchRawSheetValues(range);
+  if (!rows || rows.length === 0) return [];
 
   const headers = rows[0].map(h => String(h).trim().toLowerCase());
   const objects = [];
@@ -139,20 +145,27 @@ export const DEFAULT_TRIVIA_CONFIG = {
  */
 export async function fetchTriviaConfig() {
   const configRange = getServerEnv('GOOGLE_SHEETS_CONFIG_RANGE') || 'Configuracion!A1:C30';
-
   const config = { ...DEFAULT_TRIVIA_CONFIG };
 
   try {
-    const rows = await fetchSheetValues(configRange);
-    if (!rows || rows.length === 0) {
+    const rawRows = await fetchRawSheetValues(configRange);
+    if (!rawRows || rawRows.length === 0) {
       return config;
     }
 
-    rows.forEach(r => {
-      const rawKey = String(r.clave || r.key || r.parametro || '').trim().toUpperCase();
-      const rawValue = String(r.valor || r.value || '').trim();
+    // Detectar inteligentemente si la primera fila es encabezado (ej. "clave", "valor")
+    const firstCell = String((rawRows[0] && rawRows[0][0]) || '').toLowerCase().trim();
+    const isHeader = (firstCell === 'clave' || firstCell === 'key' || firstCell === 'parametro');
+    const startIdx = isHeader ? 1 : 0;
 
-      if (!rawKey) return;
+    for (let i = startIdx; i < rawRows.length; i++) {
+      const row = rawRows[i];
+      if (!row || row.length === 0) continue;
+
+      const rawKey = String(row[0] || '').trim().toUpperCase();
+      const rawValue = String(row[1] !== undefined ? row[1] : '').trim();
+
+      if (!rawKey) continue;
 
       switch (rawKey) {
         case 'FASE_ACTIVA':
@@ -214,56 +227,18 @@ export async function fetchTriviaConfig() {
         default:
           break;
       }
-    });
+    }
   } catch (err) {
     console.warn('Advertencia: No se pudo leer la pestaña Configuracion de Google Sheets. Usando defaults seguros:', err.message);
   }
 
-  // 🛡️ Aplicar overrides en memoria / archivo temporal si existen
-  const overrides = loadConfigOverrides();
-  Object.keys(overrides).forEach(k => {
-    if (overrides[k] !== undefined && overrides[k] !== null) {
-      config[k] = overrides[k];
-    }
-  });
-
   return config;
-}
-
-const CONFIG_OVERRIDE_PATH = '/tmp/dy_config_override.json';
-let memoryConfigOverrides = null;
-
-function loadConfigOverrides() {
-  if (memoryConfigOverrides) return memoryConfigOverrides;
-  try {
-    if (fs.existsSync(CONFIG_OVERRIDE_PATH)) {
-      const data = JSON.parse(fs.readFileSync(CONFIG_OVERRIDE_PATH, 'utf8'));
-      if (data && typeof data === 'object') {
-        memoryConfigOverrides = data;
-        return memoryConfigOverrides;
-      }
-    }
-  } catch (e) {}
-  memoryConfigOverrides = {};
-  return memoryConfigOverrides;
-}
-
-function saveConfigOverrides(overrides) {
-  const current = loadConfigOverrides();
-  memoryConfigOverrides = { ...current, ...overrides };
-  try {
-    fs.writeFileSync(CONFIG_OVERRIDE_PATH, JSON.stringify(memoryConfigOverrides), 'utf8');
-  } catch (e) {}
 }
 
 /**
  * Actualiza una o más claves en la pestaña 'Configuracion' de Google Sheets mediante Apps Script.
- * Además guarda en memoria/archivo temporal para respuesta inmediata garantizada.
  */
-export async function updateTriviaConfig(updates = {}, frontendOverrides = {}) {
-  // Guardar overrides inmediatamente
-  saveConfigOverrides(frontendOverrides);
-
+export async function updateTriviaConfig(updates = {}) {
   return await sendToAppsScript({
     action: 'UPDATE_CONFIG',
     updates

@@ -8,7 +8,9 @@ import { loadTriviaQuestions } from './triviaService';
 
 const ADMIN_TOKEN_KEY = 'dy_trivia_admin_token';
 const ADMIN_USER_KEY = 'dy_trivia_admin_user';
-const LOCAL_PUBLISHED_KEY = 'dy_trivia_classification_published_local';
+try {
+  localStorage.removeItem('dy_trivia_classification_published_local');
+} catch (e) {}
 
 /**
  * Retorna el token de admin si la sesión sigue activa
@@ -166,11 +168,7 @@ export async function determineClassification(phase = 1, topCount = 30) {
     const contentType = res.headers.get('content-type') || '';
 
     if (res.ok && contentType.includes('application/json')) {
-      const data = await res.json();
-      try {
-        localStorage.setItem(LOCAL_PUBLISHED_KEY, JSON.stringify(data));
-      } catch (e) {}
-      return data;
+      return await res.json();
     }
   } catch (err) {
     console.warn('Error al disparar clasificación en servidor, ejecutando fallback:', err);
@@ -182,7 +180,7 @@ export async function determineClassification(phase = 1, topCount = 30) {
     publishedAt: new Date().toISOString()
   });
   const fallbackData = await computeFallbackClassification(phase, topCount, true);
-  const result = {
+  return {
     success: true,
     isPublished: true,
     publishedAt: new Date().toISOString(),
@@ -190,12 +188,6 @@ export async function determineClassification(phase = 1, topCount = 30) {
     topCount,
     data: fallbackData.data || fallbackData.previewData
   };
-
-  try {
-    localStorage.setItem(LOCAL_PUBLISHED_KEY, JSON.stringify(result));
-  } catch (e) {}
-
-  return result;
 }
 
 /**
@@ -217,9 +209,6 @@ export async function resetClassification(phase = 1) {
     const contentType = res.headers.get('content-type') || '';
 
     if (res.ok && contentType.includes('application/json')) {
-      try {
-        localStorage.removeItem(LOCAL_PUBLISHED_KEY);
-      } catch (e) {}
       return await res.json();
     }
   } catch (e) {}
@@ -228,10 +217,6 @@ export async function resetClassification(phase = 1) {
     isClassificationPublished: false,
     publishedAt: null
   });
-
-  try {
-    localStorage.removeItem(LOCAL_PUBLISHED_KEY);
-  } catch (e) {}
 
   return { success: true, isPublished: false };
 }

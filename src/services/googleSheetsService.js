@@ -5,6 +5,34 @@
 import Papa from 'papaparse';
 
 /**
+ * Obtiene los valores en bruto (matriz de celdas) de un rango o pestaña desde Google Sheets API v4
+ * @param {string} spreadsheetId - ID del documento de Google Sheets
+ * @param {string} range - Nombre de la pestaña o rango (ej: 'Configuracion!A1:C30')
+ * @param {string} apiKey - Clave de API de Google Cloud Console
+ * @returns {Promise<Array<Array<any>>>} Filas y columnas sin asumir encabezados
+ */
+export async function fetchRawFromGoogleSheetsAPI(spreadsheetId, range, apiKey) {
+  if (!spreadsheetId || !apiKey) {
+    return [];
+  }
+
+  const encodedRange = encodeURIComponent(range);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedRange}?key=${apiKey}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return [];
+    }
+    const data = await response.json();
+    return data.values || [];
+  } catch (e) {
+    console.warn(`Error en fetchRawFromGoogleSheetsAPI [${range}]:`, e);
+    return [];
+  }
+}
+
+/**
  * Obtiene los valores de un rango o pestaña desde Google Sheets API v4
  * @param {string} spreadsheetId - ID del documento de Google Sheets
  * @param {string} range - Nombre de la pestaña o rango (ej: 'Preguntas!A1:Z100')
