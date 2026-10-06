@@ -1,7 +1,7 @@
 import React from 'react';
 import { Trophy } from 'lucide-react';
 
-export default function Header({ onOpenClassification, currentView }) {
+export default function Header({ onOpenClassification, currentView, isGameActive = false }) {
   return (
     <header className="app-header">
       {/* Logo Oficial Don Yeyo */}
@@ -13,8 +13,8 @@ export default function Header({ onOpenClassification, currentView }) {
         />
       </div>
 
-      {/* Botón de Clasificación Pública */}
-      {onOpenClassification && currentView !== 'PUBLIC_CLASSIFICATION' && currentView !== 'ADMIN' && (
+      {/* Botón de Clasificación Pública (oculto en admin, clasificacion o en plena partida) */}
+      {onOpenClassification && currentView !== 'PUBLIC_CLASSIFICATION' && currentView !== 'ADMIN' && !isGameActive && (
         <button
           onClick={onOpenClassification}
           type="button"

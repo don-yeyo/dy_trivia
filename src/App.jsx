@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import SplashIntro from './components/SplashIntro';
 import CountdownIntro from './components/CountdownIntro';
@@ -166,7 +166,7 @@ export default function App() {
   };
 
   // Tras responder cada pregunta individual, enviar al backend para evaluación segura
-  const handleAnswerSubmit = async (answerData) => {
+  const handleAnswerSubmit = useCallback(async (answerData) => {
     const timeSpent = answerData.timeSpent || 0;
     setTotalElapsedTime(prev => prev + timeSpent);
     setAnswersLog(prev => [...prev, answerData]);
@@ -178,14 +178,14 @@ export default function App() {
         setCorrectAnswersCount(prev => prev + 1);
       }
     }
-  };
+  }, [currentUser?.legajo, appConfig.activePhase]);
 
   // 🛡️ Mecanismo Antitrampa: Asentar en el servidor el inicio de la pregunta
-  const handleQuestionStart = async (questionId) => {
+  const handleQuestionStart = useCallback(async (questionId) => {
     if (currentUser?.legajo) {
       await markQuestionStarted(currentUser.legajo, appConfig.activePhase, questionId);
     }
-  };
+  }, [currentUser?.legajo, appConfig.activePhase]);
 
   const handleResetSession = async () => {
     setUserScore(0);
@@ -199,9 +199,12 @@ export default function App() {
     setGameState('SPLASH');
   };
 
-  const handleFinishGame = async () => {
+  const handleFinishGame = useCallback(async () => {
     setGameState('FINISHED');
-  };
+  }, []);
+
+  // Determina si el jugador se encuentra activamente jugando
+  const isGameActive = currentView === 'GAME' && (gameState === 'PLAYING' || gameState === 'COUNTDOWN');
 
   // Si está en modo PROYECCIÓN: Pantalla completa cinematográfica 100% limpia para proyector
   if (currentView === 'PROJECTION') {
@@ -236,6 +239,7 @@ export default function App() {
       {/* Header superior con botones de navegación */}
       <Header
         currentView={currentView}
+        isGameActive={isGameActive}
         onOpenClassification={() => setCurrentView('PUBLIC_CLASSIFICATION')}
       />
 

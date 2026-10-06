@@ -37,7 +37,16 @@ export async function handler(event, context) {
       body = event.body;
     }
 
-    const { legajo, questionId, selectedOptionId = null, timeSpent = 0, isAborted = false } = body;
+    const { action, legajo, questionId, selectedOptionId = null, timeSpent = 0, isAborted = false } = body;
+
+    // Si solo es un aviso de inicio de pregunta, acusar recibo sin persistir fallo prematuro
+    if (action === 'START_QUESTION') {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, message: 'Pregunta iniciada registrada' })
+      };
+    }
 
     // 🛡️ Seguridad en Servidor: Validar contra la configuración autorizada de Google Sheets
     const config = await fetchTriviaConfig();

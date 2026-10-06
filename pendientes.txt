@@ -1,3 +1,5 @@
 - [x] exportar clasificacion desde el admin (Completado: Botón de exportación a Excel .xlsx en panel de admin y proyección)
 - [x] importar legajos (Completado: Pantalla/Modal en Admin con textarea/selector de archivo + scripts/importarLegajos.js + export CSV limpio)
 - [ ] cuando enviar un email?
+- [ ] detectar si no hay conexion o falla algo contra la api y google sheet
+- [x] quitar este boton cuando el usuario esta en la trivia: #root > div > header > button (Completado: Oculto en estados PLAYING y COUNTDOWN)
