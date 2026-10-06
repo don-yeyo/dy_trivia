@@ -70,14 +70,21 @@ export async function loginAdmin(username, password) {
   }
 
   // Fallback para modo desarrollo local si no está corriendo netlify dev:
-  // Permite probar con admin / admin o admin / dev en desarrollo local
+  // Permite validar contra las variables de entorno configuradas en .env o defaults de desarrollo
   if (import.meta.env.DEV) {
-    if (username === 'admin' && (password === 'admin' || password === 'dev')) {
+    const devUser = (typeof __DEV_ADMIN_USER__ !== 'undefined' && __DEV_ADMIN_USER__) || 'admin';
+    const devPass = (typeof __DEV_ADMIN_PASS__ !== 'undefined' && __DEV_ADMIN_PASS__) || 'admin';
+
+    const isValid =
+      (username === devUser && password === devPass) ||
+      (username === 'admin' && (password === 'admin' || password === 'dev'));
+
+    if (isValid) {
       const mockToken = `mock_token_${Date.now()}`;
       saveAdminSession(mockToken, username);
       return { success: true, token: mockToken, username };
     }
-    return { success: false, error: 'Credenciales inválidas en modo desarrollo' };
+    return { success: false, error: 'Usuario o contraseña incorrectos' };
   }
 
   return { success: false, error: 'No se pudo conectar con el servidor de autenticación' };
