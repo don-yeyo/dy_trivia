@@ -146,13 +146,23 @@ export default function ClassificationTable({
 
                     {/* Nombre y Sector */}
                     <div className="flex-1 min-w-0 pr-1">
-                      <div className="flex items-center gap-1.5 truncate">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-bold text-white text-xs truncate">
                           {p.nombre} {p.apellido}
                         </span>
                         {isTopQualified && (
                           <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[9px] font-black uppercase">
                             Top
+                          </span>
+                        )}
+                        {p.isPartial && (
+                          <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[9px] font-black uppercase">
+                            Parcial {p.answersCount ? `(${p.answersCount}/${p.totalQuestions || 10})` : ''}
+                          </span>
+                        )}
+                        {!p.hasPlayed && (
+                          <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 text-[9px] font-bold uppercase">
+                            Sin jugar
                           </span>
                         )}
                       </div>
@@ -166,11 +176,21 @@ export default function ClassificationTable({
                     {/* Puntaje y Tiempo */}
                     <div className="text-right shrink-0">
                       <div className="font-black text-yellow-300 text-xs">
-                        {p.score || 0} <span className="text-[9px] font-bold text-yellow-400/70">pts</span>
+                        {p.hasPlayed ? (
+                          <>{p.score || 0} <span className="text-[9px] font-bold text-yellow-400/70">pts</span></>
+                        ) : (
+                          <span className="text-slate-500 font-normal">-</span>
+                        )}
                       </div>
                       <div className="text-[10px] text-slate-300 font-mono flex items-center justify-end gap-1 mt-0.5">
-                        <Clock size={10} className="text-slate-400" />
-                        <span>{formatTime(p.totalTime)}</span>
+                        {p.hasPlayed ? (
+                          <>
+                            <Clock size={10} className="text-slate-400" />
+                            <span>{formatTime(p.totalTime)}</span>
+                          </>
+                        ) : (
+                          <span className="text-slate-500">-</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -189,11 +209,11 @@ export default function ClassificationTable({
                     <div className="sm:col-span-1 flex items-center justify-center">
                       <span
                         className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm ${
-                          p.rank === 1
+                          p.rank === 1 && p.hasPlayed
                             ? 'bg-yellow-400 text-slate-950 shadow-md shadow-yellow-400/30'
-                            : p.rank === 2
+                            : p.rank === 2 && p.hasPlayed
                             ? 'bg-slate-300 text-slate-950 shadow-md shadow-slate-300/30'
-                            : p.rank === 3
+                            : p.rank === 3 && p.hasPlayed
                             ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
                             : isTopQualified
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
@@ -206,13 +226,23 @@ export default function ClassificationTable({
 
                     {/* Colaborador */}
                     <div className="sm:col-span-6 flex flex-col justify-center min-w-0 pr-2">
-                      <div className="flex items-center gap-2 truncate">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-white truncate text-base">
                           {p.nombre} {p.apellido}
                         </span>
                         {isTopQualified && (
                           <span className="shrink-0 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-black uppercase inline-block">
                             Clasificado
+                          </span>
+                        )}
+                        {p.isPartial && (
+                          <span className="shrink-0 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 text-[10px] font-black uppercase inline-block">
+                            Parcial {p.answersCount ? `(${p.answersCount}/${p.totalQuestions || 10})` : ''}
+                          </span>
+                        )}
+                        {!p.hasPlayed && (
+                          <span className="shrink-0 px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-semibold uppercase inline-block">
+                            Sin jugar
                           </span>
                         )}
                       </div>
@@ -225,23 +255,39 @@ export default function ClassificationTable({
 
                     {/* Puntaje */}
                     <div className="sm:col-span-3 text-right">
-                      <span className="font-black text-yellow-300 text-lg">
-                        {p.score || 0}
-                      </span>
-                      <span className="text-xs text-slate-400 block font-normal">
-                        pts
-                      </span>
+                      {p.hasPlayed ? (
+                        <>
+                          <span className="font-black text-yellow-300 text-lg">
+                            {p.score || 0}
+                          </span>
+                          <span className="text-xs text-slate-400 block font-normal">
+                            pts
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-semibold text-slate-500 text-base">
+                          -
+                        </span>
+                      )}
                     </div>
 
                     {/* Tiempo */}
                     <div className="sm:col-span-2 text-right">
-                      <span className="font-semibold text-slate-200 text-sm flex items-center justify-end gap-1.5">
-                        <Clock size={13} className="text-slate-400 inline" />
-                        {formatTime(p.totalTime)}
-                      </span>
-                      <span className="text-xs text-emerald-400 block mt-0.5 font-medium">
-                        {p.correctCount || 0} aciertos
-                      </span>
+                      {p.hasPlayed ? (
+                        <>
+                          <span className="font-semibold text-slate-200 text-sm flex items-center justify-end gap-1.5">
+                            <Clock size={13} className="text-slate-400 inline" />
+                            {formatTime(p.totalTime)}
+                          </span>
+                          <span className="text-xs text-emerald-400 block mt-0.5 font-medium">
+                            {p.correctCount || 0} aciertos
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-semibold text-slate-500 text-sm">
+                          -
+                        </span>
+                      )}
                     </div>
                   </div>
                 </React.Fragment>

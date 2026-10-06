@@ -91,9 +91,11 @@ function verifyAdminToken(token) {
 async function computeClassificationData(phase = 1, topCount = 30, showPartial = true, showUnanswered = false) {
   const usersRange = getServerEnv('GOOGLE_SHEETS_USERS_RANGE') || 'Participantes!A1:Z500';
   const resultsRange = getServerEnv('GOOGLE_SHEETS_RESULTS_RANGE') || 'Resultados!A1:Z1000';
+  const questionsRange = getServerEnv('GOOGLE_SHEETS_QUESTIONS_RANGE') || 'Preguntas!A1:Z100';
 
   let rawUsers = [];
   let rawResults = [];
+  let rawQuestions = [];
 
   try {
     rawUsers = await fetchSheetValues(usersRange);
@@ -107,13 +109,51 @@ async function computeClassificationData(phase = 1, topCount = 30, showPartial =
     console.warn('Error leyendo resultados de Sheets:', err.message);
   }
 
-  // Filtrar resultados por fase activa
+  try {
+    rawQuestions = await fetchSheetValues(questionsRange);
+  } catch (err) {
+    console.warn('Error leyendo preguntas de Sheets:', err.message);
+  }
+
+  // 1. Determinar la cantidad total de preguntas de la fase
+  const targetPhase = parseInt(phase, 10);
+  const phaseQuestions = (rawQuestions || []).filter(q => {
+    const qPhase = parseInt(q.fase || q.phase || '1', 10);
+    return qPhase === targetPhase;
+  });
+  let totalPhaseQuestions = phaseQuestions.length > 0 ? phaseQuestions.length : 10;
+
+  // 2. Filtrar resultados por fase activa
   const phaseResults = rawResults.filter(r => {
     const rowPhase = parseInt(r.fase || r.phase || '1', 10);
-    return rowPhase === parseInt(phase, 10);
+    return rowPhase === targetPhase;
   });
 
-  // Mapear resultados por legajo
+  // Función auxiliar para parsear el detalle de respuestas (JSON)
+  const parseAnswersDetail = (row) => {
+    const jsonField = row['detalle respuestas (json)'] || row['detallerespuestas'] || row['respuestas'] || row.detallerespuestas || '';
+    if (jsonField) {
+      try {
+        const parsed = typeof jsonField === 'string' ? JSON.parse(jsonField) : jsonField;
+        if (Array.isArray(parsed)) {
+          return { answersCount: parsed.length, hasExplicitJson: true };
+        }
+      } catch (e) {}
+    }
+    return { answersCount: 0, hasExplicitJson: false };
+  };
+
+  // Ajustar total de preguntas si en los resultados se observa una cantidad mayor
+  let maxAnswersObserved = 0;
+  phaseResults.forEach(r => {
+    const { answersCount } = parseAnswersDetail(r);
+    if (answersCount > maxAnswersObserved) maxAnswersObserved = answersCount;
+  });
+  if (maxAnswersObserved > totalPhaseQuestions) {
+    totalPhaseQuestions = maxAnswersObserved;
+  }
+
+  // 3. Mapear resultados por legajo (conservando el mejor puntaje o menor tiempo)
   const resultsByLegajo = new Map();
   phaseResults.forEach(r => {
     const legajo = String(r.legajo || '').trim();
@@ -123,54 +163,105 @@ async function computeClassificationData(phase = 1, topCount = 30, showPartial =
     const totalTime = parseInt(r['tiempo total (segundos)'] || r.tiempo || '0', 10);
     const correctCount = parseInt(r['respuestas correctas'] || r.correctas || '0', 10);
     const fechaHora = r['fecha y hora'] || r.fechahora || '';
+    const { answersCount, hasExplicitJson } = parseAnswersDetail(r);
 
-    // Si hay registros duplicados, conservar el de mayor puntaje o menor tiempo
+    const isPartial = hasExplicitJson
+      ? (answersCount > 0 && answersCount < totalPhaseQuestions)
+      : false;
+    const isCompleted = !isPartial;
+
+    const candidate = {
+      score,
+      totalTime,
+      correctCount,
+      fechaHora,
+      answersCount,
+      hasExplicitJson,
+      isPartial,
+      isCompleted,
+      hasPlayed: true
+    };
+
     if (!resultsByLegajo.has(legajo)) {
-      resultsByLegajo.set(legajo, { score, totalTime, correctCount, fechaHora, hasPlayed: true });
+      resultsByLegajo.set(legajo, candidate);
     } else {
       const prev = resultsByLegajo.get(legajo);
       if (score > prev.score || (score === prev.score && totalTime < prev.totalTime)) {
-        resultsByLegajo.set(legajo, { score, totalTime, correctCount, fechaHora, hasPlayed: true });
+        resultsByLegajo.set(legajo, candidate);
       }
     }
   });
 
-  // Si no hay participantes de Sheets, crear lista a partir de resultados
-  const participantsList = rawUsers.length > 0 ? rawUsers : Array.from(resultsByLegajo.keys()).map(l => ({ legajo: l, nombre: 'Participante', apellido: l }));
+  // 4. Si no hay participantes de Sheets, armar lista a partir de resultados
+  const participantsList = rawUsers.length > 0
+    ? rawUsers
+    : Array.from(resultsByLegajo.keys()).map(l => ({ legajo: l, nombre: 'Participante', apellido: l, sector: '' }));
 
   let merged = participantsList.map(u => {
     const legajo = String(u.legajo || '').trim();
     const nombre = String(u.nombre || '').trim();
     const apellido = String(u.apellido || '').trim();
-    const res = resultsByLegajo.get(legajo) || { score: 0, totalTime: 0, correctCount: 0, fechaHora: '', hasPlayed: false };
+    const sector = String(u.sector || u.area || '').trim();
+    const res = resultsByLegajo.get(legajo) || {
+      score: 0,
+      totalTime: 0,
+      correctCount: 0,
+      fechaHora: '',
+      answersCount: 0,
+      hasExplicitJson: false,
+      isPartial: false,
+      isCompleted: false,
+      hasPlayed: false
+    };
 
     return {
       legajo,
       nombre,
       apellido,
+      sector,
       score: res.score,
       totalTime: res.totalTime,
       correctCount: res.correctCount,
       fechaHora: res.fechaHora,
+      answersCount: res.answersCount,
+      totalQuestions: totalPhaseQuestions,
+      isPartial: res.isPartial,
+      isCompleted: res.isCompleted,
       hasPlayed: res.hasPlayed
     };
   });
 
-  // Filtros dinámicos según configuración de Google Sheets
-  if (!showUnanswered) {
-    // Solo incluir a quienes hayan jugado al menos una pregunta
-    merged = merged.filter(p => p.hasPlayed);
-  }
+  // 5. 🛡️ FILTRADO DINÁMICO SEGÚN CONFIGURACIÓN DE GOOGLE SHEETS:
+  // - MOSTRAR_NO_RESPONDIDOS_EN_TABLA: si es true, incluye a colaboradores inscriptos que aún no participaron de la fase.
+  // - MOSTRAR_PARCIALES_EN_TABLA: si es true, incluye a quienes respondieron parcialmente pero no terminaron todas las preguntas.
+  // - Quienes completaron todas las preguntas siempre se incluyen.
+  const filtered = merged.filter(p => {
+    // 1. Caso: Colaborador inscripto que aún no participó
+    if (!p.hasPlayed) {
+      return Boolean(showUnanswered);
+    }
+    // 2. Caso: Participó parcialmente (no respondió el 100% de las preguntas)
+    if (p.isPartial) {
+      return Boolean(showPartial);
+    }
+    // 3. Caso: Completó la totalidad de las preguntas
+    return true;
+  });
 
-  // Ordenamiento gamer de clasificación:
-  // 1. Quienes jugaron primero
-  // 2. Mayor puntaje
-  // 3. Menor tiempo total (desempate de velocidad)
-  // 4. Mayor cantidad de respuestas correctas
-  // 5. Fecha/hora anterior
-  merged.sort((a, b) => {
+  // 6. Ordenamiento gamer de clasificación:
+  // 1° Quienes jugaron primero que quienes no jugaron
+  // 2° Mayor puntaje
+  // 3° Menor tiempo total (desempate de velocidad)
+  // 4° Mayor cantidad de respuestas correctas
+  // 5° Fecha/hora de envío anterior
+  filtered.sort((a, b) => {
     if (a.hasPlayed !== b.hasPlayed) {
       return a.hasPlayed ? -1 : 1;
+    }
+    if (!a.hasPlayed && !b.hasPlayed) {
+      const nameA = `${a.apellido || ''} ${a.nombre || ''}`.trim();
+      const nameB = `${b.apellido || ''} ${b.nombre || ''}`.trim();
+      return nameA.localeCompare(nameB);
     }
     if (b.score !== a.score) {
       return b.score - a.score;
@@ -184,24 +275,34 @@ async function computeClassificationData(phase = 1, topCount = 30, showPartial =
     return String(a.fechaHora).localeCompare(String(b.fechaHora));
   });
 
-  // Asignar puestos oficiales
-  const ranked = merged.map((item, index) => ({
+  // 7. Asignar puestos oficiales
+  const ranked = filtered.map((item, index) => ({
     ...item,
     rank: index + 1,
-    isPodium: index < 3,
+    isPodium: index < 3 && item.hasPlayed,
     isQualified: index < topCount && item.hasPlayed
   }));
 
-  const podio = ranked.slice(0, 3);
-  const clasificados = ranked.slice(3, topCount);
-  const noClasificados = ranked.slice(topCount);
-  const totalJugados = ranked.filter(r => r.hasPlayed).length;
+  const podio = ranked.filter(r => r.rank <= 3 && r.hasPlayed);
+  const clasificados = ranked.filter(r => r.rank > 3 && r.rank <= topCount && r.hasPlayed);
+  const noClasificados = ranked.filter(r => r.rank > topCount || !r.hasPlayed);
+
+  const totalInscriptos = participantsList.length;
+  const totalJugados = merged.filter(r => r.hasPlayed).length;
+  const totalCompletados = merged.filter(r => r.isCompleted).length;
+  const totalParciales = merged.filter(r => r.isPartial).length;
+  const totalNoJugados = merged.filter(r => !r.hasPlayed).length;
 
   return {
-    phase: parseInt(phase, 10),
+    phase: targetPhase,
     topCount: parseInt(topCount, 10),
-    totalInscriptos: ranked.length,
+    showPartial: Boolean(showPartial),
+    showUnanswered: Boolean(showUnanswered),
+    totalInscriptos,
     totalJugados,
+    totalCompletados,
+    totalParciales,
+    totalNoJugados,
     podio,
     clasificados,
     noClasificados,

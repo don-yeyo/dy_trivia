@@ -882,7 +882,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                   MOSTRAR_PARCIALES_EN_TABLA
                 </span>
                 <span className="text-[10px] text-slate-500 block mb-2">
-                  Mostrar desglose de aciertos y fallos en las filas.
+                  Mostrar a quienes respondieron parcialmente (no terminaron todas).
                 </span>
                 <button
                   type="button"
@@ -903,7 +903,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                   MOSTRAR_NO_RESPONDIDOS_EN_TABLA
                 </span>
                 <span className="text-[10px] text-slate-500 block mb-2">
-                  Incluir en la tabla a quienes no respondieron.
+                  Mostrar a colaboradores inscriptos que aún no participaron.
                 </span>
                 <button
                   type="button"
@@ -1052,7 +1052,9 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                 Vista Previa de Clasificación
               </h3>
               <span className="text-xs text-yellow-300 font-bold">
-                {classificationData.totalJugados || 0} evaluados de {classificationData.totalInscriptos || 0} inscriptos
+                {classificationData.totalJugados || 0} evaluados
+                {classificationData.totalCompletados !== undefined ? ` (${classificationData.totalCompletados} completos, ${classificationData.totalParciales || 0} parciales)` : ''}
+                {` de ${classificationData.totalInscriptos || 0} inscriptos`}
               </span>
             </div>
 

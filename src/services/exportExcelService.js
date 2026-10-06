@@ -61,18 +61,25 @@ export function exportClassificationToExcel({
   ];
 
   allParticipants.forEach(p => {
-    const isTop = p.rank <= topCount;
+    const isTop = p.rank <= topCount && p.hasPlayed;
+    let estadoText = isTop ? `CLASIFICADO (TOP ${topCount})` : 'NO CLASIFICADO';
+    if (!p.hasPlayed) {
+      estadoText = 'NO PARTICIPÓ';
+    } else if (p.isPartial) {
+      estadoText = isTop ? `CLASIFICADO (PARCIAL)` : 'NO CLASIFICADO (PARCIAL)';
+    }
+
     generalRows.push([
       p.rank,
-      isTop ? `CLASIFICADO (TOP ${topCount})` : 'NO CLASIFICADO',
+      estadoText,
       p.legajo || '',
       p.apellido || '',
       p.nombre || '',
       p.sector || 'Planta',
-      p.score || 0,
-      p.correctCount || 0,
-      p.totalTime || 0,
-      formatTime(p.totalTime),
+      p.hasPlayed ? (p.score || 0) : '-',
+      p.hasPlayed ? (p.correctCount || 0) : '-',
+      p.hasPlayed ? (p.totalTime || 0) : '-',
+      p.hasPlayed ? formatTime(p.totalTime) : '-',
       p.fechaHora || ''
     ]);
   });

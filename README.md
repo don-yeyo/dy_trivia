@@ -126,7 +126,10 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
 - **Estado Publicado:**
   - **Experiencia Desktop Intacta:** Despliega el **Podio de Honor 3D Gamer** en cuadrícula con pedestales volumétricos (1° Puesto Oro en el centro, 2° Plata y 3° Bronce a los costados) junto a la **Tabla General de Clasificados** con 12 columnas informativas completas.
   - **Experiencia Mobile Optimizada (100% Responsive):** En dispositivos móviles, el podio se transforma automáticamente en tarjetas horizontales ordenadas por mérito (1° Oro Campeón con corona animada, 2° Plata y 3° Bronce) con avatares, medallas, nombres sin truncamientos y métricas nítidas. La tabla de clasificados se adapta a una lista de items flex compactos y legibles, evitando desbordes horizontales o textos cortados.
-  - **Cabecera Limpia:** Se eliminó la barra redundante en la pantalla del participante para maximizar el área visible y respetar el encabezado principal de navegación.
+- **Conformación de la Tabla según Flags de Google Sheets:**
+  - `MOSTRAR_PARCIALES_EN_TABLA`: cuando es `true`, incluye en la tabla a quienes respondieron parcialmente pero no completaron todas las preguntas de la fase (con badge distintivo `Parcial (X/N)`). Cuando es `false`, los excluye de la tabla.
+  - `MOSTRAR_NO_RESPONDIDOS_EN_TABLA`: cuando es `true`, incluye en la tabla a los colaboradores inscriptos del padrón que aún no participaron de la fase (con badge `Sin jugar` y valores `-`). Cuando es `false`, los excluye de la tabla.
+  - Colaboradores que completaron el 100% de las preguntas de la fase siempre se incluyen y se ordenan por mérito gamer (1° Puntaje, 2° Tiempo de desempate, 3° Aciertos).
 
 ---
 

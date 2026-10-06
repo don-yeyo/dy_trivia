@@ -4,6 +4,7 @@
 // ==============================================================================
 import { fetchUsersList } from './authService';
 import { fetchUserProgressFromResults, fetchRawResultsList } from './googleSheetsService';
+import { loadTriviaQuestions } from './triviaService';
 
 const ADMIN_TOKEN_KEY = 'dy_trivia_admin_token';
 const ADMIN_USER_KEY = 'dy_trivia_admin_user';
@@ -240,7 +241,23 @@ export async function resetClassification(phase = 1) {
  * las respuestas reales de la pestaña 'Resultados' de Google Sheets.
  */
 async function computeFallbackClassification(phase, topCount, isAdmin) {
-  // 1. Obtener los resultados reales de la planilla de Google Sheets
+  // 1. Obtener la configuración autorizada desde Google Sheets
+  let showPartial = true;
+  let showUnanswered = false;
+  let isPublished = false;
+  let publishedAt = null;
+
+  try {
+    const cfg = await fetchAppConfig();
+    if (cfg) {
+      if (cfg.showPartialInTable !== undefined) showPartial = Boolean(cfg.showPartialInTable);
+      if (cfg.showUnansweredInTable !== undefined) showUnanswered = Boolean(cfg.showUnansweredInTable);
+      isPublished = Boolean(cfg.isClassificationPublished);
+      publishedAt = cfg.publishedAt || null;
+    }
+  } catch (e) {}
+
+  // 2. Obtener los resultados reales de la planilla de Google Sheets
   let rawResults = [];
   try {
     rawResults = await fetchRawResultsList();
@@ -248,7 +265,7 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
     console.warn('Error obteniendo resultados de Google Sheets en fallback:', err);
   }
 
-  // 2. Obtener la nómina de colaboradores
+  // 3. Obtener la nómina de colaboradores
   let users = [];
   try {
     users = await fetchUsersList();
@@ -256,14 +273,47 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
     console.warn('Error obteniendo lista de usuarios en fallback:', err);
   }
 
-  // 3. Filtrar resultados por fase consultada
+  // 4. Determinar la cantidad total de preguntas de la fase consultada
   const targetPhase = parseInt(phase || 1, 10);
+  let totalPhaseQuestions = 10;
+  try {
+    const questions = await loadTriviaQuestions(targetPhase);
+    if (questions && questions.length > 0) {
+      totalPhaseQuestions = questions.length;
+    }
+  } catch (err) {
+    console.warn('Error obteniendo preguntas de fase en fallback:', err);
+  }
+
+  // 5. Filtrar resultados por fase consultada
   const phaseResults = rawResults.filter(r => {
     const rowPhase = parseInt(r.fase || r.phase || '1', 10);
     return rowPhase === targetPhase;
   });
 
-  // 4. Mapear resultados por legajo (conservando el mejor puntaje o menor tiempo si hay duplicados)
+  const parseAnswersDetail = (row) => {
+    const jsonField = row['detalle respuestas (json)'] || row['detallerespuestas'] || row['respuestas'] || row.detallerespuestas || '';
+    if (jsonField) {
+      try {
+        const parsed = typeof jsonField === 'string' ? JSON.parse(jsonField) : jsonField;
+        if (Array.isArray(parsed)) {
+          return { answersCount: parsed.length, hasExplicitJson: true };
+        }
+      } catch (e) {}
+    }
+    return { answersCount: 0, hasExplicitJson: false };
+  };
+
+  let maxAnswersObserved = 0;
+  phaseResults.forEach(r => {
+    const { answersCount } = parseAnswersDetail(r);
+    if (answersCount > maxAnswersObserved) maxAnswersObserved = answersCount;
+  });
+  if (maxAnswersObserved > totalPhaseQuestions) {
+    totalPhaseQuestions = maxAnswersObserved;
+  }
+
+  // 6. Mapear resultados por legajo (conservando el mejor puntaje o menor tiempo si hay duplicados)
   const resultsByLegajo = new Map();
   phaseResults.forEach(r => {
     const legajo = String(r.legajo || '').trim();
@@ -273,49 +323,103 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
     const totalTime = parseInt(r['tiempo total (segundos)'] || r.tiempo || '0', 10);
     const correctCount = parseInt(r['respuestas correctas'] || r.correctas || '0', 10);
     const fechaHora = r['fecha y hora'] || r.fechahora || '';
+    const { answersCount, hasExplicitJson } = parseAnswersDetail(r);
+
+    const isPartial = hasExplicitJson
+      ? (answersCount > 0 && answersCount < totalPhaseQuestions)
+      : false;
+    const isCompleted = !isPartial;
+
+    const candidate = {
+      score,
+      totalTime,
+      correctCount,
+      fechaHora,
+      answersCount,
+      hasExplicitJson,
+      isPartial,
+      isCompleted,
+      hasPlayed: true
+    };
 
     if (!resultsByLegajo.has(legajo)) {
-      resultsByLegajo.set(legajo, { score, totalTime, correctCount, fechaHora, hasPlayed: true });
+      resultsByLegajo.set(legajo, candidate);
     } else {
       const prev = resultsByLegajo.get(legajo);
       if (score > prev.score || (score === prev.score && totalTime < prev.totalTime)) {
-        resultsByLegajo.set(legajo, { score, totalTime, correctCount, fechaHora, hasPlayed: true });
+        resultsByLegajo.set(legajo, candidate);
       }
     }
   });
 
-  // 5. Unificar con datos de colaboradores
+  // 7. Unificar con datos de colaboradores
   const participantsList = users.length > 0
     ? users
-    : Array.from(resultsByLegajo.keys()).map(l => ({ legajo: l, nombre: 'Participante', apellido: l }));
+    : Array.from(resultsByLegajo.keys()).map(l => ({ legajo: l, nombre: 'Participante', apellido: l, sector: '' }));
 
   let merged = participantsList.map(u => {
     const legajo = String(u.legajo || '').trim();
     const nombre = String(u.nombre || '').trim();
     const apellido = String(u.apellido || '').trim();
-    const res = resultsByLegajo.get(legajo) || { score: 0, totalTime: 0, correctCount: 0, fechaHora: '', hasPlayed: false };
+    const sector = String(u.sector || u.area || '').trim();
+    const res = resultsByLegajo.get(legajo) || {
+      score: 0,
+      totalTime: 0,
+      correctCount: 0,
+      fechaHora: '',
+      answersCount: 0,
+      hasExplicitJson: false,
+      isPartial: false,
+      isCompleted: false,
+      hasPlayed: false
+    };
 
     return {
       legajo,
       nombre,
       apellido,
+      sector,
       score: res.score,
       totalTime: res.totalTime,
       correctCount: res.correctCount,
       fechaHora: res.fechaHora,
+      answersCount: res.answersCount,
+      totalQuestions: totalPhaseQuestions,
+      isPartial: res.isPartial,
+      isCompleted: res.isCompleted,
       hasPlayed: res.hasPlayed
     };
   });
 
-  // 🛡️ REGLA CRÍTICA: Solo clasificar y listar a colaboradores que efectivamente hayan jugado
-  merged = merged.filter(p => p.hasPlayed);
+  // 8. 🛡️ FILTRADO DINÁMICO SEGÚN CONFIGURACIÓN DE GOOGLE SHEETS:
+  // - MOSTRAR_NO_RESPONDIDOS_EN_TABLA: si es true, incluye a colaboradores inscriptos que aún no participaron de la fase.
+  // - MOSTRAR_PARCIALES_EN_TABLA: si es true, incluye a quienes respondieron parcialmente pero no terminaron todas las preguntas.
+  // - Quienes completaron la totalidad de las preguntas siempre se incluyen.
+  const filtered = merged.filter(p => {
+    if (!p.hasPlayed) {
+      return Boolean(showUnanswered);
+    }
+    if (p.isPartial) {
+      return Boolean(showPartial);
+    }
+    return true;
+  });
 
-  // Ordenamiento gamer oficial de posiciones:
-  // 1° Mayor puntaje
-  // 2° Menor tiempo total (desempate de velocidad)
-  // 3° Mayor cantidad de respuestas correctas
-  // 4° Fecha/hora de envío anterior
-  merged.sort((a, b) => {
+  // 9. Ordenamiento gamer oficial de posiciones:
+  // 1° Quienes jugaron van primero que quienes no jugaron
+  // 2° Mayor puntaje
+  // 3° Menor tiempo total (desempate de velocidad)
+  // 4° Mayor cantidad de respuestas correctas
+  // 5° Fecha/hora de envío anterior
+  filtered.sort((a, b) => {
+    if (a.hasPlayed !== b.hasPlayed) {
+      return a.hasPlayed ? -1 : 1;
+    }
+    if (!a.hasPlayed && !b.hasPlayed) {
+      const nameA = `${a.apellido || ''} ${a.nombre || ''}`.trim();
+      const nameB = `${b.apellido || ''} ${b.nombre || ''}`.trim();
+      return nameA.localeCompare(nameB);
+    }
     if (b.score !== a.score) return b.score - a.score;
     if (a.totalTime !== b.totalTime) return a.totalTime - b.totalTime;
     if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
@@ -323,34 +427,38 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
   });
 
   const topLimit = parseInt(topCount || 30, 10);
-  const ranked = merged.map((item, idx) => ({
+  const ranked = filtered.map((item, idx) => ({
     ...item,
     rank: idx + 1,
-    isPodium: idx < 3,
-    isQualified: idx < topLimit
+    isPodium: idx < 3 && item.hasPlayed,
+    isQualified: idx < topLimit && item.hasPlayed
   }));
+
+  const podio = ranked.filter(r => r.rank <= 3 && r.hasPlayed);
+  const clasificados = ranked.filter(r => r.rank > 3 && r.rank <= topLimit && r.hasPlayed);
+  const noClasificados = ranked.filter(r => r.rank > topLimit || !r.hasPlayed);
+
+  const totalInscriptos = participantsList.length;
+  const totalJugados = merged.filter(r => r.hasPlayed).length;
+  const totalCompletados = merged.filter(r => r.isCompleted).length;
+  const totalParciales = merged.filter(r => r.isPartial).length;
+  const totalNoJugados = merged.filter(r => !r.hasPlayed).length;
 
   const data = {
     phase: targetPhase,
     topCount: topLimit,
-    totalInscriptos: users.length,
-    totalJugados: ranked.length,
-    podio: ranked.slice(0, 3),
-    clasificados: ranked.slice(3, topLimit),
-    noClasificados: ranked.slice(topLimit),
+    showPartial: Boolean(showPartial),
+    showUnanswered: Boolean(showUnanswered),
+    totalInscriptos,
+    totalJugados,
+    totalCompletados,
+    totalParciales,
+    totalNoJugados,
+    podio,
+    clasificados,
+    noClasificados,
     allParticipants: ranked
   };
-
-  // 6. Consultar si la clasificación ya está publicada oficialmente en Google Sheets
-  let isPublished = false;
-  let publishedAt = null;
-  try {
-    const cfg = await fetchAppConfig();
-    if (cfg) {
-      isPublished = Boolean(cfg.isClassificationPublished);
-      publishedAt = cfg.publishedAt || null;
-    }
-  } catch (e) {}
 
   if (isPublished) {
     return {
@@ -371,6 +479,8 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
       publishedAt: null,
       isAdmin: true,
       previewData: data,
+      phase: targetPhase,
+      topCount: topLimit,
       message: 'Modo Administrador (Vista previa basada en Google Sheets)'
     };
   }
