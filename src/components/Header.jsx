@@ -13,18 +13,7 @@ export default function Header({ onOpenClassification, currentView, isGameActive
         />
       </div>
 
-      {/* Botón de Clasificación Pública (oculto en admin, clasificacion o en plena partida) */}
-      {onOpenClassification && currentView !== 'PUBLIC_CLASSIFICATION' && currentView !== 'ADMIN' && !isGameActive && (
-        <button
-          onClick={onOpenClassification}
-          type="button"
-          className="px-3 sm:px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-yellow-300 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md cursor-pointer border border-yellow-400/40"
-          title="Ver Podio y Clasificación"
-        >
-          <Trophy size={16} className="text-yellow-400" />
-          <span className="hidden sm:inline">Clasificación</span>
-        </button>
-      )}
+
     </header>
   );
 }
