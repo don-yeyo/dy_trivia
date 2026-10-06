@@ -233,9 +233,14 @@ export async function handler(event, context) {
   // --------------------------------------------------------------------------
   if (event.httpMethod === 'GET') {
     const params = event.queryStringParameters || {};
-    // La fase y el cupo son dictados por la configuración del backend/Google Sheets
-    const phase = parseInt(params.phase || config.activePhase, 10);
-    const topCount = parseInt(params.topCount || config.classificationTopCount, 10);
+    // La fase y el cupo oficial provienen estrictamente de Google Sheets
+    // Un participante no debe poder alterar topCount ni phase manipulando query params
+    const phase = isAdmin && params.phase
+      ? parseInt(params.phase, 10)
+      : parseInt(config.activePhase, 10);
+    const topCount = isAdmin && params.topCount
+      ? parseInt(params.topCount, 10)
+      : parseInt(config.classificationTopCount, 10);
 
     const isPublished = config.isClassificationPublished;
     const publishedAt = config.classificationPublishedAt;

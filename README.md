@@ -106,7 +106,9 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
   - **Mezclar Preguntas (`MEZCLAR_PREGUNTAS`):** Aleatorización del orden de preguntas por participante.
   - **Visibilidad en Tablas y Pantallas Públicas:** Toggles para `MOSTRAR_PARCIALES_EN_TABLA`, `MOSTRAR_NO_RESPONDIDOS_EN_TABLA`, `OCULTAR_RESUMEN_RESPONDIDAS` y `OCULTAR_RESUMEN_TIEMPO`.
   - **Botón "Guardar Configuración en Google Sheets":** Persiste todos los cambios directamente en el backend y los sincroniza con la pestaña `Configuracion` de Google Sheets vía Apps Script.
-- **Apertura de Pantalla de Proyección:** Botón destacado que abre en pestaña independiente (`_blank`) la vista de proyección cinematográfica transmitiendo los parámetros de `topCount` y `phase` activos.
+- **Apertura de Pantalla de Proyección Blindada:** Botón destacado que abre en pestaña independiente (`_blank`) la vista de proyección cinematográfica (`?view=proyeccion`).
+  - **🛡️ Acceso Exclusivo de Administrador:** La pantalla de proyección requiere obligatoriamente sesión activa de administrador; si un usuario no autenticado o deslogueado intenta acceder a `/admin?view=proyeccion` o `/proyeccion`, es bloqueado y redirigido al formulario de inicio de sesión.
+  - **Inmune a manipulación de Query Params:** La fase y el cupo de clasificados son leídos directamente desde Google Sheets (`Configuracion!A1:C30`). No se admiten ni se leen query params manipulables en la URL.
 - **Disparador Gamer "Determinar Clasificados":** Al hacer clic en la proyección o en el panel, activa una animación gamer de alta fidelidad que simula el escaneo de registros de la planta, auditoría de respuestas correctas, cálculo de tiempos y desempates.
 - **Publicación Oficial:** Al completar el cálculo o pulsar publicar, la clasificación y el podio quedan inmediatamente disponibles para que todos los colaboradores puedan ingresar a verla públicamente desde sus teléfonos celulares.
 - **Exportación a Excel (.xlsx) para Fases Cerradas:**
@@ -119,6 +121,7 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
 - **Gestión:** Incluye botón para copiar el enlace público de clasificación y botón para reiniciar/despublicar la clasificación.
 
 ### 2. Pantalla Pública de Clasificación (`/clasificacion` o `?view=clasificacion`)
+- **Cupo Oficial Dictado por Google Sheets (`CLASIFICACION_TOP_COUNT`):** La tabla de clasificados del participante refleja con exactitud el cupo de corte configurado en la planilla (ej. Top 5, Top 10, Top 20, etc.). El backend serverless impone esta regla y los usuarios públicos no pueden adulterar el cupo mediante parámetros de URL.
 - **Estado Previo (No publicada):** Si la administración aún no determinó los clasificados, muestra una pantalla amigable indicando que la evaluación está en curso y los resultados se publicarán pronto.
 - **Estado Publicado:**
   - **Experiencia Desktop Intacta:** Despliega el **Podio de Honor 3D Gamer** en cuadrícula con pedestales volumétricos (1° Puesto Oro en el centro, 2° Plata y 3° Bronce a los costados) junto a la **Tabla General de Clasificados** con 12 columnas informativas completas.

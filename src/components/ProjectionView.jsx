@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, Sparkles, ArrowLeft, RefreshCw, Flame, Volume2, VolumeX } from 'lucide-react';
+import { Trophy, Sparkles, ArrowLeft, RefreshCw, Flame, Volume2, VolumeX, Lock } from 'lucide-react';
 import CalculatingAnimation from './CalculatingAnimation';
 import Podium from './Podium';
 import ClassificationTable from './ClassificationTable';
-import { determineClassification, fetchClassification } from '../services/adminService';
+import { determineClassification, fetchClassification, getStoredAdminToken } from '../services/adminService';
+import { fetchAppConfig } from '../services/configService';
 import { sounds } from '../services/soundEffects';
 
 export default function ProjectionView({
@@ -12,12 +13,9 @@ export default function ProjectionView({
   onOpenConfig,
   onBackToGame
 }) {
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlTop = parseInt(urlParams.get('topCount'), 10);
-  const urlPhase = parseInt(urlParams.get('phase'), 10);
-
-  const activePhase = !isNaN(urlPhase) && urlPhase > 0 ? urlPhase : (appConfig?.activePhase || 1);
-  const topCount = !isNaN(urlTop) && urlTop > 0 ? urlTop : (appConfig?.classificationTopCount || 30);
+  const [activePhase, setActivePhase] = useState(appConfig?.activePhase || 1);
+  const [topCount, setTopCount] = useState(appConfig?.classificationTopCount || 30);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!getStoredAdminToken());
 
   // Estados de la proyección
   // 'IDLE': Pantalla limpia inicial con logo y botón "Clasificados Fase X"
@@ -28,20 +26,38 @@ export default function ProjectionView({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Cargar datos previos si ya existía una clasificación guardada
+  // Cargar configuración de Google Sheets y precargar datos previos
   useEffect(() => {
-    async function checkExisting() {
+    async function loadConfigAndData() {
+      const token = getStoredAdminToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        if (onOpenConfig) onOpenConfig();
+        return;
+      }
+      setIsAuthenticated(true);
+
+      // Obtener configuración fresca desde Google Sheets (sin query params)
+      const freshConfig = await fetchAppConfig();
+      const phase = freshConfig?.activePhase || appConfig?.activePhase || 1;
+      const top = freshConfig?.classificationTopCount || appConfig?.classificationTopCount || 30;
+      setActivePhase(phase);
+      setTopCount(top);
+
       try {
-        const res = await fetchClassification(activePhase, topCount);
+        const res = await fetchClassification(phase, top);
         if (res && (res.data || res.previewData)) {
           setClassificationData(res.data || res.previewData);
+          if (res.topCount || res.data?.topCount) {
+            setTopCount(res.topCount || res.data.topCount);
+          }
         }
       } catch (e) {
         console.warn('Error precargando clasificación para proyector:', e);
       }
     }
-    checkExisting();
-  }, [activePhase, topCount]);
+    loadConfigAndData();
+  }, [appConfig?.activePhase, appConfig?.classificationTopCount]);
 
   // Reiniciar scroll a 0 al cambiar a revelación o iniciar cálculo
   useEffect(() => {
@@ -132,6 +148,26 @@ export default function ProjectionView({
   const handleResetToIdle = () => {
     setProjectionState('IDLE');
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="relative min-h-screen w-full flex flex-col items-center justify-center px-4 py-16 text-center animate-casual-in">
+        <div className="casual-card p-8 sm:p-10 rounded-3xl shadow-2xl max-w-md w-full border border-white/20">
+          <div className="w-16 h-16 rounded-full bg-red-600/20 text-red-500 mx-auto mb-4 flex items-center justify-center">
+            <Lock size={32} />
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-950 mb-2">Acceso de Administración Requerido</h2>
+          <p className="text-xs sm:text-sm text-slate-600 mb-6">Debes iniciar sesión como administrador para proyectar la clasificación.</p>
+          <button
+            onClick={onOpenConfig}
+            className="w-full py-4 px-6 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm uppercase tracking-wide cursor-pointer shadow-lg transition-transform hover:scale-105"
+          >
+            Iniciar Sesión como Administrador
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen w-full flex flex-col justify-between overflow-x-hidden text-white font-sans selection:bg-red-500 selection:text-white">

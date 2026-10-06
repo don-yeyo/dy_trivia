@@ -32,6 +32,8 @@ export function saveAdminSession(token, username) {
   try {
     sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
     sessionStorage.setItem(ADMIN_USER_KEY, username || 'admin');
+    localStorage.setItem(ADMIN_TOKEN_KEY, token);
+    localStorage.setItem(ADMIN_USER_KEY, username || 'admin');
   } catch (e) {}
 }
 
@@ -39,6 +41,8 @@ export function clearAdminSession() {
   try {
     sessionStorage.removeItem(ADMIN_TOKEN_KEY);
     sessionStorage.removeItem(ADMIN_USER_KEY);
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    localStorage.removeItem(ADMIN_USER_KEY);
   } catch (e) {}
 }
 
@@ -90,20 +94,38 @@ export async function loginAdmin(username, password) {
   return { success: false, error: 'No se pudo conectar con el servidor de autenticación' };
 }
 
+import { fetchAppConfig } from './configService';
+
 /**
  * Consulta el estado y los datos de clasificación (público o admin)
  */
-export async function fetchClassification(phase = 1, topCount = 30) {
+export async function fetchClassification(phase, topCount) {
   const token = getStoredAdminToken();
   const headers = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // Si no se pasaron parámetros explícitos, consultar la configuración autorizada de Google Sheets
+  let effectivePhase = phase;
+  let effectiveTop = topCount;
+  if (!effectivePhase || !effectiveTop) {
+    try {
+      const cfg = await fetchAppConfig();
+      if (!effectivePhase) effectivePhase = cfg?.activePhase || 1;
+      if (!effectiveTop) effectiveTop = cfg?.classificationTopCount || 30;
+    } catch (e) {
+      if (!effectivePhase) effectivePhase = 1;
+      if (!effectiveTop) effectiveTop = 30;
+    }
+  }
+
   try {
-    const res = await fetch(`/api/classification?phase=${phase}&topCount=${topCount}`, {
-      headers
-    });
+    const url = token
+      ? `/api/classification?phase=${effectivePhase}&topCount=${effectiveTop}`
+      : `/api/classification`; // Público: el backend dicta fase y cupo desde Google Sheets sin riesgo de manipulación
+
+    const res = await fetch(url, { headers });
     const contentType = res.headers.get('content-type') || '';
 
     if (res.ok && contentType.includes('application/json')) {
@@ -115,7 +137,7 @@ export async function fetchClassification(phase = 1, topCount = 30) {
   }
 
   // Fallback offline / desarrollo
-  return computeFallbackClassification(phase, topCount, !!token);
+  return computeFallbackClassification(effectivePhase, effectiveTop, !!token);
 }
 
 /**

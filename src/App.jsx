@@ -13,7 +13,7 @@ import { validateUserToken, recordPhaseQuestionAnswer, markQuestionStarted } fro
 import { loadTriviaQuestions } from './services/triviaService';
 import { fetchUserProgressFromResults } from './services/googleSheetsService';
 import { fetchAppConfig, DEFAULT_CONFIG } from './services/configService';
-import { fetchClassification } from './services/adminService';
+import { fetchClassification, getStoredAdminToken } from './services/adminService';
 import { RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -24,8 +24,11 @@ export default function App() {
   const [currentView, setCurrentView] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const path = window.location.pathname.toLowerCase();
+    const token = getStoredAdminToken();
+
+    // La vista de proyección es exclusiva del administrador autenticado
     if (params.get('proyeccion') === '1' || params.get('view') === 'proyeccion' || path === '/proyeccion') {
-      return 'PROJECTION';
+      return token ? 'PROJECTION' : 'ADMIN';
     }
     if (params.get('admin') === '1' || params.get('admin') === 'true' || params.get('view') === 'admin' || path === '/admin') {
       return 'ADMIN';
@@ -53,8 +56,10 @@ export default function App() {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const path = window.location.pathname.toLowerCase();
+      const token = getStoredAdminToken();
+
       if (params.get('proyeccion') === '1' || params.get('view') === 'proyeccion' || path === '/proyeccion') {
-        setCurrentView('PROJECTION');
+        setCurrentView(token ? 'PROJECTION' : 'ADMIN');
       } else if (params.get('admin') === '1' || params.get('admin') === 'true' || params.get('view') === 'admin' || path === '/admin') {
         setCurrentView('ADMIN');
       } else if (params.get('clasificacion') === '1' || params.get('view') === 'clasificacion' || params.get('ranking') === '1' || path === '/clasificacion') {
@@ -206,8 +211,36 @@ export default function App() {
   // Determina si el jugador se encuentra activamente jugando
   const isGameActive = currentView === 'GAME' && (gameState === 'PLAYING' || gameState === 'COUNTDOWN');
 
-  // Si está en modo PROYECCIÓN: Pantalla completa cinematográfica 100% limpia para proyector
+  // Si está en modo PROYECCIÓN: Pantalla completa cinematográfica 100% limpia para proyector (exclusivo admin)
   if (currentView === 'PROJECTION') {
+    const adminToken = getStoredAdminToken();
+    if (!adminToken) {
+      // Redirigir a login de administración si no está autenticado
+      return (
+        <div className="app-layout relative overflow-hidden">
+          <SunburstBackground screenKey="ADMIN" />
+          <Header
+            currentView="ADMIN"
+            isGameActive={false}
+            onOpenClassification={() => setCurrentView('PUBLIC_CLASSIFICATION')}
+          />
+          <main className="app-main app-main--wide">
+            <AdminClassificationView
+              appConfig={appConfig}
+              onBackToGame={() => {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('admin');
+                url.searchParams.delete('view');
+                url.searchParams.delete('proyeccion');
+                window.history.pushState({}, '', url.toString());
+                setCurrentView('GAME');
+              }}
+            />
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="relative min-h-screen w-full overflow-hidden text-white font-sans selection:bg-red-500 selection:text-white">
         <SunburstBackground screenKey="PROJECTION" />
@@ -216,6 +249,7 @@ export default function App() {
           onOpenConfig={() => {
             const url = new URL(window.location.href);
             url.searchParams.set('view', 'admin');
+            url.searchParams.delete('proyeccion');
             window.history.pushState({}, '', url.toString());
             setCurrentView('ADMIN');
           }}

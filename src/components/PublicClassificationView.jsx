@@ -12,6 +12,7 @@ import {
 import Podium from './Podium';
 import ClassificationTable from './ClassificationTable';
 import { fetchClassification } from '../services/adminService';
+import { fetchAppConfig } from '../services/configService';
 
 export default function PublicClassificationView({ onBackToGame, appConfig }) {
   const [activePhase, setActivePhase] = useState(appConfig?.activePhase || 1);
@@ -25,13 +26,24 @@ export default function PublicClassificationView({ onBackToGame, appConfig }) {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const res = await fetchClassification(activePhase, topCount);
+      // 1. Obtener la configuración fresca y autorizada directamente de Google Sheets
+      const freshConfig = await fetchAppConfig();
+      const currentPhase = freshConfig?.activePhase || appConfig?.activePhase || 1;
+      const currentTop = freshConfig?.classificationTopCount || appConfig?.classificationTopCount || 30;
+
+      setActivePhase(currentPhase);
+      setTopCount(currentTop);
+
+      // 2. Consultar la clasificación oficial
+      const res = await fetchClassification(currentPhase, currentTop);
       if (res) {
-        if (res.activePhase) setActivePhase(res.activePhase);
+        if (res.activePhase || res.phase) setActivePhase(res.activePhase || res.phase);
         setIsPublished(res.isPublished || false);
         setPublishedAt(res.publishedAt || null);
-        setClassificationData(res.data || null);
-        if (res.topCount) setTopCount(res.topCount);
+        const data = res.data || res.previewData;
+        setClassificationData(data || null);
+        const confirmedTop = res.topCount || data?.topCount || currentTop;
+        setTopCount(confirmedTop);
       }
     } catch (e) {
       console.warn('Error cargando clasificación pública:', e);
@@ -42,7 +54,7 @@ export default function PublicClassificationView({ onBackToGame, appConfig }) {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [appConfig?.activePhase, appConfig?.classificationTopCount]);
 
   // =========================================================================
   // ESTADO DE CARGA
@@ -127,9 +139,11 @@ export default function PublicClassificationView({ onBackToGame, appConfig }) {
           <h3 className="text-xl sm:text-4xl font-black text-white uppercase tracking-wide drop-shadow-lg">
             Tabla General de Clasificados (Top {topCount})
           </h3>
+          {/* 
           <p className="text-xs sm:text-sm text-yellow-300 font-bold mt-1.5 sm:mt-2">
             {classificationData.totalJugados || 0} colaboradores evaluados de {classificationData.totalInscriptos || 0} inscriptos
           </p>
+          */}
         </div>
 
         <ClassificationTable

@@ -509,7 +509,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
         <button
           onClick={() => {
             window.open(
-              `${window.location.origin}${window.location.pathname}?view=proyeccion&topCount=${topCount}&phase=${activePhase}`,
+              `${window.location.origin}${window.location.pathname}?view=proyeccion`,
               '_blank'
             );
           }}
