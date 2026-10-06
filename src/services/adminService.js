@@ -3,7 +3,7 @@
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
 import { fetchUsersList } from './authService';
-import { fetchUserProgressFromResults } from './googleSheetsService';
+import { fetchUserProgressFromResults, fetchRawResultsList } from './googleSheetsService';
 
 const ADMIN_TOKEN_KEY = 'dy_trivia_admin_token';
 const ADMIN_USER_KEY = 'dy_trivia_admin_user';
@@ -227,71 +227,108 @@ export async function resetClassification(phase = 1) {
 }
 
 /**
- * Generador de clasificación simulada para desarrollo / offline
+ * Generador de clasificación para desarrollo / offline utilizando
+ * las respuestas reales de la pestaña 'Resultados' de Google Sheets.
  */
 async function computeFallbackClassification(phase, topCount, isAdmin) {
-  // Verificar si hay estado local publicado
+  // 1. Obtener los resultados reales de la planilla de Google Sheets
+  let rawResults = [];
   try {
-    const cached = localStorage.getItem(LOCAL_PUBLISHED_KEY);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (parsed && parsed.isPublished) {
-        return { ...parsed, isAdmin };
+    rawResults = await fetchRawResultsList();
+  } catch (err) {
+    console.warn('Error obteniendo resultados de Google Sheets en fallback:', err);
+  }
+
+  // 2. Obtener la nómina de colaboradores
+  let users = [];
+  try {
+    users = await fetchUsersList();
+  } catch (err) {
+    console.warn('Error obteniendo lista de usuarios en fallback:', err);
+  }
+
+  // 3. Filtrar resultados por fase consultada
+  const targetPhase = parseInt(phase || 1, 10);
+  const phaseResults = rawResults.filter(r => {
+    const rowPhase = parseInt(r.fase || r.phase || '1', 10);
+    return rowPhase === targetPhase;
+  });
+
+  // 4. Mapear resultados por legajo (conservando el mejor puntaje o menor tiempo si hay duplicados)
+  const resultsByLegajo = new Map();
+  phaseResults.forEach(r => {
+    const legajo = String(r.legajo || '').trim();
+    if (!legajo) return;
+
+    const score = parseInt(r['puntaje obtenido'] || r.puntaje || '0', 10);
+    const totalTime = parseInt(r['tiempo total (segundos)'] || r.tiempo || '0', 10);
+    const correctCount = parseInt(r['respuestas correctas'] || r.correctas || '0', 10);
+    const fechaHora = r['fecha y hora'] || r.fechahora || '';
+
+    if (!resultsByLegajo.has(legajo)) {
+      resultsByLegajo.set(legajo, { score, totalTime, correctCount, fechaHora, hasPlayed: true });
+    } else {
+      const prev = resultsByLegajo.get(legajo);
+      if (score > prev.score || (score === prev.score && totalTime < prev.totalTime)) {
+        resultsByLegajo.set(legajo, { score, totalTime, correctCount, fechaHora, hasPlayed: true });
       }
     }
-  } catch (e) {}
+  });
 
-  const users = await fetchUsersList();
+  // 5. Unificar con datos de colaboradores
+  const participantsList = users.length > 0
+    ? users
+    : Array.from(resultsByLegajo.keys()).map(l => ({ legajo: l, nombre: 'Participante', apellido: l }));
 
-  // Lista con puntajes de demostración para armar una clasificación realista y dinámica
-  const demoScores = [
-    { legajo: "1002", score: 1850, totalTime: 68, correctCount: 10, fechaHora: "2026-10-05T09:12:00Z" },
-    { legajo: "1004", score: 1720, totalTime: 75, correctCount: 9, fechaHora: "2026-10-05T09:30:00Z" },
-    { legajo: "1001", score: 1640, totalTime: 82, correctCount: 9, fechaHora: "2026-10-05T09:45:00Z" },
-    { legajo: "1005", score: 1450, totalTime: 95, correctCount: 8, fechaHora: "2026-10-05T10:05:00Z" },
-    { legajo: "1003", score: 1310, totalTime: 110, correctCount: 7, fechaHora: "2026-10-05T10:14:00Z" },
-    { legajo: "9999", score: 1200, totalTime: 120, correctCount: 6, fechaHora: "2026-10-05T10:20:00Z" }
-  ];
+  let merged = participantsList.map(u => {
+    const legajo = String(u.legajo || '').trim();
+    const nombre = String(u.nombre || '').trim();
+    const apellido = String(u.apellido || '').trim();
+    const res = resultsByLegajo.get(legajo) || { score: 0, totalTime: 0, correctCount: 0, fechaHora: '', hasPlayed: false };
 
-  const scoreMap = new Map();
-  demoScores.forEach(s => scoreMap.set(s.legajo, s));
-
-  const list = users.map((u, i) => {
-    const s = scoreMap.get(u.legajo) || {
-      score: Math.max(0, 1000 - (i * 120)),
-      totalTime: 80 + (i * 15),
-      correctCount: Math.max(2, 10 - i),
-      fechaHora: new Date().toISOString()
-    };
     return {
-      legajo: u.legajo,
-      nombre: u.nombre,
-      apellido: u.apellido,
-      score: s.score,
-      totalTime: s.totalTime,
-      correctCount: s.correctCount,
-      fechaHora: s.fechaHora,
-      hasPlayed: true
+      legajo,
+      nombre,
+      apellido,
+      score: res.score,
+      totalTime: res.totalTime,
+      correctCount: res.correctCount,
+      fechaHora: res.fechaHora,
+      hasPlayed: res.hasPlayed
     };
   });
 
-  list.sort((a, b) => b.score - a.score || a.totalTime - b.totalTime);
+  // 🛡️ REGLA CRÍTICA: Solo clasificar y listar a colaboradores que efectivamente hayan jugado
+  merged = merged.filter(p => p.hasPlayed);
 
-  const ranked = list.map((item, idx) => ({
+  // Ordenamiento gamer oficial de posiciones:
+  // 1° Mayor puntaje
+  // 2° Menor tiempo total (desempate de velocidad)
+  // 3° Mayor cantidad de respuestas correctas
+  // 4° Fecha/hora de envío anterior
+  merged.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (a.totalTime !== b.totalTime) return a.totalTime - b.totalTime;
+    if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
+    return String(a.fechaHora).localeCompare(String(b.fechaHora));
+  });
+
+  const topLimit = parseInt(topCount || 30, 10);
+  const ranked = merged.map((item, idx) => ({
     ...item,
     rank: idx + 1,
     isPodium: idx < 3,
-    isQualified: idx < topCount
+    isQualified: idx < topLimit
   }));
 
   const data = {
-    phase,
-    topCount,
-    totalInscriptos: ranked.length,
+    phase: targetPhase,
+    topCount: topLimit,
+    totalInscriptos: users.length,
     totalJugados: ranked.length,
     podio: ranked.slice(0, 3),
-    clasificados: ranked.slice(3, topCount),
-    noClasificados: ranked.slice(topCount),
+    clasificados: ranked.slice(3, topLimit),
+    noClasificados: ranked.slice(topLimit),
     allParticipants: ranked
   };
 
@@ -300,7 +337,7 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
       isPublished: false,
       isAdmin: true,
       previewData: data,
-      message: 'Modo Administrador (Vista previa antes de publicar)'
+      message: 'Modo Administrador (Vista previa basada en Google Sheets)'
     };
   }
 

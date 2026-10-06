@@ -184,3 +184,41 @@ export async function fetchUserProgressFromResults(legajo, phase = 1) {
   }
 }
 
+/**
+ * Consulta todas las filas de la pestaña 'Resultados' de Google Sheets API o fallback CSV
+ * @returns {Promise<Array<Object>>} Filas de resultados con claves normalizadas
+ */
+export async function fetchRawResultsList() {
+  const spreadsheetId = import.meta.env.VITE_GOOGLE_SHEETS_SPREADSHEET_ID;
+  const apiKey = import.meta.env.VITE_GOOGLE_SHEETS_API_KEY;
+  const resultsRange = import.meta.env.VITE_GOOGLE_SHEETS_RESULTS_RANGE || 'Resultados!A1:Z1000';
+
+  if (spreadsheetId && apiKey) {
+    try {
+      const rows = await fetchFromGoogleSheetsAPI(spreadsheetId, resultsRange, apiKey);
+      if (rows && rows.length > 0) return rows;
+    } catch (e) {
+      console.warn('Error leyendo pestaña Resultados vía Google Sheets API:', e.message);
+    }
+  }
+
+  // Fallback opcional a CSV local si no hay conexión de API
+  try {
+    const csvUrl = '/data/Resultados.csv';
+    const resp = await fetch(csvUrl);
+    if (resp.ok) {
+      const csvText = await resp.text();
+      return new Promise((resolve) => {
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => resolve(results.data || [])
+        });
+      });
+    }
+  } catch (e) {}
+
+  return [];
+}
+
+
