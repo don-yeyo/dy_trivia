@@ -142,9 +142,9 @@ Para garantizar la **máxima seguridad de datos y transparencia del concurso**:
 4. **Cálculo y Auditoría de Clasificados**: `/api/classification` calcula las posiciones oficiales ponderando: 1° Mayor puntaje, 2° Menor tiempo total acumulado (desempate de velocidad), 3° Mayor cantidad de respuestas correctas, y 4° Fecha/hora de envío.
 
 ### 🌐 Endpoints Serverless Disponibles:
-- `POST /api/admin-auth`: Autentica al Administrador de forma segura y emite tokens de sesión firmados.
+- `POST /api/admin-auth`: Autentica al Administrador de forma segura y emite tokens de sesión firmados (validez de 12 horas).
 - `GET /api/classification?phase=1&topCount=30`: Obtiene el podio y los clasificados (modo público si está publicado, o preview con token de admin).
-- `POST /api/classification`: Dispara la determinación de clasificados o el reinicio de publicación oficial (requiere token de admin).
+- `POST /api/classification`: Dispara la determinación de clasificados o el reinicio de publicación oficial (requiere token de admin; si el token expiró retorna 403 Forbidden y el cliente limpia la sesión caducada).
 - `GET /api/auth?token=...&phase=1`: Valida el hash/token del colaborador y obtiene su progreso sin exponer listas completas de nómina.
 - `GET /api/questions?phase=1`: Devuelve las preguntas de la fase activa sanitizadas.
 - `POST /api/submit-answer`: Evalúa en servidor el acierto/fallo de la respuesta y la persiste en Google Sheets vía Apps Script.

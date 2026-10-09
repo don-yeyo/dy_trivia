@@ -6,7 +6,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { fetchSheetValues, getServerEnv, sendToAppsScript, fetchTriviaConfig, updateTriviaConfig } from './utils/googleSheets.js';
+import { fetchSheetValues, getServerEnv, sendToAppsScript, fetchTriviaConfig, updateTriviaConfig, verifyAdminToken } from './utils/googleSheets.js';
 
 // Cache en memoria para mantener el estado publicado entre invocaciones
 let memoryClassificationState = {
@@ -55,35 +55,6 @@ function savePersistedState(state) {
   }
 }
 
-/**
- * Valida un token de sesión de admin generado por /api/admin-auth
- */
-function verifyAdminToken(token) {
-  if (!token) return false;
-
-  try {
-    const cleanToken = token.startsWith('Bearer ') ? token.slice(7).trim() : token.trim();
-    const parts = cleanToken.split('.');
-    if (parts.length !== 2) return false;
-
-    const [encodedPayload, receivedSig] = parts;
-    const payload = Buffer.from(encodedPayload, 'base64').toString('utf8');
-    const [username, expiresStr] = payload.split('_');
-
-    const expiresAt = parseInt(expiresStr, 10);
-    if (isNaN(expiresAt) || Date.now() > expiresAt) {
-      return false; // Token expirado
-    }
-
-    const seedPhrase = getServerEnv('SEED_PHRASE') || 'DY_INOCUIDAD_2026_CALIDAD_Y_COMPROMISO';
-    const expectedSig = crypto.createHmac('sha256', seedPhrase).update(payload).digest('hex');
-
-    const expectedUser = getServerEnv('ADMIN_USER') || 'admin';
-    return (username === expectedUser && crypto.timingSafeEqual(Buffer.from(receivedSig), Buffer.from(expectedSig)));
-  } catch (e) {
-    return false;
-  }
-}
 
 /**
  * Calcula la clasificación a partir de las listas de participantes y resultados

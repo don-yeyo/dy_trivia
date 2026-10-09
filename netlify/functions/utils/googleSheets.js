@@ -269,7 +269,14 @@ export function verifyAdminToken(token) {
     const expectedSig = crypto.createHmac('sha256', seedPhrase).update(payload).digest('hex');
 
     const expectedUser = getServerEnv('ADMIN_USER') || 'admin';
-    return (username === expectedUser && crypto.timingSafeEqual(Buffer.from(receivedSig), Buffer.from(expectedSig)));
+    const bufReceived = Buffer.from(receivedSig);
+    const bufExpected = Buffer.from(expectedSig);
+
+    if (bufReceived.length !== bufExpected.length) {
+      return false;
+    }
+
+    return (username === expectedUser && crypto.timingSafeEqual(bufReceived, bufExpected));
   } catch (e) {
     return false;
   }

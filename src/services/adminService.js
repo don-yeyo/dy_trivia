@@ -5,6 +5,7 @@
 import { fetchUsersList } from './authService';
 import { fetchUserProgressFromResults, fetchRawResultsList } from './googleSheetsService';
 import { loadTriviaQuestions } from './triviaService';
+import { fetchAppConfig, saveAppConfig } from './configService';
 
 const ADMIN_TOKEN_KEY = 'dy_trivia_admin_token';
 const ADMIN_USER_KEY = 'dy_trivia_admin_user';
@@ -47,6 +48,37 @@ export function clearAdminSession() {
     localStorage.removeItem(ADMIN_TOKEN_KEY);
     localStorage.removeItem(ADMIN_USER_KEY);
   } catch (e) {}
+}
+
+/**
+ * Valida si el token almacenado de administrador existe y no ha expirado
+ */
+export function isStoredTokenValid() {
+  const token = getStoredAdminToken();
+  if (!token) return false;
+
+  // En entorno dev, los tokens mock son válidos
+  if (token.startsWith('mock_token_')) {
+    return true;
+  }
+
+  try {
+    const cleanToken = token.startsWith('Bearer ') ? token.slice(7).trim() : token.trim();
+    const parts = cleanToken.split('.');
+    if (parts.length !== 2) return false;
+
+    // Decodificar payload base64
+    const payload = atob(parts[0]);
+    const [, expiresStr] = payload.split('_');
+    const expiresAt = parseInt(expiresStr, 10);
+    if (isNaN(expiresAt) || Date.now() > expiresAt) {
+      clearAdminSession();
+      return false;
+    }
+    return true;
+  } catch (e) {
+    return true;
+  }
 }
 
 /**
@@ -96,8 +128,6 @@ export async function loginAdmin(username, password) {
 
   return { success: false, error: 'No se pudo conectar con el servidor de autenticación' };
 }
-
-import { fetchAppConfig } from './configService';
 
 /**
  * Consulta el estado y los datos de clasificación (público o admin)
@@ -149,7 +179,7 @@ export async function fetchClassification(phase, topCount) {
 export async function determineClassification(phase = 1, topCount = 30) {
   const token = getStoredAdminToken();
   if (!token) {
-    return { success: false, error: 'Se requiere iniciar sesión como administrador' };
+    return { success: false, error: 'Se requiere iniciar sesión como administrador', isAuthError: true };
   }
 
   try {
@@ -170,15 +200,44 @@ export async function determineClassification(phase = 1, topCount = 30) {
     if (res.ok && contentType.includes('application/json')) {
       return await res.json();
     }
+
+    // Si el servidor responde 401 o 403, la sesión de admin expiró o fue rechazada
+    if (res.status === 401 || res.status === 403) {
+      let errMsg = 'Sesión de administrador vencida o no autorizada. Por favor, vuelva a iniciar sesión.';
+      try {
+        if (contentType.includes('application/json')) {
+          const body = await res.json();
+          if (body && body.error) errMsg = body.error;
+        }
+      } catch (e) {}
+      clearAdminSession();
+      return { success: false, error: errMsg, isAuthError: true };
+    }
+
+    if (!res.ok) {
+      let errMsg = `Error del servidor (${res.status})`;
+      try {
+        if (contentType.includes('application/json')) {
+          const body = await res.json();
+          if (body && body.error) errMsg = body.error;
+        }
+      } catch (e) {}
+      return { success: false, error: errMsg };
+    }
   } catch (err) {
-    console.warn('Error al disparar clasificación en servidor, ejecutando fallback:', err);
+    console.warn('Error de conexión con el backend de clasificación, ejecutando fallback:', err);
   }
 
-  // Fallback si no está el backend activo
-  await saveAppConfig({
-    isClassificationPublished: true,
-    publishedAt: new Date().toISOString()
-  });
+  // Fallback si no está el backend activo (red caída u offline dev)
+  try {
+    await saveAppConfig({
+      isClassificationPublished: true,
+      publishedAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.warn('No se pudo guardar la configuración en fallback:', err);
+  }
+
   const fallbackData = await computeFallbackClassification(phase, topCount, true);
   return {
     success: true,
@@ -195,7 +254,7 @@ export async function determineClassification(phase = 1, topCount = 30) {
  */
 export async function resetClassification(phase = 1) {
   const token = getStoredAdminToken();
-  if (!token) return { success: false };
+  if (!token) return { success: false, isAuthError: true };
 
   try {
     const res = await fetch('/api/classification', {
@@ -211,12 +270,41 @@ export async function resetClassification(phase = 1) {
     if (res.ok && contentType.includes('application/json')) {
       return await res.json();
     }
-  } catch (e) {}
 
-  await saveAppConfig({
-    isClassificationPublished: false,
-    publishedAt: null
-  });
+    if (res.status === 401 || res.status === 403) {
+      let errMsg = 'Sesión de administrador vencida o no autorizada. Por favor, vuelva a iniciar sesión.';
+      try {
+        if (contentType.includes('application/json')) {
+          const body = await res.json();
+          if (body && body.error) errMsg = body.error;
+        }
+      } catch (e) {}
+      clearAdminSession();
+      return { success: false, error: errMsg, isAuthError: true };
+    }
+
+    if (!res.ok) {
+      let errMsg = `Error del servidor (${res.status})`;
+      try {
+        if (contentType.includes('application/json')) {
+          const body = await res.json();
+          if (body && body.error) errMsg = body.error;
+        }
+      } catch (e) {}
+      return { success: false, error: errMsg };
+    }
+  } catch (e) {
+    console.warn('Error de conexión al reiniciar clasificación, ejecutando fallback:', e);
+  }
+
+  try {
+    await saveAppConfig({
+      isClassificationPublished: false,
+      publishedAt: null
+    });
+  } catch (err) {
+    console.warn('No se pudo guardar la configuración en fallback:', err);
+  }
 
   return { success: true, isPublished: false };
 }

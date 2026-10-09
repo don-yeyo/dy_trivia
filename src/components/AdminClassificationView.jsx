@@ -34,6 +34,7 @@ import {
   getStoredAdminToken,
   getStoredAdminUsername,
   clearAdminSession,
+  isStoredTokenValid,
   fetchClassification,
   determineClassification,
   resetClassification
@@ -78,13 +79,19 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
-  // Verificar si ya había sesión abierta
+  // Verificar si ya había sesión abierta y si sigue vigente
   useEffect(() => {
     const token = getStoredAdminToken();
     if (token) {
-      setIsAuthenticated(true);
-      setAdminUsername(getStoredAdminUsername());
-      loadData(token);
+      if (isStoredTokenValid()) {
+        setIsAuthenticated(true);
+        setAdminUsername(getStoredAdminUsername());
+        loadData(token);
+      } else {
+        clearAdminSession();
+        setIsAuthenticated(false);
+        setLoginError('Tu sesión de administrador ha expirado. Por favor ingresa tus credenciales nuevamente.');
+      }
     }
   }, []);
 
@@ -176,6 +183,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
         }
         setStatusMessage('🎉 ¡Clasificación publicada oficialmente! Los participantes ya pueden ver el podio y clasificados.');
         setTimeout(() => setStatusMessage(''), 6000);
+      } else if (result?.isAuthError) {
+        setIsAuthenticated(false);
+        setLoginError(result.error || 'La sesión de administrador expiró. Por favor vuelva a iniciar sesión.');
+        setStatusMessage('🔒 ' + (result.error || 'Sesión expirada. Inicie sesión nuevamente.'));
       } else {
         setStatusMessage('❌ Error al publicar: ' + (result?.error || 'No se pudo completar la operación'));
         setTimeout(() => setStatusMessage(''), 5000);
@@ -194,7 +205,14 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
       return;
     }
     setIsLoadingData(true);
-    await resetClassification(activePhase);
+    const result = await resetClassification(activePhase);
+    if (result?.isAuthError) {
+      setIsAuthenticated(false);
+      setLoginError(result.error || 'La sesión de administrador expiró. Por favor vuelva a iniciar sesión.');
+      setStatusMessage('🔒 ' + (result.error || 'Sesión expirada. Inicie sesión nuevamente.'));
+      setIsLoadingData(false);
+      return;
+    }
     setIsPublished(false);
     setPublishedAt(null);
     await loadData(getStoredAdminToken());
@@ -241,6 +259,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           setClassificationData(res.data || res.previewData);
         }
       } else {
+        if (result?.error && (result.error.includes('expirada') || result.error.includes('inválida') || result.error.includes('administrador'))) {
+          setIsAuthenticated(false);
+          setLoginError(result.error);
+        }
         setSaveSuccessMsg(`❌ No se pudo guardar la configuración: ${result?.error || 'Error de conexión o autenticación'}`);
       }
     } catch (err) {
