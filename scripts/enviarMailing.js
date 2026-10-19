@@ -240,12 +240,25 @@ async function markNewsletterTimestamp(columna, participant, rowIndex, timestamp
     }
 
     const data = await res.json().catch(() => null);
-    if (data && data.status === 'error') {
+    if (!data) {
+      console.error(`❌ Apps Script no devolvió una respuesta JSON válida.`);
+      return false;
+    }
+
+    if (data.status === 'error') {
       console.error(`❌ Error reportado por Apps Script: ${data.message}`);
       return false;
     }
 
-    return true;
+    // El Apps Script con MARCAR_NEWSLETTER responde: { status: 'success', message: 'Marca temporal registrada exitosamente', ... }
+    // Si responde message: 'OK', significa que está ejecutando una versión vieja de Código.gs que ignora MARCAR_NEWSLETTER.
+    if (data.status === 'success' && data.message === 'Marca temporal registrada exitosamente') {
+      return true;
+    }
+
+    console.warn(`⚠️ Advertencia: Apps Script devolvió "${data.message || JSON.stringify(data)}" en lugar de confirmar el registro de la celda.`);
+    console.warn(`   👉 La versión desplegada del Webhook en Google Apps Script no tiene activa la acción MARCAR_NEWSLETTER.`);
+    return false;
   } catch (err) {
     console.error(`❌ Excepción al marcar celda en Apps Script: ${err.message}`);
     return false;
