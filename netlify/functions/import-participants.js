@@ -5,7 +5,7 @@
 // ==============================================================================
 import crypto from 'crypto';
 import Papa from 'papaparse';
-import { getDatabase } from './db/index.js';
+import { getDatabase } from './_db/index.js';
 import { getServerEnv, verifyAdminToken } from './utils/googleSheets.js';
 
 // ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria

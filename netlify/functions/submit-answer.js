@@ -3,7 +3,7 @@
 // Evalúa en el servidor si la respuesta es correcta y la persiste atómicamente
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
-import { getDatabase } from './db/index.js';
+import { getDatabase } from './_db/index.js';
 
 // ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria
 const db = getDatabase();

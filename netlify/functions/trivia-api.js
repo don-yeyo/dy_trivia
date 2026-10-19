@@ -3,7 +3,7 @@
 // Provee endpoints serverless para lectura/escritura segura con Google Sheets
 // ==============================================================================
 
-exports.handler = async (event, context) => {
+export async function handler(event, context) {
   // CORS Headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -38,7 +38,6 @@ exports.handler = async (event, context) => {
       const data = JSON.parse(body || '{}');
       const { legajo, fase, fechaHora, puntaje } = data;
 
-      // Aquí se conecta con Google Sheets API v4 usando credenciales en env vars
       return {
         statusCode: 200,
         headers,
@@ -63,4 +62,4 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ error: error.message })
     };
   }
-};
+}

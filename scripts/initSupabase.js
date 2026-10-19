@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { checkOrInitSchema } from '../netlify/functions/db/schema.js';
+import { checkOrInitSchema } from '../netlify/functions/_db/schema.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

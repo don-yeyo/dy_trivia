@@ -3,7 +3,7 @@
 // Calcula el ranking y podio de ganadores mediante DatabaseAdapter
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
-import { getDatabase } from './db/index.js';
+import { getDatabase } from './_db/index.js';
 import { verifyAdminToken } from './utils/googleSheets.js';
 
 // ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria

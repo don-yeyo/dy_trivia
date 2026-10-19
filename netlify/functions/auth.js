@@ -3,7 +3,7 @@
 // Valida el token del colaborador y obtiene su progreso usando DatabaseAdapter
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
-import { getDatabase } from './db/index.js';
+import { getDatabase } from './_db/index.js';
 import { getServerEnv } from './utils/googleSheets.js';
 
 // ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria

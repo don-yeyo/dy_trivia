@@ -3,7 +3,7 @@
 // Devuelve las preguntas de la fase activa SANITIZADAS (sin la respuesta correcta)
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
-import { getDatabase } from './db/index.js';
+import { getDatabase } from './_db/index.js';
 
 // ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria
 const db = getDatabase();
