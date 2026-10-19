@@ -1,9 +1,13 @@
 // ==============================================================================
 // NETLIFY FUNCTION: CONFIG (/api/config)
-// Entrega al frontend la configuración de la trivia dictada por Google Sheets
+// Entrega al frontend la configuración de la trivia dictada por el motor de BD
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
-import { fetchTriviaConfig, updateTriviaConfig, verifyAdminToken } from './utils/googleSheets.js';
+import { getDatabase } from './db/index.js';
+import { verifyAdminToken } from './utils/googleSheets.js';
+
+// ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria
+const db = getDatabase();
 
 export async function handler(event, context) {
   const headers = {
@@ -19,7 +23,7 @@ export async function handler(event, context) {
   }
 
   // --------------------------------------------------------------------------
-  // POST: Actualizar Configuración en Google Sheets (Exclusivo Administrador)
+  // POST: Actualizar Configuración (Exclusivo Administrador)
   // --------------------------------------------------------------------------
   if (event.httpMethod === 'POST') {
     const authHeader = event.headers.authorization || event.headers.Authorization || '';
@@ -35,106 +39,67 @@ export async function handler(event, context) {
 
     try {
       const body = JSON.parse(event.body || '{}');
-      const sheetUpdates = {};
-      const frontendOverrides = {};
+      const updates = {};
 
       if (body.activePhase !== undefined) {
         const p = parseInt(body.activePhase, 10);
-        if (!isNaN(p) && p >= 1 && p <= 3) {
-          sheetUpdates['FASE_ACTIVA'] = String(p);
-          frontendOverrides.activePhase = p;
-        }
+        if (!isNaN(p) && p >= 1 && p <= 3) updates['FASE_ACTIVA'] = String(p);
       }
 
       if (body.isPhaseClosed !== undefined) {
-        const val = !!body.isPhaseClosed;
-        sheetUpdates['FASE_CERRADA'] = val ? 'TRUE' : 'FALSE';
-        frontendOverrides.isPhaseClosed = val;
+        updates['FASE_CERRADA'] = body.isPhaseClosed ? 'TRUE' : 'FALSE';
       }
 
       if (body.isClassificationPublished !== undefined) {
         const val = !!body.isClassificationPublished;
-        sheetUpdates['CLASIFICACION_PUBLICADA'] = val ? 'TRUE' : 'FALSE';
-        frontendOverrides.isClassificationPublished = val;
+        updates['CLASIFICACION_PUBLICADA'] = val ? 'TRUE' : 'FALSE';
         if (val) {
-          const pubDate = new Date().toISOString();
-          sheetUpdates['FECHA_PUBLICACION_CLASIFICACION'] = pubDate;
-          frontendOverrides.classificationPublishedAt = pubDate;
+          updates['FECHA_PUBLICACION_CLASIFICACION'] = new Date().toISOString();
         } else {
-          sheetUpdates['FECHA_PUBLICACION_CLASIFICACION'] = '';
-          frontendOverrides.classificationPublishedAt = null;
+          updates['FECHA_PUBLICACION_CLASIFICACION'] = '';
         }
       }
 
       if (body.classificationTopCount !== undefined) {
         const c = parseInt(body.classificationTopCount, 10);
-        if (!isNaN(c) && c >= 3) {
-          sheetUpdates['CLASIFICACION_TOP_COUNT'] = String(c);
-          frontendOverrides.classificationTopCount = c;
-        }
+        if (!isNaN(c) && c >= 3) updates['CLASIFICACION_TOP_COUNT'] = String(c);
       }
 
       if (body.timePerQuestion !== undefined) {
         const t = parseInt(body.timePerQuestion, 10);
-        if (!isNaN(t) && t >= 0) {
-          sheetUpdates['TIEMPO_POR_PREGUNTA'] = String(t);
-          frontendOverrides.timePerQuestion = t;
-        }
+        if (!isNaN(t) && t >= 0) updates['TIEMPO_POR_PREGUNTA'] = String(t);
       }
 
       if (body.shuffleQuestions !== undefined) {
-        const s = !!body.shuffleQuestions;
-        sheetUpdates['MEZCLAR_PREGUNTAS'] = s ? 'TRUE' : 'FALSE';
-        frontendOverrides.shuffleQuestions = s;
+        updates['MEZCLAR_PREGUNTAS'] = body.shuffleQuestions ? 'TRUE' : 'FALSE';
       }
 
       if (body.showPartialInTable !== undefined) {
-        const val = !!body.showPartialInTable;
-        sheetUpdates['MOSTRAR_PARCIALES_EN_TABLA'] = val ? 'TRUE' : 'FALSE';
-        frontendOverrides.showPartialInTable = val;
+        updates['MOSTRAR_PARCIALES_EN_TABLA'] = body.showPartialInTable ? 'TRUE' : 'FALSE';
       }
 
       if (body.showUnansweredInTable !== undefined) {
-        const val = !!body.showUnansweredInTable;
-        sheetUpdates['MOSTRAR_NO_RESPONDIDOS_EN_TABLA'] = val ? 'TRUE' : 'FALSE';
-        frontendOverrides.showUnansweredInTable = val;
+        updates['MOSTRAR_NO_RESPONDIDOS_EN_TABLA'] = body.showUnansweredInTable ? 'TRUE' : 'FALSE';
       }
 
       if (body.hideSummaryAnswered !== undefined) {
-        const val = !!body.hideSummaryAnswered;
-        sheetUpdates['OCULTAR_RESUMEN_RESPONDIDAS'] = val ? 'TRUE' : 'FALSE';
-        frontendOverrides.hideSummaryAnswered = val;
+        updates['OCULTAR_RESUMEN_RESPONDIDAS'] = body.hideSummaryAnswered ? 'TRUE' : 'FALSE';
       }
 
       if (body.hideSummaryTime !== undefined) {
-        const val = !!body.hideSummaryTime;
-        sheetUpdates['OCULTAR_RESUMEN_TIEMPO'] = val ? 'TRUE' : 'FALSE';
-        frontendOverrides.hideSummaryTime = val;
+        updates['OCULTAR_RESUMEN_TIEMPO'] = body.hideSummaryTime ? 'TRUE' : 'FALSE';
       }
 
-      const synced = await updateTriviaConfig(sheetUpdates, frontendOverrides);
-      const updatedConfig = await fetchTriviaConfig();
-
-      if (!synced) {
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            success: true,
-            syncedWithSheet: false,
-            warning: 'La configuración se actualizó en el servidor Netlify pero no se pudo sincronizar con Google Sheets. Verifique la implementación del webhook en Google Apps Script.',
-            config: updatedConfig
-          })
-        };
-      }
+      const synced = await db.updateConfig(updates);
+      const updatedConfig = await db.getConfig();
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          syncedWithSheet: true,
-          message: 'Configuración actualizada exitosamente en Google Sheets',
+          syncedWithDatabase: synced,
+          message: 'Configuración actualizada exitosamente',
           config: updatedConfig
         })
       };
@@ -160,7 +125,7 @@ export async function handler(event, context) {
   }
 
   try {
-    const config = await fetchTriviaConfig();
+    const config = await db.getConfig();
 
     return {
       statusCode: 200,

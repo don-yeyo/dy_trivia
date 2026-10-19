@@ -1,8 +1,12 @@
 // ==============================================================================
 // NETLIFY FUNCTION: QUESTIONS (/api/questions)
 // Devuelve las preguntas de la fase activa SANITIZADAS (sin la respuesta correcta)
+// Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
-import { fetchSheetValues, getServerEnv, fetchTriviaConfig } from './utils/googleSheets.js';
+import { getDatabase } from './db/index.js';
+
+// ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria
+const db = getDatabase();
 
 export async function handler(event, context) {
   const headers = {
@@ -27,7 +31,7 @@ export async function handler(event, context) {
 
   try {
     // 🛡️ Seguridad: El backend decide la fase activa y si la fase está abierta o cerrada
-    const config = await fetchTriviaConfig();
+    const config = await db.getConfig();
 
     if (config.isPhaseClosed) {
       return {
@@ -40,67 +44,21 @@ export async function handler(event, context) {
     const phase = config.activePhase;
     const shuffle = config.shuffleQuestions;
 
-    const questionsRange = getServerEnv('GOOGLE_SHEETS_QUESTIONS_RANGE') || 'Preguntas!A1:Z100';
-    const rows = await fetchSheetValues(questionsRange);
+    // Obtener preguntas sanitizadas del motor de base de datos
+    const questions = await db.getQuestions(phase, true);
 
-    if (!rows || rows.length === 0) {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify([])
-      };
-    }
-
-    const phaseRows = rows.filter(r => {
-      const qPhase = parseInt(r.fase || r.phase || '1', 10);
-      return qPhase === phase;
-    });
-
-    const sanitizedQuestions = [];
-
-    phaseRows.forEach((r, idx) => {
-      const explicitId = r.id || r.numero || r.id_pregunta;
-      const qId = (explicitId !== undefined && explicitId !== '') ? parseInt(explicitId, 10) : (idx + 1);
-      const questionText = r.pregunta || r.question || '';
-      const points = parseInt(r.puntos || r.points || '100', 10);
-
-      // Extraer opciones (soporta opcion1..opcion5, opcion_a..opcion_e, a..e)
-      const options = [];
-      for (let i = 1; i <= 5; i++) {
-        const letter = String.fromCharCode(96 + i); // a, b, c, d, e
-        const optText = r[`opcion${i}`] || r[`opcion_${i}`] || r[`opcion${letter}`] || r[`opcion_${letter}`] || r[letter] || r[`opcion ${i}`] || '';
-        if (optText && String(optText).trim() !== '') {
-          options.push({
-            id: i,
-            text: String(optText).trim()
-          });
-        }
-      }
-
-      if (questionText && options.length >= 2) {
-        // Objeto sanitizado: NUNCA incluye correctOptionId ni pistas
-        sanitizedQuestions.push({
-          id: qId,
-          phase: phase,
-          question: questionText,
-          points,
-          options
-        });
-      }
-    });
-
-    // Mezclar si está configurado
-    if (shuffle) {
-      for (let i = sanitizedQuestions.length - 1; i > 0; i--) {
+    // Mezclar si está configurado en el sistema
+    if (shuffle && Array.isArray(questions)) {
+      for (let i = questions.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [sanitizedQuestions[i], sanitizedQuestions[j]] = [sanitizedQuestions[j], sanitizedQuestions[i]];
+        [questions[i], questions[j]] = [questions[j], questions[i]];
       }
     }
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(sanitizedQuestions)
+      body: JSON.stringify(questions || [])
     };
 
   } catch (error) {

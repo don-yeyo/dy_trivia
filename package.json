@@ -8,17 +8,21 @@
     "build": "vite build",
     "preview": "vite preview",
     "sheet:poblar": "node scripts/poblarGoogleSheet.js",
+    "db:migrate": "node scripts/migrateToSupabase.js",
+    "db:init": "node scripts/initSupabase.js",
     "mailing": "node scripts/enviarMailing.js",
     "mailing:test": "node scripts/enviarMailing.js --test",
     "mailing:send": "node scripts/enviarMailing.js --send"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "canvas-confetti": "^1.9.4",
     "crypto-js": "^4.2.0",
     "dotenv": "^18.0.7",
     "lucide-react": "^1.16.0",
     "nodemailer": "^10.1.0",
     "papaparse": "^5.5.3",
+    "pg": "^8.23.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "xlsx": "^0.18.5"

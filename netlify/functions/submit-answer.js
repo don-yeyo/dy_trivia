@@ -1,8 +1,12 @@
 // ==============================================================================
 // NETLIFY FUNCTION: SUBMIT ANSWER (/api/submit-answer)
-// Evalúa en el servidor si la respuesta es correcta y la persiste en Google Sheets
+// Evalúa en el servidor si la respuesta es correcta y la persiste atómicamente
+// Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
-import { fetchSheetValues, sendToAppsScript, getServerEnv, fetchTriviaConfig } from './utils/googleSheets.js';
+import { getDatabase } from './db/index.js';
+
+// ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria
+const db = getDatabase();
 
 export async function handler(event, context) {
   const headers = {
@@ -37,7 +41,7 @@ export async function handler(event, context) {
       body = event.body;
     }
 
-    const { action, legajo, questionId, selectedOptionId = null, timeSpent = 0, isAborted = false } = body;
+    const { action, legajo, questionId, selectedOptionId = null, timeSpent = 0 } = body;
 
     // Si solo es un aviso de inicio de pregunta, acusar recibo sin persistir fallo prematuro
     if (action === 'START_QUESTION') {
@@ -48,8 +52,8 @@ export async function handler(event, context) {
       };
     }
 
-    // 🛡️ Seguridad en Servidor: Validar contra la configuración autorizada de Google Sheets
-    const config = await fetchTriviaConfig();
+    // 🛡️ Seguridad en Servidor: Validar contra la configuración autorizada
+    const config = await db.getConfig();
 
     if (config.isPhaseClosed) {
       return {
@@ -69,24 +73,12 @@ export async function handler(event, context) {
       };
     }
 
-    // 1. Obtener preguntas de la hoja con la columna de respuestas correctas (en servidor)
-    const questionsRange = getServerEnv('GOOGLE_SHEETS_QUESTIONS_RANGE') || 'Preguntas!A1:Z100';
-    const rows = await fetchSheetValues(questionsRange);
+    // 1. Obtener preguntas de la fase activa con la respuesta correcta (en servidor)
+    const questions = await db.getQuestions(phase, false);
 
-    const phaseRows = rows.filter(r => {
-      const qPhase = parseInt(r.fase || r.phase || '1', 10);
-      return qPhase === parseInt(phase, 10);
-    });
+    const question = questions.find(q => parseInt(q.id, 10) === parseInt(questionId, 10));
 
-    const questionRow = phaseRows.find((r, idx) => {
-      const explicitId = r.id || r.numero || r.id_pregunta;
-      if (explicitId !== undefined && explicitId !== '') {
-        return parseInt(explicitId, 10) === parseInt(questionId, 10);
-      }
-      return (idx + 1) === parseInt(questionId, 10);
-    });
-
-    if (!questionRow) {
+    if (!question) {
       return {
         statusCode: 404,
         headers,
@@ -94,23 +86,12 @@ export async function handler(event, context) {
       };
     }
 
-    // 2. Extraer opción correcta en servidor (número 1..5 o letra A..E)
-    const rawCorrect = String(
-      questionRow.respuesta_correcta || 
-      questionRow.respuestacorrecta || 
-      questionRow.opcion_correcta || 
-      questionRow.opcioncorrecta || 
-      questionRow.correcta || 
-      questionRow.correctoptionid || 
-      '1'
-    ).trim().toUpperCase();
-
-    const correctMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5 };
-    const correctOptionId = correctMap[rawCorrect] || parseInt(rawCorrect, 10) || 1;
+    // 2. Extraer opción correcta en servidor
+    const correctOptionId = question.correctOptionId || 1;
 
     // 3. Evaluar acierto y cálculo de puntaje en servidor
     const isCorrect = selectedOptionId !== null && selectedOptionId !== undefined && parseInt(selectedOptionId, 10) === correctOptionId;
-    const basePoints = parseInt(questionRow.puntos || questionRow.points || '100', 10);
+    const basePoints = parseInt(question.points || '100', 10);
     const timeLimit = parseInt(config.timePerQuestion || '45', 10);
 
     let pointsEarned = 0;
@@ -122,20 +103,16 @@ export async function handler(event, context) {
 
     const timestamp = new Date().toISOString();
 
-    // 4. Persistir en Google Apps Script mediante Webhook seguro de backend
-    await sendToAppsScript({
-      action: 'SAVE_QUESTION_ANSWER',
+    // 4. Inserción atómica en el motor activo (1 sola llamada REST PostgREST)
+    await db.saveQuestionAnswer({
       legajo: String(legajo),
-      fase: parseInt(phase, 10),
-      fechaHoraRespuesta: timestamp,
-      answer: {
-        questionId: parseInt(questionId, 10),
-        selectedOptionId: selectedOptionId !== null ? parseInt(selectedOptionId, 10) : null,
-        isCorrect,
-        pointsEarned,
-        timeSpent: parseInt(timeSpent, 10),
-        fechaHoraRespuesta: timestamp
-      }
+      phase: parseInt(phase, 10),
+      questionId: parseInt(questionId, 10),
+      selectedOptionId: selectedOptionId !== null ? parseInt(selectedOptionId, 10) : null,
+      isCorrect,
+      pointsEarned,
+      timeSpent: parseInt(timeSpent, 10),
+      timestamp
     });
 
     // 5. Retornar el resultado evaluado al frontend

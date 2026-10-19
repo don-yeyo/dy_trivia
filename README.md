@@ -51,7 +51,12 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 
 7. **Listo para Despliegue en Netlify**:
    - Configuración `netlify.toml` con SPA fallback.
-   - Serverless functions en `netlify/functions/` listas para interactuar con Google Sheets API o Webhooks de Google Apps Script.
+   - Serverless functions en `netlify/functions/` con arquitectura de persistencia modular.
+
+8. **Persistencia Dual y Alta Concurrencia (Patrón Repository & Supabase)**:
+   - **Soporte para 470+ usuarios simultáneos:** Integra Supabase (PostgreSQL) con índices B-Tree dedicados en hashes de participantes e inserciones atómicas de respuestas sin cuellos de botella por cuotas o bloqueos concurrentes.
+   - **Feature Flag `DB_ENGINE`:** Permite alternar sin tocar código entre `sheets` (Google Sheets API v4 + Webhooks) y `supabase` (PostgreSQL de alta velocidad).
+   - **Herramienta de migración idempotente (`npm run db:migrate`):** Lee datos de Google Sheets y los vuelca masivamente en Supabase mediante `UPSERT` en lotes sin riesgo de duplicados.
 
 ---
 
@@ -73,6 +78,10 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
 
 | Variable | Alcance | Descripción | Valores Ejemplo |
 | :--- | :--- | :--- | :--- |
+| `DB_ENGINE` | 🔒 Backend | Selector del motor de base de datos (Feature Flag) | `"sheets"` (default) / `"supabase"` |
+| `SUPABASE_URL` | 🔒 Backend | URL del proyecto Supabase (PostgREST API) | `"https://xyzcompany.supabase.co"` |
+| `SUPABASE_SERVICE_ROLE_KEY` | 🔒 Backend | Clave de servicio secreta de Supabase (omite RLS en backend) | `"eyJhbGciOi..."` |
+| `SUPABASE_ANON_KEY` | 🔒 Backend | Clave anónima pública de Supabase | `"eyJhbGciOi..."` |
 | `ADMIN_USER` | 🔒 Backend | Usuario del Administrador para determinar clasificados | `"usuario_admin"` |
 | `ADMIN_PASSWORD` | 🔒 Backend | Contraseña del Administrador (NUNCA expuesta al cliente) | `"contraseña_segura_aqui"` |
 | `SEED_PHRASE` | 🔒 Backend | Frase semilla para cálculo y validación criptográfica de enlaces | `"DY_INOCUIDAD_2026_CALIDAD_Y_COMPROMISO"` |
@@ -88,6 +97,18 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
 | `VITE_MAX_TIME_TOTAL` | 🌐 Frontend | Tiempo máximo de permanencia total en segundos | `600` |
 | `VITE_ALLOW_SESSION_RESET` | 🌐 Frontend | Modo desarrollo: permitir reinicio de sesión | `false` (prod) / `true` (dev) |
 | `VITE_GOOGLE_SHEETS_CONFIG_RANGE` | 🌐 Frontend | Fallback en modo local sin servidor | `"Configuracion!A1:C30"` |
+
+---
+
+## 🗄️ Comandos de Base de Datos y Migración (Supabase)
+
+```bash
+# Verificar tablas e índices en Supabase
+npm run db:init
+
+# Migrar masivamente Configuración, Participantes y Preguntas de Google Sheets a Supabase
+npm run db:migrate
+```
 
 ---
 

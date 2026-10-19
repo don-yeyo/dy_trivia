@@ -1,11 +1,15 @@
 // ==============================================================================
 // NETLIFY FUNCTION: IMPORT PARTICIPANTS (/api/import-participants)
-// Importa la nómina de colaboradores hacia la pestaña 'Participantes' de Google Sheets
+// Importa la nómina de colaboradores hacia el motor de BD activo (Supabase o Sheets)
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
 import crypto from 'crypto';
 import Papa from 'papaparse';
-import { getServerEnv, sendToAppsScript, verifyAdminToken } from './utils/googleSheets.js';
+import { getDatabase } from './db/index.js';
+import { getServerEnv, verifyAdminToken } from './utils/googleSheets.js';
+
+// ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria
+const db = getDatabase();
 
 export async function handler(event, context) {
   const headers = {
@@ -46,7 +50,6 @@ export async function handler(event, context) {
     let rawRows = [];
 
     if (body.csvText) {
-      // Detección automática de delimitador (; o ,)
       const firstLine = body.csvText.split('\n')[0] || '';
       const delimiter = firstLine.includes(';') ? ';' : ',';
       const parsed = Papa.parse(body.csvText, {
@@ -124,22 +127,18 @@ export async function handler(event, context) {
       });
     });
 
-    // 3. Enviar a Google Apps Script para impactar en Google Sheets
-    const appsScriptResult = await sendToAppsScript({
-      action: 'IMPORT_PARTICIPANTES',
-      participantes: participants,
-      modo: body.modo || 'REPLACE'
-    });
+    // 3. Enviar al motor de persistencia activo
+    const result = await db.importParticipants(participants, body.modo || 'REPLACE');
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        success: true,
-        message: `Se procesaron ${participants.length} participantes (${duplicatesCount} duplicados omitidos).`,
-        totalImportados: participants.length,
+        success: result.success,
+        engine: db.engineName,
+        message: `Se procesaron ${participants.length} participantes (${duplicatesCount} duplicados en origen omitidos).`,
+        totalImportados: result.totalImportados || participants.length,
         duplicadosOmitidos: duplicatesCount,
-        appsScriptSynced: appsScriptResult,
         sample: participants.slice(0, 5)
       })
     };
