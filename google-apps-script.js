@@ -58,6 +58,20 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
+    // 5. Acción: Marcar fecha y hora de envío de newsletter en columna específica
+    if (data.action === "MARCAR_NEWSLETTER") {
+      var resMarca = marcarNewsletterParticipante(ss, data);
+      return ContentService.createTextOutput(JSON.stringify(resMarca))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 6. Acción: Obtener datos y encabezados completos de la pestaña 'Participantes'
+    if (data.action === "GET_PARTICIPANTES_RAW") {
+      var resRaw = getParticipantesRaw(ss);
+      return ContentService.createTextOutput(JSON.stringify(resRaw))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
       message: "OK"
@@ -271,5 +285,123 @@ function importParticipantesSheet(ss, participantes, modo) {
     message: "Participantes importados exitosamente",
     totalImportados: rowsToInsert.length,
     duplicadosOmitidos: duplicados
+  };
+}
+
+/**
+ * Registra la marca temporal (fecha y hora) en la fila del participante y columna de la campaña
+ */
+function marcarNewsletterParticipante(ss, data) {
+  var sheet = ss.getSheetByName("Participantes");
+  if (!sheet) {
+    return { status: "error", message: "La pestaña 'Participantes' no existe en la planilla." };
+  }
+
+  var targetColName = String(data.columna || "").trim();
+  if (!targetColName) {
+    return { status: "error", message: "No se especificó el nombre de la columna para registrar la marca temporal." };
+  }
+
+  var values = sheet.getDataRange().getValues();
+  if (!values || values.length === 0) {
+    return { status: "error", message: "La pestaña 'Participantes' está vacía." };
+  }
+
+  var headers = values[0];
+  var colIndex = -1;
+  for (var c = 0; c < headers.length; c++) {
+    var h = String(headers[c] || "").trim();
+    if (h.toLowerCase() === targetColName.toLowerCase()) {
+      colIndex = c;
+      break;
+    }
+  }
+
+  if (colIndex === -1) {
+    return {
+      status: "error",
+      message: "La columna '" + targetColName + "' no fue encontrada en la pestaña 'Participantes'."
+    };
+  }
+
+  var targetLegajo = String(data.legajo || "").trim();
+  var targetEmail = String(data.email || "").trim().toLowerCase();
+  var rowIndex = -1;
+
+  if (data.rowIndex && typeof data.rowIndex === "number" && data.rowIndex >= 2 && data.rowIndex <= values.length) {
+    rowIndex = data.rowIndex;
+  } else {
+    var legajoCol = -1;
+    var emailCol = -1;
+    for (var c = 0; c < headers.length; c++) {
+      var colName = String(headers[c] || "").trim().toLowerCase();
+      if (colName === "legajo") legajoCol = c;
+      if (colName === "email" || colName === "correo") emailCol = c;
+    }
+
+    for (var r = 1; r < values.length; r++) {
+      var row = values[r];
+      var rLeg = legajoCol >= 0 ? String(row[legajoCol] || "").trim() : "";
+      var rMail = emailCol >= 0 ? String(row[emailCol] || "").trim().toLowerCase() : "";
+
+      if ((targetLegajo && rLeg === targetLegajo) || (targetEmail && rMail === targetEmail)) {
+        rowIndex = r + 1; // 1-based para Sheets
+        break;
+      }
+    }
+  }
+
+  if (rowIndex === -1) {
+    return {
+      status: "error",
+      message: "No se encontró la fila del participante con Legajo: " + targetLegajo + " / Email: " + targetEmail
+    };
+  }
+
+  var timestamp = String(data.timestamp || new Date().toLocaleString("es-AR", { timeZone: "America/Argentina/Buenos_Aires" }));
+  sheet.getRange(rowIndex, colIndex + 1).setValue(timestamp);
+
+  return {
+    status: "success",
+    message: "Marca temporal registrada exitosamente",
+    row: rowIndex,
+    col: colIndex + 1,
+    columna: targetColName,
+    timestamp: timestamp
+  };
+}
+
+/**
+ * Devuelve encabezados y filas completas de la pestaña 'Participantes'
+ */
+function getParticipantesRaw(ss) {
+  var sheet = ss.getSheetByName("Participantes");
+  if (!sheet) {
+    return { status: "error", message: "La pestaña 'Participantes' no existe en la planilla." };
+  }
+
+  var values = sheet.getDataRange().getValues();
+  if (!values || values.length === 0) {
+    return { status: "success", headers: [], rows: [] };
+  }
+
+  var headers = values[0].map(function(h) { return String(h || "").trim(); });
+  var rows = [];
+
+  for (var i = 1; i < values.length; i++) {
+    var rawRow = values[i];
+    if (!rawRow || rawRow.every(function(cell) { return String(cell || "").trim() === ""; })) {
+      continue;
+    }
+    rows.push({
+      rowIndex: i + 1,
+      values: rawRow
+    });
+  }
+
+  return {
+    status: "success",
+    headers: headers,
+    rows: rows
   };
 }

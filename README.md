@@ -696,6 +696,146 @@ Esta pestaña es el **cerebro operacional dinámico** de la trivia. Permite alte
 
 ---
 
+---
+
+## 📧 Bot de Mailing Masivo por Terminal (Newsletter & Notificaciones)
+
+El proyecto incluye un bot de envío masivo de emails desarrollado en Node.js (`scripts/enviarMailing.js`), diseñado para ejecutarse localmente por terminal con soporte para campañas dinámicas, comodines de personalización, validación estricta de columnas en Google Sheets y registro automático de marcas temporales.
+
+### 🎨 1. Plantilla y Estética (`mailing/mailing.html` y `mailing/`)
+
+La plantilla de mailing (`mailing/mailing.html` y en la raíz `mailing.html`) respeta fielmente la identidad visual de la Trivia de Don Yeyo S.A.:
+- **Fondo de Rayos (Sunburst):** Fondo estático con los azules corporativos (`#091a36` a `#0d2c5c`) y rayos sutiles.
+- **Logo Don Yeyo:** Logo oficial optimizado e incrustado con **CID Inline** para máxima compatibilidad con Microsoft Outlook, Gmail, Apple Mail y clientes móviles.
+- **Directorio de imágenes aislado:** Todos los assets del mailing están agrupados bajo el directorio **`mailing/`**:
+  - `mailing/fondo-rayos-16-9.png`: Fondo de rayos apaisado 16:9 en alta resolución (1920x1080 px).
+  - `mailing/fondo-rayos-9-16.png`: Fondo de rayos vertical 9:16 en alta resolución para mobile y stories (1080x1920 px).
+  - `mailing/fondo-rayos-1-1.png`: Fondo de rayos cuadrado 1:1 en alta resolución (1200x1200 px).
+  - `mailing/fondo-rayos.png`: Cabecera optimizada para correos de mailing (1200x500 px).
+  - `mailing/logo.png`: Logo oficial de Don Yeyo en formato PNG para clientes de email.
+  - `mailing/logo.svg`: Vector original del logo.
+  - `mailing/mailing.html`: Plantilla HTML responsive con tablas y estilos inline.
+
+### 🧩 2. Comodines Soportados en la Plantilla
+
+#### Comodines de Participante (desde la pestaña `Participantes` de Google Sheets):
+| Comodín | Origen de Dato | Ejemplo de Reemplazo |
+| :--- | :--- | :--- |
+| `{{nombre}}` | Columna `nombre` | Juan Carlos |
+| `{{apellido}}` | Columna `apellido` | Pérez |
+| `{{nombre_completo}}` | Nombre y apellido combinados | Juan Carlos Pérez |
+| `{{legajo}}` | Columna `legajo` | 1042 |
+| `{{sector}}` | Columna `sector` | GCIA.OPER-EXPEDICION |
+| `{{email}}` | Columna `email` / `correo` | juan.perez@donyeyo.com.ar |
+| `{{documento}}` | Columna `documento` | 32456789 |
+| `{{link_trivia}}` / `{{trivia_url}}` | **Enlace único con token criptográfico** | `https://dy-inocuidad.netlify.app/?token=64fb9ced...` |
+
+> 💡 **Nota sobre `{{link_trivia}}`:** El bot calcula o toma el hash SHA-256 de cada colaborador usando la frase clave `SEED_PHRASE` y su legajo/apellido/nombre, generando un enlace de acceso directo de 1 clic sin necesidad de que el colaborador escriba su usuario.
+
+#### Comodines de Campaña y Entorno (desde `.env_mailn`):
+| Comodín | Variable en `.env_mailn` | Descripción |
+| :--- | :--- | :--- |
+| `%TITULO_EMAIL%` | `TITULO_EMAIL` | Título del correo en el encabezado. |
+| `%SUBTITULO%` | `SUBTITULO` | Subtítulo descriptivo de la campaña. |
+| `%MENSAJE_PRINCIPAL%` | `MENSAJE_PRINCIPAL` | Cuerpo principal del mensaje (soporta HTML o texto). |
+| `%MENSAJE_SECUNDARIO%` | `MENSAJE_SECUNDARIO` | Consejos, tips o recordatorios destacados en cuadro celeste. |
+| `%CALL_TO_ACTION_TEXTO%` | `CALL_TO_ACTION_TEXTO` | Texto del botón principal (ej: "INGRESAR A LA TRIVIA AHORA"). |
+| `%NEWSLETER_ACTUAL%` | `NEWSLETER_ACTUAL` | Nombre de la columna de campaña en Google Sheets. |
+| `%EMPRESA_NOMBRE%` | `EMPRESA_NOMBRE` | Nombre del departamento o empresa en el footer. |
+| `%CONTACTO_SOPORTE%` | `CONTACTO_SOPORTE` | Datos de contacto para consultas de colaboradores. |
+| `%ANIO_ACTUAL%` | `ANIO_ACTUAL` | Año en curso (ej: 2026). |
+
+*(Cualquier variable adicional declarada en `.env_mailn` puede usarse con la sintaxis `%MI_VARIABLE%`).*
+
+---
+
+### ⚙️ 3. Configuración en `.env_mailn`
+
+Copiar el archivo de plantilla `.env_mailn.template` a `.env_mailn` y completar con las credenciales correspondientes:
+
+```bash
+cp .env_mailn.template .env_mailn
+```
+
+Variables clave en `.env_mailn`:
+- `NEWSLETER_ACTUAL`: Nombre exacto de la columna en Google Sheets (ej: `"Email Link de Trivia"`).
+- `SMTP_HOST`: Host del servidor SMTP (ej: `smtp.gmail.com` o `smtp.office365.com`).
+- `SMTP_PORT`: Puerto (`587` para STARTTLS o `465` para SSL).
+- `SMTP_USER` y `SMTP_PASS`: Usuario y contraseña (para Gmail se recomienda *Contraseña de Aplicación*).
+- `SMTP_FROM`: Remitente visible (ej: `"\"Trivia Don Yeyo\" <calidad@donyeyo.com.ar>"`).
+- `TEST_EMAIL`: Correo electrónico personal para envíos de prueba antes de la salida masiva.
+- `SMTP_DELAY_MS`: Pausa en milisegundos entre envíos (por defecto `1200` ms para evitar bloqueos por spam).
+
+---
+
+### 🛡️ 4. Flujo de Control y Validación Estricta de Columnas
+
+1. **El Administrador crea la columna en Google Sheets**:
+   - En la pestaña `Participantes`, el administrador agrega una nueva columna con el título deseado, por ejemplo: `Email Link de Trivia` (o `Recordatorio Fase 1`, etc.).
+   - Configura en `.env_mailn`: `NEWSLETER_ACTUAL="Email Link de Trivia"`.
+2. **Validación automática**:
+   - Al ejecutar el script, el bot consulta la hoja de cálculo.
+   - **Si la columna NO existe:** El bot arroja un **ERROR FATAL**, lista las columnas disponibles y **se detiene inmediatamente sin enviar ningún correo**.
+3. **Filtro inteligente de envíos**:
+   - Revisa fila por fila la celda correspondiente a esa columna.
+   - Si la celda **ya tiene una marca temporal**, el participante es **omitido** (ya fue notificado).
+   - Solo se envía a las casillas cuya celda esté **vacía**.
+4. **Inserción de Marca Temporal**:
+   - Tras enviar con éxito cada correo vía SMTP, el bot llama al Webhook de Google Apps Script (`action: "MARCAR_NEWSLETTER"`).
+   - Inserta la fecha y hora exacta (ej: `13/10/2026 09:30:15`) en la celda del participante.
+   - Si la conexión se interrumpe a mitad de camino, los correos ya procesados quedan marcados y al relanzar el script continuará únicamente con los pendientes.
+
+---
+
+### 🚀 5. Comandos de Ejecución
+
+#### A. Modo de Prueba (Recomendado antes de envíos masivos)
+Envía un único correo a tu casilla personal simulando los datos de un participante real. **NO modifica Google Sheets**.
+
+```bash
+# Envía a la casilla TEST_EMAIL configurada en .env_mailn
+npm run mailing:test
+
+# O envía a una casilla específica por argumento:
+node scripts/enviarMailing.js --test tu_correo@donyeyo.com.ar
+```
+
+#### B. Simulación sin envíos (Dry Run)
+Permite inspeccionar la conexión, los encabezados y cuántos correos se enviarían sin hacer envíos SMTP ni alterar la planilla:
+
+```bash
+node scripts/enviarMailing.js --dry-run
+```
+
+#### C. Envío Masivo Real
+Ejecuta el envío a todos los colaboradores que tengan la celda vacía en la columna `%NEWSLETER_ACTUAL%`:
+
+```bash
+npm run mailing:send
+```
+
+Opciones adicionales de terminal:
+```bash
+# Sobreescribir la columna de campaña en la ejecución actual:
+node scripts/enviarMailing.js --send --columna "Recordatorio Fase 2"
+
+# Limitar la tanda a un máximo de correos (ej: primeros 25):
+node scripts/enviarMailing.js --send --limit 25
+```
+
+---
+
+### 🔄 6. Actualización de Google Apps Script (`Código.gs`)
+
+Para que la planilla de Google Sheets registre las marcas temporales en tiempo real, asegúrese de tener la última versión de `google-apps-script.js`:
+1. Abrir la planilla en Google Sheets: **Extensiones > Apps Script**.
+2. Pegar el código actualizado de `google-apps-script.js`.
+3. Guardar cambios.
+4. Hacer clic en el botón superior azul: **Implementar > Administrar implementaciones**.
+5. Clic en el icono del lápiz (**Editar**), seleccionar **"Nueva versión"** y presionar **Implementar**.
+
+---
+
 ## 🌐 Publicación en Netlify
 
 1. Conectar el repositorio Git a Netlify.
@@ -706,3 +846,4 @@ Esta pestaña es el **cerebro operacional dinámico** de la trivia. Permite alte
 
 ---
 **Don Yeyo S.A. &copy; 2026** - Dirección de Calidad e Inocuidad Alimentaria.
+
