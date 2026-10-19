@@ -3,6 +3,9 @@
   command = "npm run build"
   functions = "netlify/functions"
 
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "DB_ENGINE"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
