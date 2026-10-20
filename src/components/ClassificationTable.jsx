@@ -1,5 +1,18 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Trophy, Medal, Clock, CheckCircle2, Award, UserCheck, Flame } from 'lucide-react';
+import {
+  Search,
+  Trophy,
+  Medal,
+  Clock,
+  CheckCircle2,
+  Award,
+  UserCheck,
+  Flame,
+  Calculator,
+  ChevronDown,
+  ChevronUp,
+  Info
+} from 'lucide-react';
 
 export default function ClassificationTable({
   participants = [],
@@ -8,6 +21,7 @@ export default function ClassificationTable({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState('ALL'); // ALL | QUALIFIED | REST
+  const [isScoreInfoOpen, setIsScoreInfoOpen] = useState(false);
 
   const formatTime = (seconds) => {
     if (!seconds && seconds !== 0) return '0s';
@@ -91,6 +105,97 @@ export default function ClassificationTable({
             Restantes
           </button>
         </div>
+      </div>
+
+      {/* Tarjeta Informativa Oficial: Cómo se calculan los puntos */}
+      <div className="mb-6 rounded-2xl bg-gradient-to-br from-slate-900/95 via-blue-950/85 to-slate-900/95 border border-amber-400/30 text-white shadow-2xl backdrop-blur-md overflow-hidden">
+        {/* Cabecera clickeable para colapsar/expandir */}
+        <button
+          type="button"
+          onClick={() => setIsScoreInfoOpen(prev => !prev)}
+          className="w-full p-4 sm:p-5 flex items-center justify-between gap-3 text-left hover:bg-white/5 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 shrink-0">
+              <Calculator size={20} className="stroke-[2.5]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-black text-white text-sm sm:text-base tracking-tight">
+                  ¿Cómo se calculan los puntos de la clasificación?
+                </span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  Criterio Oficial Don Yeyo
+                </span>
+              </div>
+              <span className="text-[11px] sm:text-xs text-slate-300 block mt-0.5">
+                El acierto en inocuidad es prioritario y el tiempo define los desempates
+              </span>
+            </div>
+          </div>
+          <div className="p-1.5 rounded-lg bg-white/10 text-slate-300 shrink-0">
+            {isScoreInfoOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </div>
+        </button>
+
+        {/* Contenido Desplegable */}
+        {isScoreInfoOpen && (
+          <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 border-t border-white/10 text-xs sm:text-sm text-slate-300 space-y-3">
+            {/* Reglas Clave */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold mb-1">
+                  <CheckCircle2 size={16} />
+                  <span>1. El conocimiento es lo principal</span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                  Cada respuesta correcta suma una base fija de <strong>10.000 puntos</strong>. Quien acierte más preguntas <strong>siempre clasifica por encima</strong> de quien acertó menos.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="flex items-center gap-2 text-cyan-400 font-bold mb-1">
+                  <Clock size={16} />
+                  <span>2. El tiempo desempata</span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
+                  Entre colaboradores con la <strong>misma cantidad de aciertos</strong>, se suma un bonus de velocidad: <strong>(Aciertos ÷ Segundos totales) × 1.000</strong>. Quien respondió más rápido suma más bonus.
+                </p>
+              </div>
+            </div>
+
+            {/* Ejemplo Práctico de Contabilidad */}
+            <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950/80 border border-amber-400/30">
+              <span className="font-extrabold text-yellow-400 text-xs uppercase tracking-wider block mb-1.5">
+                💡 Ejemplo práctico de cálculo:
+              </span>
+              <p className="text-xs text-slate-200 mb-2.5 leading-snug">
+                Si un colaborador responde correctamente <strong className="text-emerald-400">15 preguntas</strong> y tardó en total <strong className="text-cyan-400">3 minutos y 13 segundos (193 segundos)</strong>:
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-700/70">
+                  <span className="text-[10px] text-slate-400 block font-sans">A) Base por aciertos</span>
+                  <span className="font-bold text-white">15 × 10.000 = <strong className="text-emerald-400">150.000</strong></span>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-700/70">
+                  <span className="text-[10px] text-slate-400 block font-sans">B) Bonus por velocidad</span>
+                  <span className="font-bold text-white">(15 ÷ 193) × 1.000 = <strong className="text-cyan-400">+78</strong></span>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-amber-500/15 border border-amber-400/40 flex flex-col justify-center">
+                  <span className="text-[10px] text-yellow-400/90 font-sans font-bold block">Puntaje Oficial Final</span>
+                  <span className="font-black text-yellow-300 text-base">150.078 pts</span>
+                </div>
+              </div>
+
+              <span className="block mt-2.5 text-[11px] text-slate-400 font-sans leading-relaxed">
+                📌 <strong>Lectura rápida:</strong> Los primeros números muestran los aciertos (<strong className="text-white">15</strong>0.000) y los últimos dígitos (<strong className="text-white">78</strong>) ordenan a los más veloces. Nadie con 14 aciertos (máx. 140.000 y pico) podrá superar a quien tiene 15.
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Contenedor de la Lista Gamer */}
