@@ -11,6 +11,7 @@ import { DatabaseAdapter } from './DatabaseAdapter.js';
 import { getSupabaseClient } from './supabaseClient.js';
 import { checkOrInitSchema } from './schema.js';
 import { DEFAULT_TRIVIA_CONFIG, fetchSheetValues, getServerEnv } from '../utils/googleSheets.js';
+import { calculateScore } from '../utils/scoreCalculator.js';
 
 export class SupabaseAdapter extends DatabaseAdapter {
   constructor() {
@@ -227,7 +228,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
         return defaultProgress;
       }
 
-      let score = 0;
+      let rawPoints = 0;
       let correctCount = 0;
       let totalTime = 0;
       let lastTimestamp = '';
@@ -237,7 +238,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
         const t = parseInt(r.tiempo_tardado || 0, 10);
         const isCorr = !!r.es_correcta;
 
-        score += pts;
+        rawPoints += pts;
         totalTime += t;
         if (isCorr) correctCount++;
         if (r.fecha_hora_respuesta) lastTimestamp = r.fecha_hora_respuesta;
@@ -251,9 +252,12 @@ export class SupabaseAdapter extends DatabaseAdapter {
         };
       });
 
+      const score = calculateScore(rawPoints, totalTime);
+
       return {
         hasRecord: true,
         answers,
+        rawPoints,
         score,
         correctCount,
         totalTime,
@@ -443,6 +447,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
 
       if (!resultsByLegajo.has(leg)) {
         resultsByLegajo.set(leg, {
+          rawPoints: 0,
           score: 0,
           totalTime: 0,
           correctCount: 0,
@@ -459,7 +464,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
         item.correctCount++;
         // Puntos = suma de aciertos ponderados por el punto asignado a cada pregunta (por defecto 1 punto)
         const qPoints = questionPointsMap.get(parseInt(r.pregunta_id, 10)) ?? 1;
-        item.score += qPoints;
+        item.rawPoints = (item.rawPoints || 0) + qPoints;
       }
       if (r.fecha_hora_respuesta && (!item.fechaHora || r.fecha_hora_respuesta > item.fechaHora)) {
         item.fechaHora = r.fecha_hora_respuesta;
@@ -493,13 +498,15 @@ export class SupabaseAdapter extends DatabaseAdapter {
 
       const isPartial = res.hasPlayed && res.answersCount < totalQuestions;
       const isCompleted = res.hasPlayed && res.answersCount >= totalQuestions;
+      const finalScore = calculateScore(res.rawPoints || 0, res.totalTime || 0);
 
       return {
         legajo,
         nombre: String(u.nombre || '').trim(),
         apellido: String(u.apellido || '').trim(),
         sector: String(u.sector || '').trim(),
-        score: res.score,
+        score: finalScore,
+        rawPoints: res.rawPoints || 0,
         totalTime: res.totalTime,
         correctCount: res.correctCount,
         fechaHora: res.fechaHora,

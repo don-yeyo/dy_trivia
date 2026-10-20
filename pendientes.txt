@@ -1,3 +1,18 @@
+bugs criticos:
+- [ ] hackeo de preguntas u opciones de configuracion. estan viajando en el response, los datos de config y la lista completa de preguntas con sus opciones. De que manera evitar que el usuario experto pueda acceder a esa info desde el dom o desde herramientas de desarrollador. Peligro de que pueda realizar posts descubriendo la api al revisar el network y enviar lo que quiera
+
+
+
+
+
+
+# no avanzar aun
+- [ ] gestion de usuarios CRUD, generacion dehash, marca de email enviado, reset de trivia para el usuario, link por whatsapp
+- [ ] CRUD de preguntas y fases
+- [ ] mail con respuestas correctas e incorrectas y las explicaciones de cada una
+- [ ] modo de calculo del puntaje
+
+- [ ] quitar el uso de google sheet
 - [x] exportar clasificacion desde el admin (Completado: Botón de exportación a Excel .xlsx en panel de admin y proyección)
 - [x] importar legajos (Completado: Pantalla/Modal en Admin con textarea/selector de archivo + scripts/importarLegajos.js + export CSV limpio)
 - [ ] cuando enviar un email?

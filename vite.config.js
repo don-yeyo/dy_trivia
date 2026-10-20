@@ -1,12 +1,36 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { handler as adminAuthHandler } from './netlify/functions/admin-auth.js';
+import { handler as authHandler } from './netlify/functions/auth.js';
+import { handler as classificationHandler } from './netlify/functions/classification.js';
+import { handler as configHandler } from './netlify/functions/config.js';
+import { handler as importParticipantsHandler } from './netlify/functions/import-participants.js';
+import { handler as questionsHandler } from './netlify/functions/questions.js';
+import { handler as submitAnswerHandler } from './netlify/functions/submit-answer.js';
+import { handler as triviaApiHandler } from './netlify/functions/trivia-api.js';
+
+const apiHandlers = {
+  'admin-auth': adminAuthHandler,
+  'auth': authHandler,
+  'classification': classificationHandler,
+  'config': configHandler,
+  'import-participants': importParticipantsHandler,
+  'questions': questionsHandler,
+  'submit-answer': submitAnswerHandler,
+  'trivia-api': triviaApiHandler
+};
 
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const devAdminUser = env.ADMIN_USER || env.VITE_ADMIN_USER || 'admin';
-  const devAdminPass = env.ADMIN_PASSWORD || env.VITE_ADMIN_PASSWORD || 'admin';
-  const appsScriptEndpoint = env.GOOGLE_APPS_SCRIPT_ENDPOINT || env.VITE_GOOGLE_APPS_SCRIPT_ENDPOINT || '';
+  // Poblar process.env para que las serverless functions y adaptadores (Supabase / Sheets) lean las variables
+  Object.assign(process.env, env);
+
+  const devAdminUser = env.ADMIN_USER || env.VITE_ADMIN_USER || 'inocuadmin';
+  const devAdminPass = env.ADMIN_PASSWORD || env.VITE_ADMIN_PASSWORD || 'superpassword123';
 
   return {
     plugins: [
@@ -16,91 +40,39 @@ export default defineConfig(({ mode, command }) => {
         name: 'vite-dev-api-middleware',
         configureServer(server) {
           server.middlewares.use(async (req, res, next) => {
-            // Manejador en desarrollo para POST /api/admin-auth
-            if (req.url === '/api/admin-auth' && req.method === 'POST') {
-              let body = '';
-              req.on('data', chunk => { body += chunk; });
-              req.on('end', () => {
-                try {
-                  const data = JSON.parse(body || '{}');
-                  const username = String(data.username || '').trim();
-                  const password = String(data.password || '').trim();
+            if (req.url && req.url.startsWith('/api/')) {
+              const parsedUrl = new URL(req.url, 'http://localhost:3000');
+              const endpoint = parsedUrl.pathname.replace(/^\/api\//, '').split('/')[0];
+              const handler = apiHandlers[endpoint];
 
-                  const isValid =
-                    (username === devAdminUser && password === devAdminPass) ||
-                    (username === 'admin' && (password === 'admin' || password === 'dev'));
-
-                  res.setHeader('Content-Type', 'application/json');
-                  if (isValid) {
-                    res.statusCode = 200;
-                    res.end(JSON.stringify({
-                      success: true,
-                      token: `dev_token_${Date.now()}`,
-                      username: username
-                    }));
-                  } else {
-                    res.statusCode = 401;
-                    res.end(JSON.stringify({
-                      error: 'Usuario o contraseña incorrectos'
-                    }));
-                  }
-                } catch (e) {
-                  res.statusCode = 400;
-                  res.end(JSON.stringify({ error: 'Formato JSON inválido' }));
-                }
-              });
-              return;
-            }
-
-            // Manejador en desarrollo para POST /api/config
-            if (req.url === '/api/config' && req.method === 'POST') {
-              let body = '';
-              req.on('data', chunk => { body += chunk; });
-              req.on('end', async () => {
-                try {
-                  const data = JSON.parse(body || '{}');
-                  const sheetUpdates = {};
-                  if (data.activePhase !== undefined) sheetUpdates['FASE_ACTIVA'] = String(data.activePhase);
-                  if (data.isPhaseClosed !== undefined) sheetUpdates['FASE_CERRADA'] = data.isPhaseClosed ? 'TRUE' : 'FALSE';
-                  if (data.isClassificationPublished !== undefined) {
-                    sheetUpdates['CLASIFICACION_PUBLICADA'] = data.isClassificationPublished ? 'TRUE' : 'FALSE';
-                    sheetUpdates['FECHA_PUBLICACION_CLASIFICACION'] = data.isClassificationPublished ? new Date().toISOString() : '';
-                  }
-                  if (data.classificationTopCount !== undefined) sheetUpdates['CLASIFICACION_TOP_COUNT'] = String(data.classificationTopCount);
-                  if (data.timePerQuestion !== undefined) sheetUpdates['TIEMPO_POR_PREGUNTA'] = String(data.timePerQuestion);
-                  if (data.shuffleQuestions !== undefined) sheetUpdates['MEZCLAR_PREGUNTAS'] = data.shuffleQuestions ? 'TRUE' : 'FALSE';
-                  if (data.showPartialInTable !== undefined) sheetUpdates['MOSTRAR_PARCIALES_EN_TABLA'] = data.showPartialInTable ? 'TRUE' : 'FALSE';
-                  if (data.showUnansweredInTable !== undefined) sheetUpdates['MOSTRAR_NO_RESPONDIDOS_EN_TABLA'] = data.showUnansweredInTable ? 'TRUE' : 'FALSE';
-                  if (data.hideSummaryAnswered !== undefined) sheetUpdates['OCULTAR_RESUMEN_RESPONDIDAS'] = data.hideSummaryAnswered ? 'TRUE' : 'FALSE';
-                  if (data.hideSummaryTime !== undefined) sheetUpdates['OCULTAR_RESUMEN_TIEMPO'] = data.hideSummaryTime ? 'TRUE' : 'FALSE';
-
-                  let synced = false;
-                  if (appsScriptEndpoint && Object.keys(sheetUpdates).length > 0) {
-                    try {
-                      await fetch(appsScriptEndpoint, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'UPDATE_CONFIG', updates: sheetUpdates })
-                      });
-                      synced = true;
-                    } catch (syncErr) {
-                      console.warn('[Vite Dev API] Error sincronizando con Google Apps Script:', syncErr.message);
+              if (handler) {
+                let body = '';
+                req.on('data', chunk => { body += chunk; });
+                req.on('end', async () => {
+                  try {
+                    const event = {
+                      httpMethod: req.method,
+                      headers: req.headers,
+                      queryStringParameters: Object.fromEntries(parsedUrl.searchParams.entries()),
+                      body: body || null
+                    };
+                    const response = await handler(event, {});
+                    if (response.headers) {
+                      for (const [k, v] of Object.entries(response.headers)) {
+                        res.setHeader(k, v);
+                      }
                     }
+                    res.statusCode = response.statusCode || 200;
+                    res.end(response.body || '');
+                  } catch (err) {
+                    console.error(`[Vite Dev API] Error en /api/${endpoint}:`, err);
+                    res.statusCode = 500;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({ error: err.message }));
                   }
-
-                  res.setHeader('Content-Type', 'application/json');
-                  res.statusCode = 200;
-                  res.end(JSON.stringify({
-                    success: true,
-                    syncedWithSheet: synced,
-                    config: data
-                  }));
-                } catch (e) {
-                  res.statusCode = 400;
-                  res.end(JSON.stringify({ error: 'Error procesando configuración en modo dev' }));
-                }
-              });
-              return;
+                });
+                return;
+              }
             }
 
             next();

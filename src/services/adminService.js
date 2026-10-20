@@ -6,6 +6,7 @@ import { fetchUsersList } from './authService';
 import { fetchUserProgressFromResults, fetchRawResultsList } from './googleSheetsService';
 import { loadTriviaQuestions } from './triviaService';
 import { fetchAppConfig, saveAppConfig } from './configService';
+import { calculateScore } from '../utils/scoreCalculator';
 
 const ADMIN_TOKEN_KEY = 'dy_trivia_admin_token';
 const ADMIN_USER_KEY = 'dy_trivia_admin_user';
@@ -392,9 +393,11 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
     const legajo = String(r.legajo || '').trim();
     if (!legajo) return;
 
-    const score = parseInt(r['puntaje obtenido'] || r.puntaje || '0', 10);
+    const rawScore = parseInt(r['puntaje obtenido'] || r.puntaje || '0', 10);
     const totalTime = parseInt(r['tiempo total (segundos)'] || r.tiempo || '0', 10);
     const correctCount = parseInt(r['respuestas correctas'] || r.correctas || '0', 10);
+    const rawPoints = (r['respuestas correctas'] !== undefined || r.correctas !== undefined && correctCount > 0) ? correctCount : rawScore;
+    const score = calculateScore(rawPoints, totalTime);
     const fechaHora = r['fecha y hora'] || r.fechahora || '';
     const { answersCount, hasExplicitJson } = parseAnswersDetail(r);
 
@@ -405,6 +408,7 @@ async function computeFallbackClassification(phase, topCount, isAdmin) {
 
     const candidate = {
       score,
+      rawPoints,
       totalTime,
       correctCount,
       fechaHora,

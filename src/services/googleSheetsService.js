@@ -3,6 +3,7 @@
 // Don Yeyo S.A. | Trivia Inocuidad 2026
 // ==============================================================================
 import Papa from 'papaparse';
+import { calculateScore } from '../utils/scoreCalculator';
 
 /**
  * Obtiene los valores en bruto (matriz de celdas) de un rango o pestaña desde Google Sheets API v4
@@ -187,13 +188,16 @@ export async function fetchUserProgressFromResults(legajo, phase = 1) {
       }
     }
 
-    const score = parseInt(targetRow['puntaje obtenido'] || targetRow['puntaje'] || '0', 10);
+    const rawScore = parseInt(targetRow['puntaje obtenido'] || targetRow['puntaje'] || '0', 10);
     const correctCount = parseInt(targetRow['respuestas correctas'] || '0', 10);
     const totalTime = parseInt(targetRow['tiempo total (segundos)'] || targetRow['tiempo'] || '0', 10);
+    const rawPoints = correctCount > 0 ? correctCount : rawScore;
+    const score = calculateScore(rawPoints, totalTime);
 
     return {
       hasRecord: true,
       answers,
+      rawPoints,
       score,
       correctCount,
       totalTime,

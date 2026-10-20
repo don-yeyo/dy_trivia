@@ -6,10 +6,8 @@
 import { getDatabase } from './_db/index.js';
 import { getServerEnv } from './utils/googleSheets.js';
 
-// ⚡ OPTIMIZACIÓN WARM START: Instanciación fuera del handler para reutilización en memoria
-const db = getDatabase();
-
 export async function handler(event, context) {
+  const db = getDatabase();
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',

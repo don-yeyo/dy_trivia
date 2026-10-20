@@ -14,6 +14,7 @@ import { loadTriviaQuestions } from './services/triviaService';
 import { fetchUserProgressFromResults } from './services/googleSheetsService';
 import { fetchAppConfig, DEFAULT_CONFIG } from './services/configService';
 import { fetchClassification, getStoredAdminToken } from './services/adminService';
+import { calculateScore } from './utils/scoreCalculator';
 import { RefreshCw } from 'lucide-react';
 
 export default function App() {
@@ -44,6 +45,7 @@ export default function App() {
   const [questions, setQuestions] = useState([]);
   const [totalPhaseQuestionsCount, setTotalPhaseQuestionsCount] = useState(0);
   const [userScore, setUserScore] = useState(0);
+  const [userRawPoints, setUserRawPoints] = useState(0);
   const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
   const [answersLog, setAnswersLog] = useState([]);
   const [gameStartTime, setGameStartTime] = useState(null);
@@ -135,15 +137,19 @@ export default function App() {
 
         // Si le quedan preguntas pendientes por responder
         setQuestions(pendingQuestions);
-        setUserScore(progress.score || 0);
+        const currentRawPoints = progress.rawPoints || progress.correctCount || 0;
+        const currentTotalTime = progress.totalTime || 0;
+        setUserRawPoints(currentRawPoints);
+        setTotalElapsedTime(currentTotalTime);
+        setUserScore(progress.score || calculateScore(currentRawPoints, currentTotalTime));
         setCorrectAnswersCount(progress.correctCount || 0);
         setAnswersLog(progress.answers || []);
-        setTotalElapsedTime(progress.totalTime || 0);
         setGameState('SPLASH');
       } else {
         // Primera vez o preguntas reseteadas en la planilla
         setQuestions(allPhaseQuestions);
         setUserScore(0);
+        setUserRawPoints(0);
         setCorrectAnswersCount(0);
         setAnswersLog([]);
         setTotalElapsedTime(0);
@@ -173,14 +179,27 @@ export default function App() {
   // Tras responder cada pregunta individual, enviar al backend para evaluación segura
   const handleAnswerSubmit = useCallback(async (answerData) => {
     const timeSpent = answerData.timeSpent || 0;
-    setTotalElapsedTime(prev => prev + timeSpent);
+    let updatedTotalTime = 0;
+    setTotalElapsedTime(prev => {
+      updatedTotalTime = prev + timeSpent;
+      return updatedTotalTime;
+    });
     setAnswersLog(prev => [...prev, answerData]);
 
     if (currentUser?.legajo) {
       const serverResult = await recordPhaseQuestionAnswer(currentUser.legajo, appConfig.activePhase, answerData);
       if (serverResult && serverResult.isCorrect) {
-        setUserScore(prev => prev + (serverResult.pointsEarned || 0));
         setCorrectAnswersCount(prev => prev + 1);
+        setUserRawPoints(prevPoints => {
+          const newPoints = prevPoints + (serverResult.pointsEarned || 1);
+          setUserScore(calculateScore(newPoints, updatedTotalTime));
+          return newPoints;
+        });
+      } else {
+        setUserRawPoints(prevPoints => {
+          setUserScore(calculateScore(prevPoints, updatedTotalTime));
+          return prevPoints;
+        });
       }
     }
   }, [currentUser?.legajo, appConfig.activePhase]);
@@ -194,6 +213,7 @@ export default function App() {
 
   const handleResetSession = async () => {
     setUserScore(0);
+    setUserRawPoints(0);
     setCorrectAnswersCount(0);
     setAnswersLog([]);
     setPlayedDate(null);

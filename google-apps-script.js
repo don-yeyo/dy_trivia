@@ -214,21 +214,27 @@ function saveIndividualAnswer(ss, data) {
   }
 
   // Recalcular métricas acumuladas
-  var totalScore = 0;
+  var totalPoints = 0;
   var totalCorrect = 0;
   var totalSeconds = 0;
 
   existingAnswers.forEach(function(ans) {
-    totalScore += (ans.pointsEarned || 0);
+    totalPoints += (ans.pointsEarned || 0);
     if (ans.isCorrect) totalCorrect += 1;
     totalSeconds += (ans.timeSpent || 0);
   });
+
+  // Fórmula Gamer (Opción 1): Aciertos jerárquicos + bonus por velocidad
+  // (Aciertos * 10000) + round((Aciertos / Segundos) * 1000)
+  var baseScore = totalCorrect * 10000;
+  var speedBonus = totalSeconds > 0 ? Math.round((totalCorrect / totalSeconds) * 1000) : 0;
+  var calculatedScore = totalCorrect > 0 ? (baseScore + speedBonus) : 0;
 
   var timestamp = data.fechaHoraRespuesta || new Date().toISOString();
 
   if (targetRowIndex !== -1) {
     sheetResultados.getRange(targetRowIndex, 1).setValue(timestamp);
-    sheetResultados.getRange(targetRowIndex, 4).setValue(totalScore);
+    sheetResultados.getRange(targetRowIndex, 4).setValue(calculatedScore);
     sheetResultados.getRange(targetRowIndex, 5).setValue(totalCorrect);
     sheetResultados.getRange(targetRowIndex, 6).setValue(totalSeconds);
     sheetResultados.getRange(targetRowIndex, 7).setValue(JSON.stringify(existingAnswers));
@@ -237,7 +243,7 @@ function saveIndividualAnswer(ss, data) {
       timestamp,
       data.legajo,
       data.fase,
-      totalScore,
+      calculatedScore,
       totalCorrect,
       totalSeconds,
       JSON.stringify(existingAnswers)

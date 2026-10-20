@@ -92,11 +92,28 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
 | `GOOGLE_SHEETS_USERS_RANGE` | 🔒 Backend | Pestaña y rango de participantes | `"Participantes!A1:Z500"` |
 | `GOOGLE_SHEETS_RESULTS_RANGE` | 🔒 Backend | Pestaña y rango de resultados | `"Resultados!A1:Z1000"` |
 | `GOOGLE_APPS_SCRIPT_ENDPOINT` | 🔒 Backend | Webhook de Apps Script para persistencia | `"https://script.google.com/macros/s/.../exec"` |
+| `POINTS_PER_CORRECT` | 🔒 Backend | Puntos base por cada pregunta acertada (jerarquía principal) | `10000` (default) |
+| `VITE_POINTS_PER_CORRECT` | 🌐 Frontend | Puntos base por acierto para el frontend | `10000` (default) |
+| `SCORE_TIME_FACTOR` | 🔒 Backend | Factor multiplicador para el bonus por velocidad | `1000` (default) |
+| `VITE_SCORE_TIME_FACTOR` | 🌐 Frontend | Factor multiplicador de velocidad para el cliente | `1000` (default) |
 | `VITE_APP_TITLE` | 🌐 Frontend | Título institucional de la aplicación | `"Trivia Inocuidad 2026 - Don Yeyo"` |
 | `VITE_DATA_SOURCE` | 🌐 Frontend | Switch de origen de datos | `"google_sheets_api"` o `"csv"` |
 | `VITE_MAX_TIME_TOTAL` | 🌐 Frontend | Tiempo máximo de permanencia total en segundos | `600` |
 | `VITE_ALLOW_SESSION_RESET` | 🌐 Frontend | Modo desarrollo: permitir reinicio de sesión | `false` (prod) / `true` (dev) |
 | `VITE_GOOGLE_SHEETS_CONFIG_RANGE` | 🌐 Frontend | Fallback en modo local sin servidor | `"Configuracion!A1:C30"` |
+
+---
+
+### 🧮 Fórmula Gamer de Puntuación (Jerarquía por Aciertos + Bonus por Velocidad)
+
+Los puntos de la trivia se calculan garantizando que **quien acierte más preguntas siempre se ubique por encima de quien acertó menos**, y desempatando por velocidad de respuesta:
+
+$$\text{Puntaje} = (\text{Aciertos} \times \text{POINTS\_PER\_CORRECT}) + \text{round}\left(\left(\frac{\text{Aciertos}}{\text{Segundos Totales}}\right) \times \text{SCORE\_TIME\_FACTOR}\right)$$
+
+- **Aciertos:** Cantidad de preguntas respondidas correctamente.
+- **Base por acierto (`POINTS_PER_CORRECT`):** $10.000$ puntos por cada respuesta correcta (cada acierto representa un escalón de 10.000 puntos que la velocidad jamás puede vulnerar).
+- **Bonus de velocidad (`SCORE_TIME_FACTOR`):** Ratio aciertos/tiempo escalado por $1.000$, sumando entre $50$ y $500$ puntos adicionales según la rapidez del participante.
+- **Resultado:** Número entero donde quien tiene 14 aciertos tiene $\approx 140.100$ pts y jamás puede ser superado por alguien de 13 aciertos ($\approx 130.300$ pts). Entre dos participantes con 14 aciertos, quien respondió en menor tiempo obtiene mayor puntaje.
 
 ---
 

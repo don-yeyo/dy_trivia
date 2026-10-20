@@ -11,6 +11,7 @@ import {
   getServerEnv,
   DEFAULT_TRIVIA_CONFIG
 } from '../utils/googleSheets.js';
+import { calculateScore } from '../utils/scoreCalculator.js';
 
 export class SheetsAdapter extends DatabaseAdapter {
   constructor() {
@@ -104,6 +105,12 @@ export class SheetsAdapter extends DatabaseAdapter {
         } catch (e) {}
       }
 
+      const rawScore = parseInt(userResult['puntaje obtenido'] || userResult.puntaje || '0', 10);
+      const correctCount = parseInt(userResult['respuestas correctas'] || userResult.correctas || '0', 10);
+      const totalTime = parseInt(userResult['tiempo total (segundos)'] || userResult.tiempo || '0', 10);
+      const rawPoints = (userResult['respuestas correctas'] !== undefined || userResult.correctas !== undefined) ? correctCount : rawScore;
+      const score = calculateScore(rawPoints, totalTime);
+
       return {
         hasRecord: true,
         answers: Array.isArray(answers) ? answers.map(a => ({
@@ -113,9 +120,10 @@ export class SheetsAdapter extends DatabaseAdapter {
           isCorrect: !!a.isCorrect,
           pointsEarned: parseInt(a.pointsEarned || 0, 10)
         })) : [],
-        score: parseInt(userResult['puntaje obtenido'] || userResult.puntaje || '0', 10),
-        correctCount: parseInt(userResult['respuestas correctas'] || userResult.correctas || '0', 10),
-        totalTime: parseInt(userResult['tiempo total (segundos)'] || userResult.tiempo || '0', 10),
+        rawPoints,
+        score,
+        correctCount,
+        totalTime,
         fechaHora: userResult['fecha y hora'] || userResult.fechahora || '',
         isPhaseCompleted: true
       };
@@ -254,8 +262,9 @@ export class SheetsAdapter extends DatabaseAdapter {
       const totalTime = parseInt(r['tiempo total (segundos)'] || r.tiempo || '0', 10);
       const correctCount = parseInt(r['respuestas correctas'] || r.correctas || '0', 10);
       const rawScore = parseInt(r['puntaje obtenido'] || r.puntaje || '0', 10);
-      // Puntos = suma de aciertos (1 punto por pregunta según requerimiento oficial)
-      const score = (r['respuestas correctas'] !== undefined || r.correctas !== undefined) ? correctCount : rawScore;
+      const rawPoints = (r['respuestas correctas'] !== undefined || r.correctas !== undefined) ? correctCount : rawScore;
+      // Puntos = Math.round((suma de puntos / segundos totales) * factor)
+      const score = calculateScore(rawPoints, totalTime);
       const fechaHora = r['fecha y hora'] || r.fechahora || '';
       const { answersCount, hasExplicitJson } = parseAnswersDetail(r);
 
