@@ -251,9 +251,11 @@ export class SheetsAdapter extends DatabaseAdapter {
       const legajo = String(r.legajo || '').trim();
       if (!legajo) return;
 
-      const score = parseInt(r['puntaje obtenido'] || r.puntaje || '0', 10);
       const totalTime = parseInt(r['tiempo total (segundos)'] || r.tiempo || '0', 10);
       const correctCount = parseInt(r['respuestas correctas'] || r.correctas || '0', 10);
+      const rawScore = parseInt(r['puntaje obtenido'] || r.puntaje || '0', 10);
+      // Puntos = suma de aciertos (1 punto por pregunta según requerimiento oficial)
+      const score = (r['respuestas correctas'] !== undefined || r.correctas !== undefined) ? correctCount : rawScore;
       const fechaHora = r['fecha y hora'] || r.fechahora || '';
       const { answersCount, hasExplicitJson } = parseAnswersDetail(r);
 

@@ -91,14 +91,12 @@ export async function handler(event, context) {
 
     // 3. Evaluar acierto y cálculo de puntaje en servidor
     const isCorrect = selectedOptionId !== null && selectedOptionId !== undefined && parseInt(selectedOptionId, 10) === correctOptionId;
-    const basePoints = parseInt(question.points || '100', 10);
-    const timeLimit = parseInt(config.timePerQuestion || '45', 10);
+    const basePoints = parseInt(question.points || '1', 10);
 
     let pointsEarned = 0;
     if (isCorrect) {
-      const remainingTime = Math.max(0, timeLimit - timeSpent);
-      const speedBonus = timeLimit > 0 ? Math.round((remainingTime / timeLimit) * 50) : 0;
-      pointsEarned = basePoints + speedBonus;
+      // Cada pregunta suma el punto asignado a la pregunta (1 punto) sin speed bonus
+      pointsEarned = basePoints;
     }
 
     const timestamp = new Date().toISOString();

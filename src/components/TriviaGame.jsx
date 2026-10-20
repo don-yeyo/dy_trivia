@@ -186,8 +186,7 @@ export default function TriviaGame({
     
     let pointsEarned = 0;
     if (isCorrect) {
-      const speedBonus = timePerQuestion > 0 ? Math.round((timeLeft / timePerQuestion) * 50) : 0;
-      pointsEarned = currentQuestion.points + speedBonus;
+      pointsEarned = currentQuestion.points || 1;
     }
 
     onAnswerSubmit({

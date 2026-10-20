@@ -150,7 +150,7 @@ npm run db:migrate
 - **Conformación de la Tabla según Flags de Google Sheets:**
   - `MOSTRAR_PARCIALES_EN_TABLA`: cuando es `true`, incluye en la tabla a quienes respondieron parcialmente pero no completaron todas las preguntas de la fase (con badge distintivo `Parcial (X/N)`). Cuando es `false`, los excluye de la tabla.
   - `MOSTRAR_NO_RESPONDIDOS_EN_TABLA`: cuando es `true`, incluye en la tabla a los colaboradores inscriptos del padrón que aún no participaron de la fase (con badge `Sin jugar` y valores `-`). Cuando es `false`, los excluye de la tabla.
-  - Colaboradores que completaron el 100% de las preguntas de la fase siempre se incluyen y se ordenan por mérito gamer (1° Puntaje, 2° Tiempo de desempate, 3° Aciertos).
+  - Colaboradores que completaron el 100% de las preguntas de la fase siempre se incluyen y se ordenan por mérito oficial: 1° Puntaje (suma de respuestas correctas según el punto asignado a cada pregunta), 2° Menor tiempo total acumulado (desempate).
 
 ---
 
@@ -159,8 +159,8 @@ npm run db:migrate
 Para garantizar la **máxima seguridad de datos y transparencia del concurso**:
 1. **Credenciales y Secretos 100% Protegidos**: La `API Key` de Google Sheets, el `Spreadsheet ID`, las credenciales de administrador (`ADMIN_USER`, `ADMIN_PASSWORD`) y el webhook de Apps Script residen exclusivamente en el entorno seguro de **Netlify Functions** (`netlify/functions/`). NUNCA se exponen al navegador cliente ni viajan en peticiones de red del frontend.
 2. **Sanitización de Respuestas Correctas**: El endpoint `/api/questions` devuelve al frontend las preguntas y opciones **sin incluir la columna de respuesta correcta ni pistas**.
-3. **Evaluación de Respuestas en Servidor**: Al responder una pregunta, el frontend envía la selección a `POST /api/submit-answer`. La Serverless Function es la única que contrasta la opción elegida contra la respuesta correcta original, calcula el puntaje con bonificación de velocidad y persiste el resultado en Google Sheets en tiempo real.
-4. **Cálculo y Auditoría de Clasificados**: `/api/classification` calcula las posiciones oficiales ponderando: 1° Mayor puntaje, 2° Menor tiempo total acumulado (desempate de velocidad), 3° Mayor cantidad de respuestas correctas, y 4° Fecha/hora de envío.
+3. **Evaluación de Respuestas en Servidor**: Al responder una pregunta, el frontend envía la selección a `POST /api/submit-answer`. La Serverless Function es la única que contrasta la opción elegida contra la respuesta correcta original, calcula el punto obtenido (1 punto por acierto) y persiste el resultado en la base de datos en tiempo real.
+4. **Cálculo y Auditoría de Clasificados**: `/api/classification` calcula las posiciones oficiales aplicando la regla oficial de la trivia: 1° Mayor puntaje (suma de aciertos ponderados por pregunta), 2° Menor tiempo total acumulado en responder (desempate por velocidad), 3° Mayor cantidad de respuestas correctas, y 4° Fecha/hora de envío.
 
 ### 🌐 Endpoints Serverless Disponibles:
 - `POST /api/admin-auth`: Autentica al Administrador de forma segura y emite tokens de sesión firmados (validez de 12 horas).

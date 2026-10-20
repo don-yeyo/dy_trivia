@@ -467,11 +467,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
         <div className="flex items-center gap-3">
           {/* Indicador de Estado */}
           <div
-            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2.5 shadow-md ${
-              isPublished
+            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2.5 shadow-md ${isPublished
                 ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/50'
                 : 'bg-yellow-500/25 text-yellow-300 border border-yellow-400/50'
-            }`}
+              }`}
           >
             <div className={`w-2.5 h-2.5 rounded-full ${isPublished ? 'bg-emerald-400 animate-ping' : 'bg-yellow-400'}`} />
             <span>{isPublished ? 'Publicada Oficialmente' : 'Borrador / No Publicada'}</span>
@@ -549,11 +548,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           BANNER PRINCIPAL: CONTROL DE PUBLICACIÓN DE PODIO Y CLASIFICADOS
           ========================================================================= */}
       <div
-        className={`mb-8 p-6 sm:p-8 rounded-3xl border-2 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6 transition-all ${
-          isPublished
+        className={`mb-8 p-6 sm:p-8 rounded-3xl border-2 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6 transition-all ${isPublished
             ? 'bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 border-emerald-400/80 text-white'
             : 'bg-gradient-to-r from-amber-950 via-slate-900 to-red-950 border-amber-400/80 text-white'
-        }`}
+          }`}
       >
         <div className="flex-1">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 bg-white/10 border border-white/20">
@@ -571,9 +569,8 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
             {isPublished
-              ? `Los colaboradores ya pueden ver el podio de 3 ganadores y la tabla oficial en sus dispositivos. Publicado el: ${
-                  publishedAt ? new Date(publishedAt).toLocaleString() : 'Recientemente'
-                }.`
+              ? `Los colaboradores ya pueden ver el podio de 3 ganadores y la tabla oficial en sus dispositivos. Publicado el: ${publishedAt ? new Date(publishedAt).toLocaleString() : 'Recientemente'
+              }.`
               : 'La fase puede estar cerrada para responder, pero los participantes verán la pantalla de espera o fin de fase hasta que pulses este botón para oficializar el podio.'}
           </p>
         </div>
@@ -669,11 +666,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                       key={fase}
                       type="button"
                       onClick={() => handlePhaseChange(fase)}
-                      className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                        activePhase === fase
+                      className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${activePhase === fase
                           ? 'bg-red-600 text-white shadow-md'
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                      }`}
+                        }`}
                     >
                       Fase {fase}
                     </button>
@@ -693,22 +689,20 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                   <button
                     type="button"
                     onClick={() => setIsPhaseClosed(false)}
-                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                      !isPhaseClosed
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${!isPhaseClosed
                         ? 'bg-emerald-600 text-white shadow-md'
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                    }`}
+                      }`}
                   >
                     Abierta
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsPhaseClosed(true)}
-                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                      isPhaseClosed
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${isPhaseClosed
                         ? 'bg-rose-600 text-white shadow-md'
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                    }`}
+                      }`}
                   >
                     Cerrada
                   </button>
@@ -741,11 +735,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                   <button
                     type="button"
                     onClick={() => setIsPublished(false)}
-                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                      !isPublished
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${!isPublished
                         ? 'bg-amber-600 text-white shadow-md'
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                    }`}
+                      }`}
                   >
                     <EyeOff size={14} />
                     <span>Oculta</span>
@@ -753,11 +746,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                   <button
                     type="button"
                     onClick={() => setIsPublished(true)}
-                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                      isPublished
+                    className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${isPublished
                         ? 'bg-emerald-600 text-white shadow-md'
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                    }`}
+                      }`}
                   >
                     <Eye size={14} />
                     <span>Publicada</span>
@@ -790,11 +782,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                         key={num}
                         type="button"
                         onClick={() => setTopCount(num)}
-                        className={`px-2 py-1 rounded-lg text-[10px] font-black cursor-pointer transition-all ${
-                          topCount === num
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black cursor-pointer transition-all ${topCount === num
                             ? 'bg-red-600 text-white shadow-sm'
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                        }`}
+                          }`}
                       >
                         {num}
                       </button>
@@ -836,11 +827,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                       key={seg}
                       type="button"
                       onClick={() => setTimePerQuestion(seg)}
-                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black cursor-pointer transition-all ${
-                        timePerQuestion === seg
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black cursor-pointer transition-all ${timePerQuestion === seg
                           ? 'bg-blue-600 text-white shadow-sm'
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                      }`}
+                        }`}
                     >
                       {seg === 0 ? 'Sin límite' : `${seg}s`}
                     </button>
@@ -866,22 +856,20 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                   <button
                     type="button"
                     onClick={() => setShuffleQuestions(true)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      shuffleQuestions
+                    className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${shuffleQuestions
                         ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                    }`}
+                      }`}
                   >
                     Activado (Sí)
                   </button>
                   <button
                     type="button"
                     onClick={() => setShuffleQuestions(false)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      !shuffleQuestions
+                    className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${!shuffleQuestions
                         ? 'bg-slate-800 text-white shadow-sm'
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-                    }`}
+                      }`}
                   >
                     Desactivado (No)
                   </button>
@@ -909,11 +897,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                 <button
                   type="button"
                   onClick={() => setShowPartialInTable(!showPartialInTable)}
-                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
-                    showPartialInTable
+                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${showPartialInTable
                       ? 'bg-emerald-600 text-white'
                       : 'bg-slate-200 text-slate-700'
-                  }`}
+                    }`}
                 >
                   {showPartialInTable ? 'Visible' : 'Oculto'}
                 </button>
@@ -930,11 +917,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                 <button
                   type="button"
                   onClick={() => setShowUnansweredInTable(!showUnansweredInTable)}
-                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
-                    showUnansweredInTable
+                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${showUnansweredInTable
                       ? 'bg-emerald-600 text-white'
                       : 'bg-slate-200 text-slate-700'
-                  }`}
+                    }`}
                 >
                   {showUnansweredInTable ? 'Incluir' : 'Omitir'}
                 </button>
@@ -951,11 +937,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                 <button
                   type="button"
                   onClick={() => setHideSummaryAnswered(!hideSummaryAnswered)}
-                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
-                    hideSummaryAnswered
+                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${hideSummaryAnswered
                       ? 'bg-rose-600 text-white'
                       : 'bg-slate-200 text-slate-700'
-                  }`}
+                    }`}
                 >
                   {hideSummaryAnswered ? 'Ocultar' : 'Mostrar'}
                 </button>
@@ -972,11 +957,10 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                 <button
                   type="button"
                   onClick={() => setHideSummaryTime(!hideSummaryTime)}
-                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
-                    hideSummaryTime
+                  className={`w-full py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${hideSummaryTime
                       ? 'bg-rose-600 text-white'
                       : 'bg-slate-200 text-slate-700'
-                  }`}
+                    }`}
                 >
                   {hideSummaryTime ? 'Ocultar' : 'Mostrar'}
                 </button>
@@ -1001,7 +985,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
             ) : (
               <>
                 <Save size={20} />
-                <span>Guardar Configuración en Google Sheets</span>
+                <span>Guardar Configuración</span>
               </>
             )}
           </button>

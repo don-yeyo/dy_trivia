@@ -397,15 +397,19 @@ export class SupabaseAdapter extends DatabaseAdapter {
 
     if (rErr) console.warn('[SupabaseAdapter] Error obteniendo respuestas:', rErr.message);
 
-    // 3. Determinar total de preguntas de la fase
+    // 3. Determinar total de preguntas y puntos de cada pregunta de la fase
     let totalQuestions = 10;
-    const { count: qCount } = await supabase
+    const questionPointsMap = new Map();
+    const { data: qList } = await supabase
       .from('questions')
-      .select('id', { count: 'exact', head: true })
+      .select('id, puntos')
       .eq('fase', targetPhase);
 
-    if (qCount && qCount > 0) {
-      totalQuestions = qCount;
+    if (qList && qList.length > 0) {
+      qList.forEach(q => {
+        questionPointsMap.set(parseInt(q.id, 10), parseInt(q.puntos, 10) || 1);
+      });
+      totalQuestions = qList.length;
     }
 
     // 4. Agrupar respuestas por legajo en memoria de la Lambda
@@ -426,10 +430,14 @@ export class SupabaseAdapter extends DatabaseAdapter {
       }
 
       const item = resultsByLegajo.get(leg);
-      item.score += (r.puntos_obtenidos || 0);
       item.totalTime += (r.tiempo_tardado || 0);
-      if (r.es_correcta) item.correctCount++;
       item.answersCount++;
+      if (r.es_correcta) {
+        item.correctCount++;
+        // Puntos = suma de aciertos ponderados por el punto asignado a cada pregunta (por defecto 1 punto)
+        const qPoints = questionPointsMap.get(parseInt(r.pregunta_id, 10)) ?? 1;
+        item.score += qPoints;
+      }
       if (r.fecha_hora_respuesta && (!item.fechaHora || r.fecha_hora_respuesta > item.fechaHora)) {
         item.fechaHora = r.fecha_hora_respuesta;
       }
