@@ -7,15 +7,17 @@ import { fetchFromGoogleSheetsAPI, fetchFromPublishedCSV } from './googleSheetsS
 
 /**
  * Carga las preguntas de la fase activa desde el backend seguro (/api/questions)
- * evitando exponer respuestas correctas o credenciales en el cliente.
+ * utilizando arquitectura Zero-Trust (pregunta actual individual firmada con HMAC).
  */
-export async function loadTriviaQuestions(phase = 1, shuffle = false) {
+export async function loadTriviaQuestions(phase = 1, shuffle = false, userToken = '', mode = '') {
   try {
-    // 1. Intentar llamar al backend serverless seguro
-    const res = await fetch(`/api/questions?phase=${phase}&shuffle=${shuffle}`);
+    // 1. Llamar al backend serverless seguro pasando el token de autenticación del usuario
+    const tokenParam = userToken ? `&token=${encodeURIComponent(userToken)}` : '';
+    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
+    const res = await fetch(`/api/questions?phase=${phase}&shuffle=${shuffle}${tokenParam}${modeParam}`);
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
+      if (data) {
         return data;
       }
     }
@@ -171,9 +173,7 @@ function getFallbackQuestions(phase = 1) {
         { id: 3, text: "5 segundos con agua solamente" },
         { id: 4, text: "1 minuto completo" }
       ],
-      correctOptionId: 2,
       points: 100,
-      explanation: "Según BPM y normas de inocuidad, el lavado efectivo requiere al menos 20 segundos de fricción con jabón desinfectante.",
       phase: 1
     },
     {
@@ -185,9 +185,7 @@ function getFallbackQuestions(phase = 1) {
         { id: 3, text: "Contaminación Radiológica" },
         { id: 4, text: "Contaminación Atmosférica" }
       ],
-      correctOptionId: 2,
       points: 100,
-      explanation: "La transferencia de microorganismos de una superficie sucia al alimento listo para consumo es contaminación cruzada.",
       phase: 1
     },
     {
@@ -198,9 +196,7 @@ function getFallbackQuestions(phase = 1) {
         { id: 2, text: "Detener la línea inmediatamente y dar aviso a Calidad / Supervisor" },
         { id: 3, text: "Retirarlo al final del turno" }
       ],
-      correctOptionId: 2,
       points: 150,
-      explanation: "Cualquier peligro físico detectado exige la detención inmediata y notificación al área de Calidad para trazabilidad.",
       phase: 1
     },
     {
@@ -212,9 +208,7 @@ function getFallbackQuestions(phase = 1) {
         { id: 3, text: "Anillos, aros, relojes y cadenas" },
         { id: 4, text: "Calzado de seguridad exclusivo de planta" }
       ],
-      correctOptionId: 3,
       points: 100,
-      explanation: "Todo tipo de joyería y accesorios personales representan un peligro físico y fuente de contaminación en planta.",
       phase: 1
     }
   ];

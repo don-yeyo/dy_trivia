@@ -42,6 +42,7 @@ export default function App() {
 
   const [gameState, setGameState] = useState('LOADING'); // LOADING | SPLASH | COUNTDOWN | PLAYING | FINISHED | LOCKED | PHASE_CLOSED | INVALID_TOKEN
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentUserToken, setCurrentUserToken] = useState('');
   const [questions, setQuestions] = useState([]);
   const [totalPhaseQuestionsCount, setTotalPhaseQuestionsCount] = useState(0);
   const [userScore, setUserScore] = useState(0);
@@ -116,26 +117,49 @@ export default function App() {
       }
 
       setCurrentUser(validation.user);
-
-      // 3. Cargar todas las preguntas sanitizadas de la fase activa
-      const allPhaseQuestions = await loadTriviaQuestions(config.activePhase, config.shuffleQuestions);
-      setTotalPhaseQuestionsCount(allPhaseQuestions.length);
+      setCurrentUserToken(effectiveToken || '');
 
       // El progreso ya viene verificado desde el backend seguro
       const progress = validation.progress || { hasRecord: false, answers: [] };
 
-      if (progress.hasRecord && progress.answers && progress.answers.length > 0) {
-        const answeredIds = progress.answers.map(a => a.questionId);
-        const pendingQuestions = allPhaseQuestions.filter(q => !answeredIds.includes(q.id));
+      // 3. Cargar pregunta activa de la fase con token de usuario (Zero-Trust individual)
+      const questionsData = await loadTriviaQuestions(config.activePhase, config.shuffleQuestions, effectiveToken);
 
-        // Si ya respondió todas las preguntas de esta fase
+      // Si ya completó la fase
+      if (questionsData && questionsData.isPhaseCompleted) {
+        setPlayedDate(progress.fechaHora || new Date().toISOString());
+        setGameState('LOCKED');
+        return;
+      }
+
+      // Si el servidor entregó la pregunta actual individual con su questionToken
+      if (questionsData && questionsData.question) {
+        setTotalPhaseQuestionsCount(questionsData.totalQuestions || 10);
+        setQuestions([{
+          ...questionsData.question,
+          questionToken: questionsData.questionToken
+        }]);
+
+        const currentRawPoints = progress.rawPoints || progress.correctCount || 0;
+        const currentTotalTime = progress.totalTime || 0;
+        setUserRawPoints(currentRawPoints);
+        setTotalElapsedTime(currentTotalTime);
+        setUserScore(progress.score || calculateScore(currentRawPoints, currentTotalTime));
+        setCorrectAnswersCount(progress.correctCount || 0);
+        setAnswersLog(progress.answers || []);
+        setGameState('SPLASH');
+      } else if (Array.isArray(questionsData) && questionsData.length > 0) {
+        // Fallback para modo array completo (admin o desarrollo)
+        setTotalPhaseQuestionsCount(questionsData.length);
+        const answeredIds = (progress.answers || []).map(a => a.questionId);
+        const pendingQuestions = questionsData.filter(q => !answeredIds.includes(q.id));
+
         if (pendingQuestions.length === 0) {
           setPlayedDate(progress.fechaHora || new Date().toISOString());
           setGameState('LOCKED');
           return;
         }
 
-        // Si le quedan preguntas pendientes por responder
         setQuestions(pendingQuestions);
         const currentRawPoints = progress.rawPoints || progress.correctCount || 0;
         const currentTotalTime = progress.totalTime || 0;
@@ -146,8 +170,7 @@ export default function App() {
         setAnswersLog(progress.answers || []);
         setGameState('SPLASH');
       } else {
-        // Primera vez o preguntas reseteadas en la planilla
-        setQuestions(allPhaseQuestions);
+        setQuestions([]);
         setUserScore(0);
         setUserRawPoints(0);
         setCorrectAnswersCount(0);
@@ -163,8 +186,14 @@ export default function App() {
   // Al presionar Comenzar, iniciar cuenta regresiva
   const handleTriggerCountdown = async () => {
     if (!questions || questions.length === 0) {
-      const loaded = await loadTriviaQuestions(appConfig.activePhase, appConfig.shuffleQuestions);
-      setQuestions(loaded);
+      const loaded = await loadTriviaQuestions(appConfig.activePhase, appConfig.shuffleQuestions, currentUserToken);
+      if (loaded?.question) {
+        setQuestions([{ ...loaded.question, questionToken: loaded.questionToken }]);
+        setTotalPhaseQuestionsCount(loaded.totalQuestions || 10);
+      } else if (Array.isArray(loaded)) {
+        setQuestions(loaded);
+        setTotalPhaseQuestionsCount(loaded.length);
+      }
     }
     setGameSessionId(Date.now());
     setGameState('COUNTDOWN');
@@ -178,16 +207,30 @@ export default function App() {
 
   // Tras responder cada pregunta individual, enviar al backend para evaluación segura
   const handleAnswerSubmit = useCallback(async (answerData) => {
-    const timeSpent = answerData.timeSpent || 0;
+    const declaredTime = answerData.timeSpent || 0;
     let updatedTotalTime = 0;
     setTotalElapsedTime(prev => {
-      updatedTotalTime = prev + timeSpent;
+      updatedTotalTime = prev + declaredTime;
       return updatedTotalTime;
     });
     setAnswersLog(prev => [...prev, answerData]);
 
     if (currentUser?.legajo) {
-      const serverResult = await recordPhaseQuestionAnswer(currentUser.legajo, appConfig.activePhase, answerData);
+      const serverResult = await recordPhaseQuestionAnswer(
+        currentUser.legajo,
+        appConfig.activePhase,
+        answerData,
+        answerData.questionToken,
+        currentUserToken
+      );
+
+      // Sincronizar tiempo real medido en servidor si difiere
+      const realTime = serverResult?.timeSpent ?? declaredTime;
+      if (serverResult?.serverVerified && realTime !== declaredTime) {
+        setTotalElapsedTime(prev => prev - declaredTime + realTime);
+        updatedTotalTime = updatedTotalTime - declaredTime + realTime;
+      }
+
       if (serverResult && serverResult.isCorrect) {
         setCorrectAnswersCount(prev => prev + 1);
         setUserRawPoints(prevPoints => {
@@ -201,8 +244,21 @@ export default function App() {
           return prevPoints;
         });
       }
+
+      // 🛡️ Si el servidor entregó la siguiente pregunta en el payload (Zero-Latency):
+      if (serverResult?.nextQuestion) {
+        setQuestions(prev => {
+          const already = prev.some(q => q.id === serverResult.nextQuestion.id);
+          if (!already) {
+            return [...prev, serverResult.nextQuestion];
+          }
+          return prev;
+        });
+      }
+
+      return serverResult;
     }
-  }, [currentUser?.legajo, appConfig.activePhase]);
+  }, [currentUser?.legajo, appConfig.activePhase, currentUserToken]);
 
   // 🛡️ Mecanismo Antitrampa: Asentar en el servidor el inicio de la pregunta
   const handleQuestionStart = useCallback(async (questionId) => {
@@ -361,8 +417,11 @@ export default function App() {
               <TriviaGame
                 key={gameSessionId}
                 questions={questions}
+                totalQuestionsCount={totalPhaseQuestionsCount}
+                initialQuestionIndex={answersLog.length}
                 timePerQuestion={appConfig.timePerQuestion}
                 userLegajo={currentUser?.legajo}
+                userToken={currentUserToken}
                 activePhase={appConfig.activePhase}
                 onFinishGame={handleFinishGame}
                 onAnswerSubmit={handleAnswerSubmit}

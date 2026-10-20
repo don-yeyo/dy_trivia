@@ -155,14 +155,16 @@ export async function validateUserToken(token, activePhase = 1) {
 
 /**
  * Registra en tiempo real cada respuesta individual en el backend seguro
- * El backend se encarga de validar la corrección y persistir en Google Sheets
+ * El backend valida la firma criptográfica HMAC (Zero-Trust), calcula el tiempo real y persiste en BD
  */
-export async function recordPhaseQuestionAnswer(legajo, activePhase, answerData) {
+export async function recordPhaseQuestionAnswer(legajo, activePhase, answerData, questionToken = '', userToken = '') {
   try {
     const res = await fetch('/api/submit-answer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        questionToken: questionToken || answerData.questionToken || '',
+        userToken: userToken || answerData.userToken || '',
         legajo: String(legajo),
         phase: parseInt(activePhase, 10),
         questionId: answerData.questionId,

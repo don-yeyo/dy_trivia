@@ -1,5 +1,5 @@
 bugs criticos:
-- [ ] hackeo de preguntas u opciones de configuracion. estan viajando en el response, los datos de config y la lista completa de preguntas con sus opciones. De que manera evitar que el usuario experto pueda acceder a esa info desde el dom o desde herramientas de desarrollador. Peligro de que pueda realizar posts descubriendo la api al revisar el network y enviar lo que quiera
+- [x] hackeo de preguntas u opciones de configuracion (Completado: Arquitectura Zero-Trust con tokens HMAC stateless. Preguntas entregadas 1 a 1 sin opciones futuras en el cliente; /api/submit-answer exige questionToken firmado y calcula tiempo real en servidor; sanitización completa de fallbacks en cliente; POST /api/config blindado con token admin HMAC).
 
 
 
@@ -13,8 +13,10 @@ bugs criticos:
 - [ ] modo de calculo del puntaje
 
 - [ ] quitar el uso de google sheet
+- [ ] reenvio de mailin
 - [x] exportar clasificacion desde el admin (Completado: Botón de exportación a Excel .xlsx en panel de admin y proyección)
 - [x] importar legajos (Completado: Pantalla/Modal en Admin con textarea/selector de archivo + scripts/importarLegajos.js + export CSV limpio)
 - [ ] cuando enviar un email?
 - [ ] detectar si no hay conexion o falla algo contra la api y google sheet
 - [x] quitar este boton cuando el usuario esta en la trivia: #root > div > header > button (Completado: Oculto en estados PLAYING y COUNTDOWN)
+- config: mostrar o no mostrar area del participante
