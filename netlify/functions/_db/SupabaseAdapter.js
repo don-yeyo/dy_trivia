@@ -381,21 +381,44 @@ export class SupabaseAdapter extends DatabaseAdapter {
     const targetPhase = parseInt(phase, 10);
     const supabase = this.getClient();
 
-    // 1. Obtener lista de participantes por REST
-    const { data: participants = [], error: pErr } = await supabase
-      .from('participants')
-      .select('id, legajo, nombre, apellido, sector')
-      .order('apellido', { ascending: true });
+    // 1. Obtener lista de participantes por REST (con paginación segura)
+    let participants = [];
+    let pFrom = 0;
+    const PAGE_SIZE = 1000;
+    while (true) {
+      const { data: page = [], error: pErr } = await supabase
+        .from('participants')
+        .select('id, legajo, nombre, apellido, sector')
+        .order('apellido', { ascending: true })
+        .range(pFrom, pFrom + PAGE_SIZE - 1);
 
-    if (pErr) console.warn('[SupabaseAdapter] Error obteniendo participantes:', pErr.message);
+      if (pErr) {
+        console.warn('[SupabaseAdapter] Error obteniendo participantes:', pErr.message);
+        break;
+      }
+      participants.push(...page);
+      if (page.length < PAGE_SIZE) break;
+      pFrom += PAGE_SIZE;
+    }
 
-    // 2. Obtener todas las respuestas de la fase en 1 consulta indexada
-    const { data: responses = [], error: rErr } = await supabase
-      .from('responses')
-      .select('legajo, pregunta_id, es_correcta, puntos_obtenidos, tiempo_tardado, fecha_hora_respuesta')
-      .eq('fase', targetPhase);
+    // 2. Obtener todas las respuestas de la fase (paginación segura para superar el límite de 1000 filas de PostgREST)
+    let responses = [];
+    let rFrom = 0;
+    while (true) {
+      const { data: page = [], error: rErr } = await supabase
+        .from('responses')
+        .select('legajo, pregunta_id, es_correcta, puntos_obtenidos, tiempo_tardado, fecha_hora_respuesta')
+        .eq('fase', targetPhase)
+        .range(rFrom, rFrom + PAGE_SIZE - 1);
 
-    if (rErr) console.warn('[SupabaseAdapter] Error obteniendo respuestas:', rErr.message);
+      if (rErr) {
+        console.warn('[SupabaseAdapter] Error obteniendo respuestas:', rErr.message);
+        break;
+      }
+      responses.push(...page);
+      if (page.length < PAGE_SIZE) break;
+      rFrom += PAGE_SIZE;
+    }
 
     // 3. Determinar total de preguntas y puntos de cada pregunta de la fase
     let totalQuestions = 10;
