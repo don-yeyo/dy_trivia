@@ -79,6 +79,13 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // 8. Acción: Actualizar correos de participantes y blanquear marcas de mailing
+    if (data.action === "UPDATE_PARTICIPANTES_EMAILS" && data.updates) {
+      var resEmails = updateParticipantesEmails(ss, data.updates);
+      return ContentService.createTextOutput(JSON.stringify(resEmails))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
       message: "OK"
@@ -486,6 +493,69 @@ function updatePreguntasSheet(ss, updates) {
   return {
     status: "success",
     message: "Preguntas actualizadas exitosamente en Google Sheets",
+    updatedCount: updatedCount
+  };
+}
+
+/**
+ * Actualiza la columna 'email' y blanquea la columna 'Email Link de Trivia' en la pestaña 'Participantes'
+ */
+function updateParticipantesEmails(ss, updates) {
+  var sheet = ss.getSheetByName("Participantes");
+  if (!sheet) {
+    return { status: "error", message: "La pestaña 'Participantes' no existe en la planilla." };
+  }
+
+  var values = sheet.getDataRange().getValues();
+  if (!values || values.length === 0) {
+    return { status: "error", message: "La pestaña 'Participantes' está vacía." };
+  }
+
+  var headers = values[0];
+  var legajoCol = -1;
+  var emailCol = -1;
+  var triviaLinkCol = -1;
+
+  for (var c = 0; c < headers.length; c++) {
+    var h = String(headers[c] || "").trim().toLowerCase();
+    if (h === "legajo") legajoCol = c;
+    if (h === "email" || h === "correo") emailCol = c;
+    if (h === "email link de trivia") triviaLinkCol = c;
+  }
+
+  if (legajoCol === -1 || emailCol === -1) {
+    return { status: "error", message: "No se encontraron las columnas 'legajo' o 'email' en la pestaña 'Participantes'." };
+  }
+
+  var updatedCount = 0;
+
+  for (var u = 0; u < updates.length; u++) {
+    var item = updates[u];
+    var targetLegajo = String(item.legajo || "").trim();
+    var newEmail = String(item.emailCorrecto || "").trim();
+
+    for (var r = 1; r < values.length; r++) {
+      var rowLegajo = String(values[r][legajoCol] || "").trim();
+      if (rowLegajo === targetLegajo) {
+        var rowIndex = r + 1; // 1-based para Sheets
+
+        // 1. Actualizar email
+        sheet.getRange(rowIndex, emailCol + 1).setValue(newEmail);
+
+        // 2. Blanquear marca temporal de 'Email Link de Trivia'
+        if (triviaLinkCol >= 0) {
+          sheet.getRange(rowIndex, triviaLinkCol + 1).setValue("");
+        }
+
+        updatedCount++;
+        break;
+      }
+    }
+  }
+
+  return {
+    status: "success",
+    message: "Correos actualizados y marcas blanqueadas exitosamente",
     updatedCount: updatedCount
   };
 }
