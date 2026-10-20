@@ -72,6 +72,13 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // 7. Acción: Actualizar preguntas y opciones en la pestaña 'Preguntas'
+    if (data.action === "UPDATE_PREGUNTAS" && data.updates) {
+      var resPreguntas = updatePreguntasSheet(ss, data.updates);
+      return ContentService.createTextOutput(JSON.stringify(resPreguntas))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
       message: "OK"
@@ -403,5 +410,82 @@ function getParticipantesRaw(ss) {
     status: "success",
     headers: headers,
     rows: rows
+  };
+}
+
+/**
+ * Actualiza textos de preguntas y opciones en la pestaña 'Preguntas'
+ */
+function updatePreguntasSheet(ss, updates) {
+  var sheet = ss.getSheetByName("Preguntas");
+  if (!sheet) {
+    return { status: "error", message: "La pestaña 'Preguntas' no existe en la planilla." };
+  }
+
+  var values = sheet.getDataRange().getValues();
+  if (!values || values.length === 0) {
+    return { status: "error", message: "La pestaña 'Preguntas' está vacía." };
+  }
+
+  var headers = values[0];
+  var idCol = -1;
+  var pregCol = -1;
+  var op1Col = -1;
+  var op2Col = -1;
+  var op3Col = -1;
+  var op4Col = -1;
+  var op5Col = -1;
+
+  for (var c = 0; c < headers.length; c++) {
+    var h = String(headers[c] || "").trim().toLowerCase();
+    if (h === "id") idCol = c;
+    if (h === "pregunta") pregCol = c;
+    if (h === "opcion1") op1Col = c;
+    if (h === "opcion2") op2Col = c;
+    if (h === "opcion3") op3Col = c;
+    if (h === "opcion4") op4Col = c;
+    if (h === "opcion5") op5Col = c;
+  }
+
+  var updatedCount = 0;
+
+  for (var u = 0; u < updates.length; u++) {
+    var item = updates[u];
+    var targetId = String(item.id).trim();
+
+    for (var r = 1; r < values.length; r++) {
+      var rowId = String(values[r][idCol]).trim();
+      if (rowId === targetId) {
+        var rowIndex = r + 1; // 1-based para Sheets
+
+        if (item.pregunta !== undefined && pregCol >= 0) {
+          sheet.getRange(rowIndex, pregCol + 1).setValue(item.pregunta);
+        }
+        if (item.opcion1 !== undefined && op1Col >= 0) {
+          sheet.getRange(rowIndex, op1Col + 1).setValue(item.opcion1);
+        }
+        if (item.opcion2 !== undefined && op2Col >= 0) {
+          sheet.getRange(rowIndex, op2Col + 1).setValue(item.opcion2);
+        }
+        if (item.opcion3 !== undefined && op3Col >= 0) {
+          sheet.getRange(rowIndex, op3Col + 1).setValue(item.opcion3);
+        }
+        if (item.opcion4 !== undefined && op4Col >= 0) {
+          sheet.getRange(rowIndex, op4Col + 1).setValue(item.opcion4);
+        }
+        if (item.opcion5 !== undefined && op5Col >= 0) {
+          sheet.getRange(rowIndex, op5Col + 1).setValue(item.opcion5);
+        }
+
+        updatedCount++;
+        break;
+      }
+    }
+  }
+
+  return {
+    status: "success",
+    message: "Preguntas actualizadas exitosamente en Google Sheets",
+    updatedCount: updatedCount
   };
 }
