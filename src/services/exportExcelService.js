@@ -39,7 +39,7 @@ export function exportClassificationToExcel({
   // HOJA 1: CLASIFICACIÓN GENERAL COMPLETA
   // ---------------------------------------------------------------------------
   const generalRows = [
-    ['DON YEYO S.A. - SEMANA DE LA INOCUIDAD 2026'],
+    ['DON YEYO S.A. - DESAFÍO DE INOCUIDAD 2026'],
     [`CLASIFICACIÓN GENERAL OFICIAL - FASE ${phase}`],
     [`Fecha de Corte / Publicación: ${fechaCorte}`, ``, `Exportado por: @${adminUsername}`, `Fecha Exportación: ${fechaDescarga}`],
     [`Cupo Oficial Clasificados: Top ${topCount}`, `Total Evaluados: ${classificationData.totalJugados || allParticipants.length}`, `Total Inscriptos: ${classificationData.totalInscriptos || allParticipants.length}`],
@@ -106,7 +106,7 @@ export function exportClassificationToExcel({
   // ---------------------------------------------------------------------------
   const qualifiedList = allParticipants.filter(p => p.rank <= topCount);
   const qualifiedRows = [
-    ['DON YEYO S.A. - SEMANA DE LA INOCUIDAD 2026'],
+    ['DON YEYO S.A. - DESAFÍO DE INOCUIDAD 2026'],
     [`NÓMINA DE COLABORADORES CLASIFICADOS - FASE ${phase} (TOP ${topCount})`],
     [`Pasan oficialmente a la siguiente instancia de la Trivia de Inocuidad`],
     [],
@@ -149,7 +149,7 @@ export function exportClassificationToExcel({
   // ---------------------------------------------------------------------------
   const podio = classificationData.podio || allParticipants.slice(0, 3);
   const podioRows = [
-    ['DON YEYO S.A. - SEMANA DE LA INOCUIDAD 2026'],
+    ['DON YEYO S.A. - DESAFÍO DE INOCUIDAD 2026'],
     [`PODIO DE HONOR - FASE ${phase}`],
     [],
     ['Medalla', 'Puesto', 'Legajo', 'Colaborador', 'Sector', 'Puntaje', 'Aciertos', 'Tiempo Total']

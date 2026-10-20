@@ -93,7 +93,7 @@ export default function CalculatingAnimation({
           {progress < 100 ? 'Calculando Clasificación' : '¡Clasificación Determinada!'}
         </h3>
         <p className="text-xs sm:text-sm text-yellow-300 font-bold mb-6 sm:mb-8">
-          Semana de la Inocuidad 2026 • Don Yeyo
+          Desafío de Inocuidad 2026 • Don Yeyo
         </p>
 
         {/* Barra de Progreso Gamer */}

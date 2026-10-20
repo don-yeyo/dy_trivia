@@ -1,6 +1,6 @@
 # 🍞 Don Yeyo S.A. | Trivia Inocuidad 2026 (PWA)
 
-Aplicación Web Progresiva (PWA) interactiva, responsiva (Mobile & Desktop) y gamificada desarrollada para la **Semana de la Inocuidad 2026** de **Don Yeyo S.A.**.
+Aplicación Web Progresiva (PWA) interactiva, responsiva (Mobile & Desktop) y gamificada desarrollada para el **Desafío de Inocuidad 2026** de **Don Yeyo S.A.**.
 
 Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufactura (BPM), normas de calidad, HACCP y procedimientos de inocuidad en los procesos productivos de la planta.
 

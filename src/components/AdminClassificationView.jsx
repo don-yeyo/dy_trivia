@@ -332,7 +332,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
               Panel de Administración
             </h2>
             <p className="text-xs sm:text-sm text-amber-900 font-bold mt-1.5">
-              Configuración y Clasificación • Semana de la Inocuidad 2026
+              Configuración y Clasificación • Desafío de Inocuidad 2026
             </p>
           </div>
 

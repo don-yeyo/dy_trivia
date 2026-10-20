@@ -92,7 +92,7 @@ export default function PublicClassificationView({ onBackToGame, appConfig }) {
           <div className="p-5 sm:p-6 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 text-xs sm:text-sm font-medium leading-relaxed mb-6 sm:mb-8 text-left flex items-start gap-3.5 shadow-inner">
             <Award size={24} className="text-amber-700 shrink-0 mt-0.5" />
             <span>
-              Los resultados oficiales, el <strong>Podio de Ganadores</strong> y los <strong>Clasificados</strong> de la Semana de la Inocuidad 2026 se publicarán al concluir la etapa de evaluación de toda la planta.
+              Los resultados oficiales, el <strong>Podio de Ganadores</strong> y los <strong>Clasificados</strong> del Desafío de Inocuidad 2026 se publicarán al concluir la etapa de evaluación de toda la planta.
             </span>
           </div>
 

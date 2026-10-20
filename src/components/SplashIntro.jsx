@@ -21,7 +21,7 @@ export default function SplashIntro({
     <div className="w-full flex flex-col items-center justify-center text-center z-10 animate-casual-in">
       {/* Titular Principal H1 compacto en una sola línea */}
       <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight filter drop-shadow-md mb-2.5 sm:mb-6">
-        Semana de la Inocuidad 2026
+        Desafío de Inocuidad 2026
       </h1>
 
       {/* Tarjeta Principal Casual Gaming con padding optimizado */}

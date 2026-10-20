@@ -519,7 +519,7 @@ async function main() {
 
     const renderedHtml = renderHtml(templateHtml, sampleUser.data);
     const attachments = getMailingAttachments(renderedHtml);
-    const subject = `[PRUEBA] ${getEnv('TITULO_EMAIL', 'Semana de la Inocuidad 2026 - Don Yeyo')}`;
+    const subject = `[PRUEBA] ${getEnv('TITULO_EMAIL', 'Desafío de Inocuidad 2026 - Don Yeyo')}`;
 
     if (isDryRun) {
       console.log(`\n[DRY-RUN] Prueba simulada con éxito. Asunto: "${subject}". No se envió correo ni se modificó Google Sheets.`);
@@ -615,7 +615,7 @@ async function main() {
     try {
       const renderedHtml = renderHtml(templateHtml, item.data);
       const attachments = getMailingAttachments(renderedHtml);
-      const subject = getEnv('TITULO_EMAIL', 'Semana de la Inocuidad 2026 - Don Yeyo');
+      const subject = getEnv('TITULO_EMAIL', 'Desafío de Inocuidad 2026 - Don Yeyo');
 
       if (isDryRun) {
         console.log(`🧪 ${progressTag} [DRY-RUN] Simulado envío a: ${email} (${nombre} - Legajo ${legajo})`);
