@@ -1,6 +1,6 @@
 
 # no avanzar aun
-- [ ] gestion de participantes CRUD, generacion dehash, marca de email enviado, reset de trivia para el usuario, copiar link de participación
+- [x] gestion de participantes CRUD, generacion dehash, marca de email enviado, reset de trivia para el usuario, copiar link de participación
 - [ ] reenvio de mailin
 - [ ] CRUD de preguntas y fases
 - [ ] mail con respuestas correctas e incorrectas y las explicaciones de cada una

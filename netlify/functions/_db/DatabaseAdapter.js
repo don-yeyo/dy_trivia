@@ -143,4 +143,77 @@ export class DatabaseAdapter {
   async importParticipants(participants, mode = 'REPLACE') {
     throw new Error(`${this.name}.importParticipants() no implementado`);
   }
+
+  /**
+   * Obtiene la nómina completa de participantes para el panel de administración con estadísticas.
+   * @returns {Promise<Array<Object>>}
+   */
+  async getParticipantsAdmin() {
+    throw new Error(`${this.name}.getParticipantsAdmin() no implementado`);
+  }
+
+  /**
+   * Crea un nuevo participante.
+   * @param {Object} data
+   * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+   */
+  async createParticipant(data) {
+    throw new Error(`${this.name}.createParticipant() no implementado`);
+  }
+
+  /**
+   * Actualiza los datos de un participante existente.
+   * @param {string} legajo
+   * @param {Object} data
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async updateParticipant(legajo, data) {
+    throw new Error(`${this.name}.updateParticipant() no implementado`);
+  }
+
+  /**
+   * Elimina un participante y sus respuestas asociadas.
+   * @param {string} legajo
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async deleteParticipant(legajo) {
+    throw new Error(`${this.name}.deleteParticipant() no implementado`);
+  }
+
+  /**
+   * Regenera el token_hash de un participante usando la frase semilla oficial.
+   * @param {string} legajo
+   * @returns {Promise<{success: boolean, token_hash?: string, error?: string}>}
+   */
+  async generateParticipantHash(legajo) {
+    throw new Error(`${this.name}.generateParticipantHash() no implementado`);
+  }
+
+  /**
+   * Genera el hash de todos los participantes que aún no posean token_hash.
+   * @returns {Promise<{success: boolean, updatedCount: number, error?: string}>}
+   */
+  async generateAllMissingHashes() {
+    throw new Error(`${this.name}.generateAllMissingHashes() no implementado`);
+  }
+
+  /**
+   * Marca o desmarca si el email de participación fue enviado.
+   * @param {string} legajo
+   * @param {boolean} emailSent
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async toggleEmailSent(legajo, emailSent) {
+    throw new Error(`${this.name}.toggleEmailSent() no implementado`);
+  }
+
+  /**
+   * Resetea el progreso y respuestas de un participante en la fase especificada (o en todas).
+   * @param {string} legajo
+   * @param {number|null} [phase=null]
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async resetParticipantTrivia(legajo, phase = null) {
+    throw new Error(`${this.name}.resetParticipantTrivia() no implementado`);
+  }
 }

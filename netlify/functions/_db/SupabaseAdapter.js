@@ -10,7 +10,7 @@
 import { DatabaseAdapter } from './DatabaseAdapter.js';
 import { getSupabaseClient } from './supabaseClient.js';
 import { checkOrInitSchema } from './schema.js';
-import { DEFAULT_TRIVIA_CONFIG, fetchSheetValues, getServerEnv } from '../utils/googleSheets.js';
+import { DEFAULT_TRIVIA_CONFIG, fetchSheetValues, getServerEnv, generateUserHash } from '../utils/googleSheets.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
 
 export class SupabaseAdapter extends DatabaseAdapter {
@@ -601,5 +601,357 @@ export class SupabaseAdapter extends DatabaseAdapter {
       totalImportados: totalImported,
       duplicadosOmitidos: 0
     };
+  }
+
+  /**
+   * Obtiene la nómina completa de participantes con su estado de juego y email enviado
+   */
+  async getParticipantsAdmin() {
+    const supabase = this.getClient();
+
+    // 1. Obtener participantes paginados
+    let participants = [];
+    let pFrom = 0;
+    const PAGE_SIZE = 1000;
+    while (true) {
+      const { data: page = [], error: pErr } = await supabase
+        .from('participants')
+        .select('*')
+        .order('apellido', { ascending: true })
+        .range(pFrom, pFrom + PAGE_SIZE - 1);
+
+      if (pErr) {
+        console.error('[SupabaseAdapter] Error obteniendo participantes admin:', pErr.message);
+        break;
+      }
+      participants.push(...page);
+      if (page.length < PAGE_SIZE) break;
+      pFrom += PAGE_SIZE;
+    }
+
+    // 2. Obtener mapa de emails enviados desde config
+    let emailSentMap = {};
+    try {
+      const { data: emailConfig } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'EMAILS_ENVIADOS')
+        .maybeSingle();
+
+      if (emailConfig && emailConfig.valor) {
+        emailSentMap = JSON.parse(emailConfig.valor);
+      }
+    } catch (e) {
+      emailSentMap = {};
+    }
+
+    // 3. Obtener resumen de respuestas por participante
+    let responses = [];
+    let rFrom = 0;
+    while (true) {
+      const { data: page = [], error: rErr } = await supabase
+        .from('responses')
+        .select('legajo, fase, es_correcta, puntos_obtenidos, tiempo_tardado')
+        .range(rFrom, rFrom + PAGE_SIZE - 1);
+
+      if (rErr) break;
+      responses.push(...page);
+      if (page.length < PAGE_SIZE) break;
+      rFrom += PAGE_SIZE;
+    }
+
+    const statsByLegajo = new Map();
+    responses.forEach(r => {
+      const leg = String(r.legajo || '').trim();
+      if (!statsByLegajo.has(leg)) {
+        statsByLegajo.set(leg, {
+          answersCount: 0,
+          correctCount: 0,
+          rawPoints: 0,
+          totalTime: 0,
+          phasesPlayed: new Set()
+        });
+      }
+      const st = statsByLegajo.get(leg);
+      st.answersCount++;
+      if (r.es_correcta) st.correctCount++;
+      st.rawPoints += (parseInt(r.puntos_obtenidos, 10) || 0);
+      st.totalTime += (parseInt(r.tiempo_tardado, 10) || 0);
+      if (r.fase) st.phasesPlayed.add(parseInt(r.fase, 10));
+    });
+
+    // 4. Mapear y combinar
+    return participants.map(p => {
+      const leg = String(p.legajo || '').trim();
+      const st = statsByLegajo.get(leg);
+      const isEmailSent = p.email_enviado !== undefined && p.email_enviado !== null
+        ? Boolean(p.email_enviado)
+        : Boolean(emailSentMap[leg]);
+
+      return {
+        id: p.id,
+        legajo: leg,
+        token_hash: p.token_hash || '',
+        apellido: p.apellido || '',
+        nombre: p.nombre || '',
+        documento: p.documento || '',
+        sector: p.sector || '',
+        telefono: p.telefono || '',
+        email: p.email || '',
+        email_enviado: isEmailSent,
+        hasPlayed: st ? st.answersCount > 0 : false,
+        answersCount: st ? st.answersCount : 0,
+        correctCount: st ? st.correctCount : 0,
+        totalTime: st ? st.totalTime : 0,
+        phasesPlayed: st ? Array.from(st.phasesPlayed) : [],
+        created_at: p.created_at,
+        updated_at: p.updated_at
+      };
+    });
+  }
+
+  /**
+   * Crea un participante en Supabase
+   */
+  async createParticipant(data = {}) {
+    const supabase = this.getClient();
+    const legajo = String(data.legajo || '').trim();
+    if (!legajo) {
+      return { success: false, error: 'El número de legajo es obligatorio' };
+    }
+
+    const apellido = String(data.apellido || '').trim();
+    const nombre = String(data.nombre || '').trim();
+    let token_hash = String(data.token_hash || '').trim();
+
+    if (!token_hash) {
+      token_hash = generateUserHash(legajo, apellido, nombre);
+    }
+
+    const payload = {
+      legajo,
+      token_hash,
+      apellido,
+      nombre,
+      documento: String(data.documento || '').trim(),
+      sector: String(data.sector || '').trim(),
+      telefono: String(data.telefono || '').trim(),
+      email: String(data.email || '').trim(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data: created, error } = await supabase
+      .from('participants')
+      .insert([payload])
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('[SupabaseAdapter] Error creando participante:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    if (data.email_enviado !== undefined) {
+      await this.toggleEmailSent(legajo, data.email_enviado);
+    }
+
+    return { success: true, data: created };
+  }
+
+  /**
+   * Actualiza los datos de un participante existente
+   */
+  async updateParticipant(legajo, data = {}) {
+    const supabase = this.getClient();
+    const cleanLegajo = String(legajo || '').trim();
+    if (!cleanLegajo) {
+      return { success: false, error: 'Legajo requerido para actualizar' };
+    }
+
+    const updatePayload = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (data.nombre !== undefined) updatePayload.nombre = String(data.nombre).trim();
+    if (data.apellido !== undefined) updatePayload.apellido = String(data.apellido).trim();
+    if (data.documento !== undefined) updatePayload.documento = String(data.documento).trim();
+    if (data.sector !== undefined) updatePayload.sector = String(data.sector).trim();
+    if (data.telefono !== undefined) updatePayload.telefono = String(data.telefono).trim();
+    if (data.email !== undefined) updatePayload.email = String(data.email).trim();
+    if (data.token_hash !== undefined && data.token_hash !== '') {
+      updatePayload.token_hash = String(data.token_hash).trim();
+    }
+
+    const { error } = await supabase
+      .from('participants')
+      .update(updatePayload)
+      .eq('legajo', cleanLegajo);
+
+    if (error) {
+      console.error('[SupabaseAdapter] Error actualizando participante:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    if (data.email_enviado !== undefined) {
+      await this.toggleEmailSent(cleanLegajo, data.email_enviado);
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * Elimina un participante y sus respuestas
+   */
+  async deleteParticipant(legajo) {
+    const supabase = this.getClient();
+    const cleanLegajo = String(legajo || '').trim();
+    if (!cleanLegajo) {
+      return { success: false, error: 'Legajo requerido para eliminar' };
+    }
+
+    // 1. Eliminar respuestas primero (evitar restricción de clave foránea)
+    await supabase.from('responses').delete().eq('legajo', cleanLegajo);
+
+    // 2. Eliminar participante
+    const { error } = await supabase
+      .from('participants')
+      .delete()
+      .eq('legajo', cleanLegajo);
+
+    if (error) {
+      console.error('[SupabaseAdapter] Error eliminando participante:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    // 3. Limpiar de emails enviados
+    await this.toggleEmailSent(cleanLegajo, false);
+
+    return { success: true };
+  }
+
+  /**
+   * Regenera el token_hash oficial de un participante
+   */
+  async generateParticipantHash(legajo) {
+    const supabase = this.getClient();
+    const cleanLegajo = String(legajo || '').trim();
+
+    const { data: user, error: findErr } = await supabase
+      .from('participants')
+      .select('*')
+      .eq('legajo', cleanLegajo)
+      .maybeSingle();
+
+    if (findErr || !user) {
+      return { success: false, error: 'Participante no encontrado' };
+    }
+
+    const newHash = generateUserHash(user.legajo, user.apellido, user.nombre);
+
+    const { error: updErr } = await supabase
+      .from('participants')
+      .update({
+        token_hash: newHash,
+        updated_at: new Date().toISOString()
+      })
+      .eq('legajo', cleanLegajo);
+
+    if (updErr) {
+      return { success: false, error: updErr.message };
+    }
+
+    return { success: true, token_hash: newHash };
+  }
+
+  /**
+   * Genera hashes para todos los participantes que no posean token_hash
+   */
+  async generateAllMissingHashes() {
+    const supabase = this.getClient();
+
+    const { data: users, error } = await supabase
+      .from('participants')
+      .select('legajo, apellido, nombre, token_hash');
+
+    if (error || !users) {
+      return { success: false, error: error?.message || 'Error consultando participantes' };
+    }
+
+    let count = 0;
+    for (const u of users) {
+      if (!u.token_hash || String(u.token_hash).trim() === '') {
+        const newHash = generateUserHash(u.legajo, u.apellido, u.nombre);
+        await supabase
+          .from('participants')
+          .update({ token_hash: newHash, updated_at: new Date().toISOString() })
+          .eq('legajo', u.legajo);
+        count++;
+      }
+    }
+
+    return { success: true, updatedCount: count };
+  }
+
+  /**
+   * Marca o desmarca si el email fue enviado en la configuración persistente
+   */
+  async toggleEmailSent(legajo, emailSent) {
+    const supabase = this.getClient();
+    const cleanLegajo = String(legajo || '').trim();
+
+    try {
+      const { data: currentConfig } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'EMAILS_ENVIADOS')
+        .maybeSingle();
+
+      let map = {};
+      if (currentConfig && currentConfig.valor) {
+        try { map = JSON.parse(currentConfig.valor); } catch (e) { map = {}; }
+      }
+
+      if (emailSent) {
+        map[cleanLegajo] = true;
+      } else {
+        delete map[cleanLegajo];
+      }
+
+      await supabase.from('config').upsert({
+        clave: 'EMAILS_ENVIADOS',
+        valor: JSON.stringify(map),
+        descripcion: 'Mapa JSON de legajos a los que se les envió el email de invitación',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'clave' });
+
+      return { success: true };
+    } catch (e) {
+      console.warn('[SupabaseAdapter] Advertencia en toggleEmailSent:', e.message);
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Resetea el progreso y respuestas de un participante en una fase o en todas
+   */
+  async resetParticipantTrivia(legajo, phase = null) {
+    const supabase = this.getClient();
+    const cleanLegajo = String(legajo || '').trim();
+    if (!cleanLegajo) {
+      return { success: false, error: 'Legajo requerido para resetear trivia' };
+    }
+
+    let query = supabase.from('responses').delete().eq('legajo', cleanLegajo);
+    if (phase !== null && phase !== undefined && phase !== '') {
+      query = query.eq('fase', parseInt(phase, 10));
+    }
+
+    const { error } = await query;
+    if (error) {
+      console.error('[SupabaseAdapter] Error reseteando trivia:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
   }
 }

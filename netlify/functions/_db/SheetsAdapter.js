@@ -9,6 +9,7 @@ import {
   updateTriviaConfig,
   sendToAppsScript,
   getServerEnv,
+  generateUserHash,
   DEFAULT_TRIVIA_CONFIG
 } from '../utils/googleSheets.js';
 import { calculateScore } from '../utils/scoreCalculator.js';
@@ -383,5 +384,79 @@ export class SheetsAdapter extends DatabaseAdapter {
       totalImportados: participants.length,
       duplicadosOmitidos: 0
     };
+  }
+
+  async getParticipantsAdmin() {
+    const usersRange = getServerEnv('GOOGLE_SHEETS_USERS_RANGE') || 'Participantes!A1:Z500';
+    const users = await fetchSheetValues(usersRange);
+    const resultsRange = getServerEnv('GOOGLE_SHEETS_RESULTS_RANGE') || 'Resultados!A1:Z1000';
+    let results = [];
+    try { results = await fetchSheetValues(resultsRange); } catch (e) {}
+
+    const resultsByLegajo = new Map();
+    results.forEach(r => {
+      const leg = String(r.legajo || '').trim();
+      resultsByLegajo.set(leg, {
+        hasPlayed: true,
+        answersCount: parseInt(r['respuestas correctas'] || '0', 10),
+        totalTime: parseInt(r['tiempo total (segundos)'] || '0', 10),
+        score: parseInt(r['puntaje obtenido'] || '0', 10)
+      });
+    });
+
+    return (users || []).map(u => {
+      const leg = String(u.legajo || '').trim();
+      const res = resultsByLegajo.get(leg);
+      return {
+        id: leg,
+        legajo: leg,
+        token_hash: String(u.token_hash || u.hash || '').trim(),
+        apellido: String(u.apellido || '').trim(),
+        nombre: String(u.nombre || '').trim(),
+        documento: String(u.documento || u.dni || '').trim(),
+        sector: String(u.sector || '').trim(),
+        telefono: String(u.telefono || '').trim(),
+        email: String(u.email || '').trim(),
+        email_enviado: String(u.email_enviado || u.email_sent || '').toLowerCase() === 'true' || u.email_enviado === '1',
+        hasPlayed: Boolean(res),
+        answersCount: res ? res.answersCount : 0,
+        correctCount: res ? res.answersCount : 0,
+        totalTime: res ? res.totalTime : 0,
+        phasesPlayed: res ? [1] : []
+      };
+    });
+  }
+
+  async createParticipant(data = {}) {
+    return await sendToAppsScript({ action: 'CREATE_PARTICIPANT', participant: data });
+  }
+
+  async updateParticipant(legajo, data = {}) {
+    return await sendToAppsScript({ action: 'UPDATE_PARTICIPANT', legajo, updates: data });
+  }
+
+  async deleteParticipant(legajo) {
+    return await sendToAppsScript({ action: 'DELETE_PARTICIPANT', legajo });
+  }
+
+  async generateParticipantHash(legajo) {
+    const users = await this.getParticipantsAdmin();
+    const u = users.find(x => x.legajo === String(legajo));
+    if (!u) return { success: false, error: 'Participante no encontrado' };
+    const newHash = generateUserHash(u.legajo, u.apellido, u.nombre);
+    await this.updateParticipant(legajo, { token_hash: newHash });
+    return { success: true, token_hash: newHash };
+  }
+
+  async generateAllMissingHashes() {
+    return { success: true, updatedCount: 0 };
+  }
+
+  async toggleEmailSent(legajo, emailSent) {
+    return await this.updateParticipant(legajo, { email_enviado: emailSent ? 'TRUE' : 'FALSE' });
+  }
+
+  async resetParticipantTrivia(legajo, phase = null) {
+    return await sendToAppsScript({ action: 'RESET_TRIVIA', legajo, phase });
   }
 }

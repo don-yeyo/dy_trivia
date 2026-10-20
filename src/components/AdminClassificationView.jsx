@@ -23,12 +23,14 @@ import {
   CheckCircle2,
   AlertCircle,
   Download,
-  UserPlus
+  UserPlus,
+  Users
 } from 'lucide-react';
 import Podium from './Podium';
 import ClassificationTable from './ClassificationTable';
 import ProjectionView from './ProjectionView';
 import ImportParticipantsModal from './ImportParticipantsModal';
+import AdminParticipantsView from './AdminParticipantsView';
 import {
   loginAdmin,
   getStoredAdminToken,
@@ -56,6 +58,9 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
 
   // Modo del admin: 'CONFIG' (panel técnico) o 'PROJECTION' (pantalla limpia para proyector)
   const [adminMode, setAdminMode] = useState('CONFIG');
+
+  // Sección activa del panel: 'PARTICIPANTS' (Gestión de Participantes) o 'CLASSIFICATION' (Clasificación & Podio)
+  const [adminSection, setAdminSection] = useState('PARTICIPANTS');
 
   // Estados de configuración de Google Sheets
   const [activePhase, setActivePhase] = useState(appConfig?.activePhase || 1);
@@ -511,9 +516,45 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
         </div>
       )}
 
-      {/* =========================================================================
-          BOTÓN DESTACADO: ABRIR PANTALLA LIMPIA DE PROYECCIÓN PARA EL SALÓN
-          ========================================================================= */}
+      {/* Navegación por Secciones Principales del Admin */}
+      <div className="flex items-center gap-3 mb-8 p-1.5 rounded-2xl bg-slate-900/80 border border-white/15 backdrop-blur-md shadow-xl">
+        <button
+          type="button"
+          onClick={() => setAdminSection('PARTICIPANTS')}
+          className={`flex-1 py-3.5 px-5 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2.5 cursor-pointer ${
+            adminSection === 'PARTICIPANTS'
+              ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-lg shadow-red-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Users size={18} />
+          <span>Gestión de Participantes</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAdminSection('CLASSIFICATION')}
+          className={`flex-1 py-3.5 px-5 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2.5 cursor-pointer ${
+            adminSection === 'CLASSIFICATION'
+              ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30'
+              : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <Trophy size={18} />
+          <span>Clasificación & Podio</span>
+        </button>
+      </div>
+
+      {adminSection === 'PARTICIPANTS' ? (
+        <AdminParticipantsView
+          activePhase={activePhase}
+          onOpenImportCsv={() => setIsImportModalOpen(true)}
+        />
+      ) : (
+        <>
+          {/* =========================================================================
+              BOTÓN DESTACADO: ABRIR PANTALLA LIMPIA DE PROYECCIÓN PARA EL SALÓN
+              ========================================================================= */}
       <div className="mb-8 p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-blue-900/90 via-indigo-900/90 to-purple-900/90 border-2 border-yellow-400/60 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400 text-slate-950 font-black text-xs uppercase tracking-wider mb-2">
@@ -1104,6 +1145,8 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
             No hay datos de clasificación disponibles todavía. Abre la <strong>Pantalla de Proyección</strong> para disparar el cálculo oficial.
           </p>
         </div>
+      )}
+        </>
       )}
 
       {/* Modal de Importación de Participantes (CSV) */}

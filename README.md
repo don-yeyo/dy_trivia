@@ -63,6 +63,14 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - **Feature Flag `DB_ENGINE`:** Permite alternar sin tocar código entre `sheets` (Google Sheets API v4 + Webhooks) y `supabase` (PostgreSQL de alta velocidad).
    - **Herramienta de migración idempotente (`npm run db:migrate`):** Lee datos de Google Sheets y los vuelca masivamente en Supabase mediante `UPSERT` en lotes sin riesgo de duplicados.
 
+9. **Panel de Gestión Integral de Participantes (Admin CRUD & Enlaces)**:
+   - **Gestión completa CRUD:** Alta de nuevos colaboradores, edición de datos (nombre, apellido, sector, email) y eliminación con limpieza de registros.
+   - **Generación y regeneración de enlaces únicos (Hashes):** Generación automática individual o masiva ("Generar Hashes Faltantes") aplicando la fórmula oficial `SHA256(SEED_PHRASE + legajo + APELLIDO + NOMBRE)`.
+   - **Copia y prueba de enlaces:** Botón de un solo clic para copiar la URL de participación al portapapeles con confirmación visual instantánea y botón para abrir directamente en nueva pestaña.
+   - **Seguimiento de invitaciones ("Email Enviado"):** Switch interactivo en tiempo real para auditar qué colaboradores ya recibieron su link y cuáles están pendientes.
+   - **Reset de Trivia por Colaborador:** Permite habilitar a un participante a volver a responder la trivia desde cero (borrando sus respuestas en la fase activa o en todas las fases).
+   - **Métricas y Filtros en Tiempo Real:** Tarjetas KPI con totales de nómina, cobertura de hashes, % de emails enviados y tasa de participación, con búsqueda libre y filtros por sector y estado.
+
 ---
 
 ## 🛠️ Tecnologías Utilizadas
