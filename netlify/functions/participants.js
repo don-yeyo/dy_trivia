@@ -165,7 +165,7 @@ export async function handler(event, context) {
         }
 
         case 'TOGGLE_EMAIL': {
-          const { legajo, emailSent } = body;
+          const { legajo, emailSent, emailTipo } = body;
           if (!legajo) {
             return {
               statusCode: 400,
@@ -173,11 +173,11 @@ export async function handler(event, context) {
               body: JSON.stringify({ error: 'Legajo requerido' })
             };
           }
-          const result = await db.toggleEmailSent(legajo, emailSent);
+          const result = await db.toggleEmailSent(legajo, emailSent, emailTipo || 'INVITACION');
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ success: result.success, emailSent: !!emailSent })
+            body: JSON.stringify({ success: result.success, emailSent: !!emailSent, emailTipo: emailTipo || 'INVITACION' })
           };
         }
 

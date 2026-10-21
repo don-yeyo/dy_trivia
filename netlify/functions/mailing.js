@@ -199,7 +199,8 @@ export async function handler(event, context) {
       const emailTipo = (event.queryStringParameters?.tipo || 'INVITACION').toUpperCase();
       const participants = await db.getParticipantsAdmin();
       const withEmail = participants.filter(p => p.email && p.email.includes('@'));
-      const sentCount = withEmail.filter(p => p.email_enviado).length;
+      const isSent = (p) => emailTipo === 'RESULTADOS' ? Boolean(p.email_resultado_enviado) : Boolean(p.email_enviado);
+      const sentCount = withEmail.filter(isSent).length;
       const pendingCount = withEmail.length - sentCount;
 
       // Obtener parámetros de Supabase
@@ -327,6 +328,8 @@ export async function handler(event, context) {
       // 4. MARCAR TODOS COMO ENVIADOS O NO ENVIADOS (Supabase)
       if (action === 'MARK_ALL_EMAILS') {
         const markValue = body.value !== undefined ? Boolean(body.value) : true;
+        const isResult = emailTipo === 'RESULTADOS';
+        const configKey = isResult ? 'EMAILS_RESULTADOS_ENVIADOS' : 'EMAILS_ENVIADOS';
         const supabase = db.getClient();
         const { data: users, error: uErr } = await supabase.from('participants').select('legajo');
 
@@ -342,9 +345,11 @@ export async function handler(event, context) {
         }
 
         await supabase.from('config').upsert({
-          clave: 'EMAILS_ENVIADOS',
+          clave: configKey,
           valor: JSON.stringify(map),
-          descripcion: 'Mapa JSON de legajos a los que se les envió el email de invitación',
+          descripcion: isResult
+            ? 'Mapa JSON de legajos a los que se les envió el email de resultados'
+            : 'Mapa JSON de legajos a los que se les envió el email de invitación',
           updated_at: new Date().toISOString()
         }, { onConflict: 'clave' });
 
@@ -356,8 +361,8 @@ export async function handler(event, context) {
             markedAs: markValue,
             count: users.length,
             message: markValue
-              ? `Se marcaron todos los participantes (${users.length}) como Email Enviado en Supabase.`
-              : `Se desmarcaron todos los participantes en Supabase.`
+              ? `Se marcaron todos los participantes (${users.length}) como ${emailTipo} enviado en Supabase.`
+              : `Se desmarcaron todos los participantes para ${emailTipo} en Supabase.`
           })
         };
       }
@@ -462,7 +467,7 @@ export async function handler(event, context) {
         });
 
         // Marcar en Supabase
-        await db.toggleEmailSent(user.legajo, true);
+        await db.toggleEmailSent(user.legajo, true, emailTipo);
 
         return {
           statusCode: 200,
@@ -481,10 +486,11 @@ export async function handler(event, context) {
         const resendAll = Boolean(body.resendAll);
 
         const participants = await db.getParticipantsAdmin();
+        const isSent = (p) => emailTipo === 'RESULTADOS' ? Boolean(p.email_resultado_enviado) : Boolean(p.email_enviado);
         const targets = participants.filter(p => {
           if (!p.email || !p.email.includes('@')) return false;
           if (resendAll) return true;
-          return !p.email_enviado;
+          return !isSent(p);
         }).slice(0, limit);
 
         if (targets.length === 0) {
@@ -527,7 +533,7 @@ export async function handler(event, context) {
               subject: emailSubject,
               html
             });
-            await db.toggleEmailSent(user.legajo, true);
+            await db.toggleEmailSent(user.legajo, true, emailTipo);
             sentCount++;
             // Pausa de 600ms para evitar saturación SMTP
             await new Promise(r => setTimeout(r, 600));

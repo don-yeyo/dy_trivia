@@ -31,7 +31,8 @@ import {
   Clock,
   Play,
   SendHorizontal,
-  Settings2
+  Settings2,
+  Award
 } from 'lucide-react';
 import {
   fetchParticipantsAdmin,
@@ -190,7 +191,11 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
         if ((p.sector || '').trim() !== sectorFilter) return false;
       }
 
-      // Filtro de Email Enviado
+      // Filtro de Email Enviado (Invitación o Resultados)
+      if (emailStatusFilter === 'INV_SENT' && !p.email_enviado) return false;
+      if (emailStatusFilter === 'INV_PENDING' && p.email_enviado) return false;
+      if (emailStatusFilter === 'RES_SENT' && !p.email_resultado_enviado) return false;
+      if (emailStatusFilter === 'RES_PENDING' && p.email_resultado_enviado) return false;
       if (emailStatusFilter === 'SENT' && !p.email_enviado) return false;
       if (emailStatusFilter === 'PENDING' && p.email_enviado) return false;
 
@@ -229,6 +234,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
     const withoutHash = total - withHash;
     const withEmail = participants.filter((p) => Boolean(p.email && p.email.trim())).length;
     const emailSentCount = participants.filter((p) => Boolean(p.email_enviado)).length;
+    const emailResultSentCount = participants.filter((p) => Boolean(p.email_resultado_enviado)).length;
 
     let completedCount = 0;
     let partialCount = 0;
@@ -250,6 +256,8 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
       withEmail,
       emailSentCount,
       emailSentPct: total > 0 ? Math.round((emailSentCount / total) * 100) : 0,
+      emailResultSentCount,
+      emailResultSentPct: total > 0 ? Math.round((emailResultSentCount / total) * 100) : 0,
       playedCount,
       playedPct: total > 0 ? Math.round((playedCount / total) * 100) : 0,
       completedCount,
@@ -277,36 +285,49 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
     }, 2500);
   };
 
-  // 2. Toggle Email Enviado
-  const handleToggleEmail = async (p) => {
-    const newStatus = !p.email_enviado;
+  // 2. Toggle Email Enviado (Invitación o Resultados)
+  const handleToggleEmail = async (p, tipo = 'INVITACION') => {
+    const isResult = tipo === 'RESULTADOS';
+    const currentVal = isResult ? Boolean(p.email_resultado_enviado) : Boolean(p.email_enviado);
+    const newStatus = !currentVal;
     setActionLoadingLegajo(p.legajo);
 
     // Optimistic update
     setParticipants((prev) =>
-      prev.map((item) => (item.legajo === p.legajo ? { ...item, email_enviado: newStatus } : item))
+      prev.map((item) => {
+        if (item.legajo !== p.legajo) return item;
+        return isResult
+          ? { ...item, email_resultado_enviado: newStatus }
+          : { ...item, email_enviado: newStatus };
+      })
     );
 
-    const res = await toggleEmailSent(p.legajo, newStatus);
+    const res = await toggleEmailSent(p.legajo, newStatus, tipo);
     setActionLoadingLegajo(null);
 
+    const tipoLabel = isResult ? 'Resultados' : 'Invitación';
     if (res.success) {
       notify(
         newStatus
-          ? `✉️ Marcado como "Email Enviado" a ${p.nombre} ${p.apellido}`
-          : `⏳ Marcado como "Pendiente de Envío" para ${p.nombre} ${p.apellido}`
+          ? `✅ Marcado como "${tipoLabel} Enviado" para ${p.nombre} ${p.apellido}`
+          : `⏳ Marcado como "${tipoLabel} Pendiente" para ${p.nombre} ${p.apellido}`
       );
     } else {
       // Revert on error
       setParticipants((prev) =>
-        prev.map((item) => (item.legajo === p.legajo ? { ...item, email_enviado: !newStatus } : item))
+        prev.map((item) => {
+          if (item.legajo !== p.legajo) return item;
+          return isResult
+            ? { ...item, email_resultado_enviado: currentVal }
+            : { ...item, email_enviado: currentVal };
+        })
       );
       alert(`Error al actualizar estado de email: ${res.error}`);
     }
   };
 
-  // 3. Enviar / Reenviar Email Individual
-  const handleSendSingleEmail = async (p) => {
+  // 3. Enviar / Reenviar Email Individual (Invitación o Resultados)
+  const handleSendSingleEmail = async (p, tipo = 'INVITACION') => {
     if (!p.email) {
       alert(`El participante ${p.nombre} ${p.apellido} no tiene email registrado.`);
       return;
@@ -316,24 +337,33 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
       return;
     }
 
-    const actionText = p.email_enviado ? 'reenviar' : 'enviar';
+    const isResult = tipo === 'RESULTADOS';
+    const isAlreadySent = isResult ? Boolean(p.email_resultado_enviado) : Boolean(p.email_enviado);
+    const actionText = isAlreadySent ? 'reenviar' : 'enviar';
+    const tipoLabel = isResult ? 'el reporte de resultados y podio' : 'la invitación de la trivia';
+
     if (
       !window.confirm(
-        `¿Deseas ${actionText} la invitación de la trivia a:\n\n${p.nombre} ${p.apellido}\nEmail: ${p.email}\nLegajo: ${p.legajo}`
+        `¿Deseas ${actionText} ${tipoLabel} a:\n\n${p.nombre} ${p.apellido}\nEmail: ${p.email}\nLegajo: ${p.legajo}`
       )
     ) {
       return;
     }
 
     setActionLoadingLegajo(p.legajo);
-    const res = await sendSingleParticipantEmail(p.legajo);
+    const res = await sendSingleParticipantEmail(p.legajo, tipo);
     setActionLoadingLegajo(null);
 
     if (res.success) {
       setParticipants((prev) =>
-        prev.map((item) => (item.legajo === p.legajo ? { ...item, email_enviado: true } : item))
+        prev.map((item) => {
+          if (item.legajo !== p.legajo) return item;
+          return isResult
+            ? { ...item, email_resultado_enviado: true }
+            : { ...item, email_enviado: true };
+        })
       );
-      notify(`✉️ Invitación enviada exitosamente a ${p.email}`);
+      notify(`✉️ Correo de ${isResult ? 'Resultados' : 'Invitación'} despachado exitosamente a ${p.email}`);
     } else {
       alert(`Error al enviar correo: ${res.error || 'Ocurrió un error en el servidor'}`);
     }
@@ -647,7 +677,9 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               {metrics.emailSentCount}
               <span className="text-xs text-purple-200 font-normal ml-2">({metrics.emailSentPct}%)</span>
             </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Invitaciones despachadas</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Invitaciones: {metrics.emailSentCount} • Resultados: {metrics.emailResultSentCount}
+            </p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center">
             <Send size={24} />
@@ -765,9 +797,11 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             onChange={(e) => setEmailStatusFilter(e.target.value)}
             className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/15 text-white font-semibold focus:outline-none focus:ring-1 focus:ring-red-500"
           >
-            <option value="ALL">Email: Todos</option>
-            <option value="SENT">Email: Enviado ({metrics.emailSentCount})</option>
-            <option value="PENDING">Email: Pendiente ({metrics.total - metrics.emailSentCount})</option>
+            <option value="ALL">Emails: Todos</option>
+            <option value="INV_SENT">Invitación: Enviada ({metrics.emailSentCount})</option>
+            <option value="INV_PENDING">Invitación: Pendiente ({metrics.total - metrics.emailSentCount})</option>
+            <option value="RES_SENT">Resultados: Enviado ({metrics.emailResultSentCount})</option>
+            <option value="RES_PENDING">Resultados: Pendiente ({metrics.total - metrics.emailResultSentCount})</option>
           </select>
 
           {/* Filtro Estado Hash */}
@@ -846,9 +880,8 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                 <tr className="bg-slate-900/80 border-b border-white/15 text-[11px] font-black uppercase tracking-wider text-slate-300">
                   <th className="py-3.5 px-4">Participante</th>
                   <th className="py-3.5 px-4">Sector</th>
-                  <th className="py-3.5 px-4">Email</th>
                   <th className="py-3.5 px-4 text-center">Link de Acceso / Hash</th>
-                  <th className="py-3.5 px-4 text-center">Email Enviado</th>
+                  <th className="py-3.5 px-4 text-center">Emails Despachados</th>
                   <th className="py-3.5 px-4 text-center">Estado Trivia</th>
                   <th className="py-3.5 px-4 text-right">Acciones</th>
                 </tr>
@@ -866,20 +899,27 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                       key={p.legajo}
                       className="hover:bg-white/5 transition-colors group"
                     >
-                      {/* Participante */}
+                      {/* Participante (con email integrado abajo del nombre) */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow">
                             {p.nombre ? p.nombre[0].toUpperCase() : 'U'}
                           </div>
-                          <div>
-                            <div className="font-bold text-white text-sm">
+                          <div className="min-w-0">
+                            <div className="font-bold text-white text-sm truncate">
                               {p.apellido}, {p.nombre}
                             </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="px-2 py-0.5 rounded-md bg-slate-800 text-yellow-300 font-mono text-[10px] font-black border border-white/10">
-                                Legajo {p.legajo}
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="px-1.5 py-0.5 rounded-md bg-slate-800 text-yellow-300 font-mono text-[10px] font-bold border border-white/10 shrink-0">
+                                Leg. {p.legajo}
                               </span>
+                              {p.email ? (
+                                <span className="text-[11px] text-slate-400 font-medium truncate max-w-[200px]" title={p.email}>
+                                  {p.email}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-500 italic">Sin email</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -890,17 +930,6 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                         <span className="px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-300 border border-blue-500/30 font-semibold text-[11px]">
                           {p.sector || 'Sin Sector'}
                         </span>
-                      </td>
-
-                      {/* Email */}
-                      <td className="py-3.5 px-4 text-slate-300 font-medium">
-                        {p.email ? (
-                          <span className="truncate block max-w-[180px]" title={p.email}>
-                            {p.email}
-                          </span>
-                        ) : (
-                          <span className="text-slate-500 italic">No especificado</span>
-                        )}
                       </td>
 
                       {/* Link de Acceso / Hash */}
@@ -917,7 +946,6 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                               title="Copiar enlace de acceso directo único"
                             >
                               {isCopied ? <Check size={14} /> : <Copy size={14} />}
-
                             </button>
 
                             {/* Abrir en nueva pestaña */}
@@ -953,29 +981,35 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                         )}
                       </td>
 
-                      {/* Email Enviado Toggle */}
+                      {/* Emails Despachados (Invitación y Resultados) */}
                       <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={() => handleToggleEmail(p)}
-                          disabled={isRowLoading}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${p.email_enviado
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                            : 'bg-slate-800/80 text-slate-400 border-white/10 hover:border-white/30 hover:text-white'
-                            }`}
-                          title={p.email_enviado ? 'Click para marcar como NO enviado' : 'Click para marcar como ENVIADO'}
-                        >
-                          {p.email_enviado ? (
-                            <>
-                              <CheckCircle2 size={14} className="text-emerald-400" />
-                              <span>Enviado</span>
-                            </>
-                          ) : (
-                            <>
-                              <Mail size={14} />
-                              <span>Pendiente</span>
-                            </>
-                          )}
-                        </button>
+                        <div className="inline-flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-white/10">
+                          {/* Icono Invitación */}
+                          <button
+                            onClick={() => handleToggleEmail(p, 'INVITACION')}
+                            disabled={isRowLoading}
+                            className={`p-1.5 rounded-lg transition-all cursor-pointer border ${p.email_enviado
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-sm shadow-emerald-500/10'
+                              : 'bg-slate-800/40 text-slate-600 border-white/5 opacity-50 hover:opacity-100 hover:text-slate-300'
+                              }`}
+                            title={p.email_enviado ? 'Invitación: Enviada (clic para alternar)' : 'Invitación: No enviada (clic para alternar)'}
+                          >
+                            <Mail size={16} />
+                          </button>
+
+                          {/* Icono Resultados */}
+                          <button
+                            onClick={() => handleToggleEmail(p, 'RESULTADOS')}
+                            disabled={isRowLoading}
+                            className={`p-1.5 rounded-lg transition-all cursor-pointer border ${p.email_resultado_enviado
+                              ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-sm shadow-amber-500/10'
+                              : 'bg-slate-800/40 text-slate-600 border-white/5 opacity-50 hover:opacity-100 hover:text-slate-300'
+                              }`}
+                            title={p.email_resultado_enviado ? 'Resultados: Enviado (clic para alternar)' : 'Resultados: No enviado (clic para alternar)'}
+                          >
+                            <Award size={16} />
+                          </button>
+                        </div>
                       </td>
 
                       {/* Estado Trivia (Corregido y con estados Parcial/Completado/Sin jugar) */}
@@ -1004,25 +1038,46 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                       {/* Acciones */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center gap-1">
-                          {/* Enviar / Reenviar Correo de Invitación */}
+                          {/* Reenviar Correo de Invitación */}
                           <button
-                            onClick={() => handleSendSingleEmail(p)}
+                            onClick={() => handleSendSingleEmail(p, 'INVITACION')}
                             disabled={!p.email || isRowLoading}
                             className={`p-2 rounded-lg transition-colors cursor-pointer ${!p.email
                               ? 'text-slate-600 opacity-40 cursor-not-allowed'
                               : p.email_enviado
                                 ? 'text-purple-300 hover:text-white hover:bg-purple-500/20'
-                                : 'text-amber-400 hover:text-white hover:bg-amber-500/20'
+                                : 'text-emerald-400 hover:text-white hover:bg-emerald-500/20'
                               }`}
                             title={
                               !p.email
                                 ? 'Sin correo electrónico cargado'
                                 : p.email_enviado
-                                  ? `Reenviar invitación a ${p.email}`
-                                  : `Enviar invitación a ${p.email}`
+                                  ? `Reenviar Invitación a ${p.email}`
+                                  : `Enviar Invitación a ${p.email}`
                             }
                           >
-                            <Send size={15} />
+                            <SendHorizontal size={15} />
+                          </button>
+
+                          {/* Reenviar Correo de Resultados */}
+                          <button
+                            onClick={() => handleSendSingleEmail(p, 'RESULTADOS')}
+                            disabled={!p.email || isRowLoading}
+                            className={`p-2 rounded-lg transition-colors cursor-pointer ${!p.email
+                              ? 'text-slate-600 opacity-40 cursor-not-allowed'
+                              : p.email_resultado_enviado
+                                ? 'text-amber-300 hover:text-white hover:bg-amber-500/20'
+                                : 'text-amber-500 hover:text-white hover:bg-amber-500/20'
+                              }`}
+                            title={
+                              !p.email
+                                ? 'Sin correo electrónico cargado'
+                                : p.email_resultado_enviado
+                                  ? `Reenviar Resultados a ${p.email}`
+                                  : `Enviar Resultados a ${p.email}`
+                            }
+                          >
+                            <Award size={15} />
                           </button>
 
                           {/* Editar */}

@@ -151,6 +151,11 @@ export default function AdminMailingView({ activePhase = 1 }) {
     setHasUnsavedChanges(false);
   };
 
+  // Cargar estado inicial, métricas y parámetros al montar o al cambiar de campaña
+  useEffect(() => {
+    loadMailingData(activeTab);
+  }, [activeTab]);
+
   // Renderizar la vista previa en tiempo real cuando cambian los parámetros
   useEffect(() => {
     if (debounceTimerRef.current) {

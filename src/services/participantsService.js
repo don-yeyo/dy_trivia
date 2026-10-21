@@ -175,9 +175,9 @@ export async function generateAllMissingHashes(token = '') {
 }
 
 /**
- * Marca o desmarca si el email fue enviado a un participante
+ * Marca o desmarca si el email fue enviado a un participante (Invitación o Resultados)
  */
-export async function toggleEmailSent(legajo, emailSent, token = '') {
+export async function toggleEmailSent(legajo, emailSent, emailTipo = 'INVITACION', token = '') {
   const adminToken = resolveToken(token);
   try {
     const res = await fetch('/api/participants', {
@@ -189,13 +189,14 @@ export async function toggleEmailSent(legajo, emailSent, token = '') {
       body: JSON.stringify({
         action: 'TOGGLE_EMAIL',
         legajo: String(legajo),
-        emailSent: Boolean(emailSent)
+        emailSent: Boolean(emailSent),
+        emailTipo
       })
     });
 
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.success) {
-      return { success: true, emailSent: data.emailSent };
+      return { success: true, emailSent: data.emailSent, emailTipo: data.emailTipo };
     }
     return { success: false, error: data.error || 'Error actualizando estado de email' };
   } catch (error) {

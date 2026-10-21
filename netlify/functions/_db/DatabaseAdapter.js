@@ -198,12 +198,13 @@ export class DatabaseAdapter {
   }
 
   /**
-   * Marca o desmarca si el email de participación fue enviado.
+   * Marca o desmarca si el email de participación o resultados fue enviado.
    * @param {string} legajo
    * @param {boolean} emailSent
+   * @param {'INVITACION'|'RESULTADOS'} [tipo='INVITACION']
    * @returns {Promise<{success: boolean, error?: string}>}
    */
-  async toggleEmailSent(legajo, emailSent) {
+  async toggleEmailSent(legajo, emailSent, tipo = 'INVITACION') {
     throw new Error(`${this.name}.toggleEmailSent() no implementado`);
   }
 

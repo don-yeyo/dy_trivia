@@ -591,20 +591,28 @@ export class SupabaseAdapter extends DatabaseAdapter {
       pFrom += PAGE_SIZE;
     }
 
-    // 2. Obtener mapa de emails enviados desde config
+    // 2. Obtener mapas de emails de invitación y de resultados desde config
     let emailSentMap = {};
+    let emailResultSentMap = {};
     try {
-      const { data: emailConfig } = await supabase
+      const { data: configs } = await supabase
         .from('config')
-        .select('valor')
-        .eq('clave', 'EMAILS_ENVIADOS')
-        .maybeSingle();
+        .select('clave, valor')
+        .in('clave', ['EMAILS_ENVIADOS', 'EMAILS_RESULTADOS_ENVIADOS']);
 
-      if (emailConfig && emailConfig.valor) {
-        emailSentMap = JSON.parse(emailConfig.valor);
+      if (configs) {
+        configs.forEach(c => {
+          if (c.clave === 'EMAILS_ENVIADOS' && c.valor) {
+            try { emailSentMap = JSON.parse(c.valor); } catch (e) {}
+          }
+          if (c.clave === 'EMAILS_RESULTADOS_ENVIADOS' && c.valor) {
+            try { emailResultSentMap = JSON.parse(c.valor); } catch (e) {}
+          }
+        });
       }
     } catch (e) {
       emailSentMap = {};
+      emailResultSentMap = {};
     }
 
     // 3. Obtener resumen de respuestas por participante
@@ -650,6 +658,10 @@ export class SupabaseAdapter extends DatabaseAdapter {
         ? Boolean(p.email_enviado)
         : Boolean(emailSentMap[leg]);
 
+      const isResultSent = p.email_resultado_enviado !== undefined && p.email_resultado_enviado !== null
+        ? Boolean(p.email_resultado_enviado)
+        : Boolean(emailResultSentMap[leg]);
+
       return {
         id: p.id,
         legajo: leg,
@@ -661,6 +673,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
         telefono: p.telefono || '',
         email: p.email || '',
         email_enviado: isEmailSent,
+        email_resultado_enviado: isResultSent,
         hasPlayed: st ? st.answersCount > 0 : false,
         answersCount: st ? st.answersCount : 0,
         correctCount: st ? st.correctCount : 0,
@@ -857,15 +870,17 @@ export class SupabaseAdapter extends DatabaseAdapter {
   /**
    * Marca o desmarca si el email fue enviado en la configuración persistente
    */
-  async toggleEmailSent(legajo, emailSent) {
+  async toggleEmailSent(legajo, emailSent, tipo = 'INVITACION') {
     const supabase = this.getClient();
     const cleanLegajo = String(legajo || '').trim();
+    const isResult = String(tipo).toUpperCase() === 'RESULTADOS';
+    const configKey = isResult ? 'EMAILS_RESULTADOS_ENVIADOS' : 'EMAILS_ENVIADOS';
 
     try {
       const { data: currentConfig } = await supabase
         .from('config')
         .select('valor')
-        .eq('clave', 'EMAILS_ENVIADOS')
+        .eq('clave', configKey)
         .maybeSingle();
 
       let map = {};
@@ -880,9 +895,11 @@ export class SupabaseAdapter extends DatabaseAdapter {
       }
 
       await supabase.from('config').upsert({
-        clave: 'EMAILS_ENVIADOS',
+        clave: configKey,
         valor: JSON.stringify(map),
-        descripcion: 'Mapa JSON de legajos a los que se les envió el email de invitación',
+        descripcion: isResult
+          ? 'Mapa JSON de legajos a los que se les envió el email de resultados'
+          : 'Mapa JSON de legajos a los que se les envió el email de invitación',
         updated_at: new Date().toISOString()
       }, { onConflict: 'clave' });
 
