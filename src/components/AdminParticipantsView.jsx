@@ -25,7 +25,12 @@ import {
   Zap,
   HelpCircle,
   Eye,
-  X
+  X,
+  MailCheck,
+  Clock,
+  Play,
+  SendHorizontal,
+  Settings2
 } from 'lucide-react';
 import {
   fetchParticipantsAdmin,
@@ -38,6 +43,12 @@ import {
   resetParticipantTrivia,
   buildParticipationUrl
 } from '../services/participantsService';
+import {
+  sendSingleParticipantEmail,
+  sendTestEmail,
+  sendBatchMailing,
+  markAllEmailsSent
+} from '../services/mailingService';
 
 export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv }) {
   const [participants, setParticipants] = useState([]);
@@ -50,6 +61,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
   const [sectorFilter, setSectorFilter] = useState('ALL');
   const [emailStatusFilter, setEmailStatusFilter] = useState('ALL');
   const [hashStatusFilter, setHashStatusFilter] = useState('ALL');
+  const [triviaStatusFilter, setTriviaStatusFilter] = useState('ALL'); // 'ALL' | 'COMPLETED' | 'PARTIAL' | 'NOT_PLAYED'
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,12 +98,36 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
   const [deleteModalParticipant, setDeleteModalParticipant] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 4. Modal Mailing Integral (Envío y Reenvío)
+  const [isMailingModalOpen, setIsMailingModalOpen] = useState(false);
+  const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [isMailingRunning, setIsMailingRunning] = useState(false);
+  const [mailingStatusMsg, setMailingStatusMsg] = useState('');
+  const [mailingProgress, setMailingProgress] = useState({ sent: 0, failed: 0, total: 0 });
+
   // Mostrar mensaje tipo Toast autodescartable
   const notify = (msg) => {
     setSuccessToast(msg);
     setTimeout(() => {
       setSuccessToast((prev) => (prev === msg ? '' : prev));
     }, 4500);
+  };
+
+  // Helper para determinar el estado de la trivia de un participante
+  const getParticipantTriviaStatus = (p) => {
+    const count = Number(
+      p.answersCount ??
+      p.total_responses ??
+      (Array.isArray(p.responses) ? p.responses.length : 0)
+    );
+    if (count >= 15) {
+      return { code: 'COMPLETED', label: 'Completado', count };
+    }
+    if (count > 0) {
+      return { code: 'PARTIAL', label: 'Parcial', count };
+    }
+    return { code: 'NOT_PLAYED', label: 'Sin jugar', count: 0 };
   };
 
   // Carga inicial y refresco
@@ -147,9 +183,15 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
       if (hashStatusFilter === 'WITH_HASH' && !p.token_hash) return false;
       if (hashStatusFilter === 'WITHOUT_HASH' && p.token_hash) return false;
 
+      // Filtro de Estado Trivia
+      if (triviaStatusFilter !== 'ALL') {
+        const st = getParticipantTriviaStatus(p);
+        if (st.code !== triviaStatusFilter) return false;
+      }
+
       return true;
     });
-  }, [participants, searchTerm, sectorFilter, emailStatusFilter, hashStatusFilter]);
+  }, [participants, searchTerm, sectorFilter, emailStatusFilter, hashStatusFilter, triviaStatusFilter]);
 
   // Paginación calculada
   const totalPages = Math.ceil(filteredParticipants.length / pageSize) || 1;
@@ -170,17 +212,34 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
     const total = participants.length;
     const withHash = participants.filter((p) => Boolean(p.token_hash)).length;
     const withoutHash = total - withHash;
+    const withEmail = participants.filter((p) => Boolean(p.email && p.email.trim())).length;
     const emailSentCount = participants.filter((p) => Boolean(p.email_enviado)).length;
-    const playedCount = participants.filter((p) => (p.phases_answered && p.phases_answered.length > 0) || (p.total_responses && p.total_responses > 0)).length;
+
+    let completedCount = 0;
+    let partialCount = 0;
+    let notPlayedCount = 0;
+
+    participants.forEach((p) => {
+      const st = getParticipantTriviaStatus(p);
+      if (st.code === 'COMPLETED') completedCount++;
+      else if (st.code === 'PARTIAL') partialCount++;
+      else notPlayedCount++;
+    });
+
+    const playedCount = completedCount + partialCount;
 
     return {
       total,
       withHash,
       withoutHash,
+      withEmail,
       emailSentCount,
       emailSentPct: total > 0 ? Math.round((emailSentCount / total) * 100) : 0,
       playedCount,
-      playedPct: total > 0 ? Math.round((playedCount / total) * 100) : 0
+      playedPct: total > 0 ? Math.round((playedCount / total) * 100) : 0,
+      completedCount,
+      partialCount,
+      notPlayedCount
     };
   }, [participants]);
 
@@ -231,7 +290,124 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
     }
   };
 
-  // 3. Regenerar Hash Individual
+  // 3. Enviar / Reenviar Email Individual
+  const handleSendSingleEmail = async (p) => {
+    if (!p.email) {
+      alert(`El colaborador ${p.nombre} ${p.apellido} no tiene email registrado.`);
+      return;
+    }
+    if (!p.token_hash) {
+      alert(`El colaborador ${p.nombre} ${p.apellido} no tiene token hash generado. Genera su hash primero.`);
+      return;
+    }
+
+    const actionText = p.email_enviado ? 'reenviar' : 'enviar';
+    if (
+      !window.confirm(
+        `¿Deseas ${actionText} la invitación de la trivia a:\n\n${p.nombre} ${p.apellido}\nEmail: ${p.email}\nLegajo: ${p.legajo}`
+      )
+    ) {
+      return;
+    }
+
+    setActionLoadingLegajo(p.legajo);
+    const res = await sendSingleParticipantEmail(p.legajo);
+    setActionLoadingLegajo(null);
+
+    if (res.success) {
+      setParticipants((prev) =>
+        prev.map((item) => (item.legajo === p.legajo ? { ...item, email_enviado: true } : item))
+      );
+      notify(`✉️ Invitación enviada exitosamente a ${p.email}`);
+    } else {
+      alert(`Error al enviar correo: ${res.error || 'Ocurrió un error en el servidor'}`);
+    }
+  };
+
+  // 4. Enviar Email de Prueba (Test)
+  const handleSendTestEmail = async () => {
+    if (!testEmailAddress || !testEmailAddress.includes('@')) {
+      alert('Ingresa una dirección de correo válida para la prueba.');
+      return;
+    }
+
+    setIsSendingTest(true);
+    const res = await sendTestEmail(testEmailAddress.trim());
+    setIsSendingTest(false);
+
+    if (res.success) {
+      notify(`📧 Correo de prueba enviado con éxito a ${testEmailAddress}`);
+    } else {
+      alert(`Error al enviar correo de prueba: ${res.error}`);
+    }
+  };
+
+  // 5. Enviar Mailing Masivo (Pendientes o Todos)
+  const handleBatchMailing = async (filterType) => {
+    const isPending = filterType === 'PENDING';
+    const targetCount = isPending
+      ? participants.filter((p) => p.email && !p.email_enviado).length
+      : participants.filter((p) => p.email).length;
+
+    if (targetCount === 0) {
+      alert(
+        isPending
+          ? 'No hay colaboradores pendientes de envío con email válido.'
+          : 'No hay colaboradores con email válido.'
+      );
+      return;
+    }
+
+    const confirmMsg = isPending
+      ? `¿Iniciar envío masivo de invitaciones a los ${targetCount} colaboradores PENDIENTES?`
+      : `⚠️ ATENCIÓN: Se REENVIARÁ el correo de invitación a TODOS los ${targetCount} colaboradores con email registrado.\n\n¿Deseas continuar?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsMailingRunning(true);
+    setMailingStatusMsg(`Procesando lote de ${targetCount} correos...`);
+    setMailingProgress({ sent: 0, failed: 0, total: targetCount });
+
+    try {
+      const res = await sendBatchMailing({ filter: filterType, delayMs: 400 });
+      if (res.success) {
+        setMailingProgress({ sent: res.sentCount || 0, failed: res.failedCount || 0, total: targetCount });
+        notify(`🎉 Mailing completado: ${res.sentCount} enviados, ${res.failedCount || 0} fallidos.`);
+        await loadParticipants();
+      } else {
+        alert(`Error en el proceso de mailing: ${res.error}`);
+      }
+    } catch (err) {
+      alert(`Error inesperado: ${err.message}`);
+    } finally {
+      setIsMailingRunning(false);
+    }
+  };
+
+  // 6. Marcar Todos como Enviados / Pendientes en Base de Datos (Sin enviar correos)
+  const handleMarkAllEmails = async (markAsSent) => {
+    const actionLabel = markAsSent ? 'ENVIADOS' : 'PENDIENTES';
+    if (
+      !window.confirm(
+        `¿Seguro que deseas marcar a TODOS los participantes como ${actionLabel} en la base de datos?\n\n(Esta acción solo actualiza el registro en la base de datos, NO envía correos).`
+      )
+    ) {
+      return;
+    }
+
+    setIsMailingRunning(true);
+    const res = await markAllEmailsSent(markAsSent);
+    setIsMailingRunning(false);
+
+    if (res.success) {
+      notify(`✅ Marcados todos los participantes como ${actionLabel}`);
+      await loadParticipants();
+    } else {
+      alert(`Error al actualizar marcas en base de datos: ${res.error}`);
+    }
+  };
+
+  // 7. Regenerar Hash Individual
   const handleRegenerateHash = async (p) => {
     if (
       p.token_hash &&
@@ -518,6 +694,16 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               </button>
             )}
 
+            {/* Botón Acceso Modal Mailing */}
+            <button
+              onClick={() => setIsMailingModalOpen(true)}
+              className="px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-2 cursor-pointer border border-purple-400/30"
+              title="Panel de envío y reenvío de mailing para participación en la trivia"
+            >
+              <Mail size={16} />
+              <span>Mailing ({metrics.emailSentCount}/{metrics.total})</span>
+            </button>
+
             <button
               onClick={handleOpenCreateModal}
               className="px-4 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-2 cursor-pointer"
@@ -590,6 +776,18 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             <option value="WITHOUT_HASH">Sin Hash ({metrics.withoutHash})</option>
           </select>
 
+          {/* Filtro Estado Trivia (Corregido y con estados Parcial/Completado/Sin jugar) */}
+          <select
+            value={triviaStatusFilter}
+            onChange={(e) => setTriviaStatusFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-white/15 text-white font-semibold focus:outline-none focus:ring-1 focus:ring-red-500"
+          >
+            <option value="ALL">Trivia: Todos ({participants.length})</option>
+            <option value="COMPLETED">Completados 15/15 ({metrics.completedCount})</option>
+            <option value="PARTIAL">En Curso / Parcial ({metrics.partialCount})</option>
+            <option value="NOT_PLAYED">Sin Jugar ({metrics.notPlayedCount})</option>
+          </select>
+
           {/* Contador de resultados */}
           <span className="ml-auto text-slate-400 font-medium">
             Mostrando <strong className="text-white">{filteredParticipants.length}</strong> de{' '}
@@ -613,17 +811,22 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             <Users size={44} className="text-slate-500 mx-auto mb-3" />
             <h4 className="text-white font-bold text-base">No se encontraron participantes</h4>
             <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-              {searchTerm || sectorFilter !== 'ALL' || emailStatusFilter !== 'ALL' || hashStatusFilter !== 'ALL'
+              {searchTerm ||
+              sectorFilter !== 'ALL' ||
+              emailStatusFilter !== 'ALL' ||
+              hashStatusFilter !== 'ALL' ||
+              triviaStatusFilter !== 'ALL'
                 ? 'No hay registros que coincidan con los filtros aplicados. Prueba limpiar la búsqueda.'
                 : 'Aún no hay colaboradores cargados. Agrega uno nuevo o importa una lista CSV.'}
             </p>
-            {searchTerm && (
+            {(searchTerm || sectorFilter !== 'ALL' || emailStatusFilter !== 'ALL' || hashStatusFilter !== 'ALL' || triviaStatusFilter !== 'ALL') && (
               <button
                 onClick={() => {
                   setSearchTerm('');
                   setSectorFilter('ALL');
                   setEmailStatusFilter('ALL');
                   setHashStatusFilter('ALL');
+                  setTriviaStatusFilter('ALL');
                 }}
                 className="mt-4 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer"
               >
@@ -651,7 +854,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                   const isCopied = copiedLegajo === p.legajo;
                   const isRowLoading = actionLoadingLegajo === p.legajo;
                   const participationUrl = hasHash ? buildParticipationUrl(p.token_hash) : '';
-                  const hasPlayed = (p.phases_answered && p.phases_answered.length > 0) || (p.total_responses && p.total_responses > 0);
+                  const triviaStatus = getParticipantTriviaStatus(p);
 
                   return (
                     <tr
@@ -772,25 +975,54 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                         </button>
                       </td>
 
-                      {/* Estado Trivia */}
+                      {/* Estado Trivia (Corregido y con estados Parcial/Completado/Sin jugar) */}
                       <td className="py-3.5 px-4 text-center">
-                        {hasPlayed ? (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-200 border border-indigo-500/30 font-semibold text-[11px]">
-                            <Zap size={12} className="text-yellow-400" />
-                            <span>
-                              {p.phases_answered && p.phases_answered.length > 0
-                                ? `Fases: ${p.phases_answered.join(', ')}`
-                                : `${p.total_responses} rtas.`}
-                            </span>
+                        {triviaStatus.code === 'COMPLETED' ? (
+                          <div
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold text-[11px]"
+                            title="Completó las 15 preguntas de la trivia"
+                          >
+                            <CheckCircle2 size={13} className="text-emerald-400" />
+                            <span>Completado ({triviaStatus.count}/15)</span>
+                          </div>
+                        ) : triviaStatus.code === 'PARTIAL' ? (
+                          <div
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[11px]"
+                            title={`En curso: respondió ${triviaStatus.count} de 15 preguntas`}
+                          >
+                            <Zap size={13} className="text-amber-400" />
+                            <span>Parcial ({triviaStatus.count}/15)</span>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-500 italic">Sin jugar</span>
+                          <span className="text-[11px] text-slate-500 italic">Sin jugar (0/15)</span>
                         )}
                       </td>
 
                       {/* Acciones */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center gap-1">
+                          {/* Enviar / Reenviar Correo de Invitación */}
+                          <button
+                            onClick={() => handleSendSingleEmail(p)}
+                            disabled={!p.email || isRowLoading}
+                            className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                              !p.email
+                                ? 'text-slate-600 opacity-40 cursor-not-allowed'
+                                : p.email_enviado
+                                ? 'text-purple-300 hover:text-white hover:bg-purple-500/20'
+                                : 'text-amber-400 hover:text-white hover:bg-amber-500/20'
+                            }`}
+                            title={
+                              !p.email
+                                ? 'Sin correo electrónico cargado'
+                                : p.email_enviado
+                                ? `Reenviar invitación a ${p.email}`
+                                : `Enviar invitación a ${p.email}`
+                            }
+                          >
+                            <Send size={15} />
+                          </button>
+
                           {/* Editar */}
                           <button
                             onClick={() => handleOpenEditModal(p)}
@@ -1138,6 +1370,192 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               >
                 {isDeleting && <RefreshCw size={14} className="animate-spin" />}
                 <span>Eliminar Definitivamente</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          MODAL 4: PANEL INTEGRAL DE MAILING Y REENVÍO (SUPABASE)
+          ========================================================================= */}
+      {isMailingModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="glass-panel w-full max-w-2xl p-6 sm:p-7 rounded-3xl border border-purple-500/40 shadow-2xl relative my-8">
+            {/* Botón cerrar */}
+            <button
+              onClick={() => {
+                if (!isMailingRunning) setIsMailingModalOpen(false);
+              }}
+              disabled={isMailingRunning}
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-40"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Cabecera */}
+            <div className="flex items-center gap-3.5 mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-purple-600/30 border border-purple-400/40 shrink-0">
+                <Mail size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white">Centro de Despacho de Mailing</h3>
+                <p className="text-xs text-purple-200">
+                  Envíos y reenvíos automáticos con plantilla oficial Don Yeyo e hipervínculos únicos de acceso
+                </p>
+              </div>
+            </div>
+
+            {/* Resumen de Métricas de Mailing */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-white/10">
+                <p className="text-[10px] uppercase font-bold text-slate-400">Total Nómina</p>
+                <p className="text-xl font-black text-white mt-0.5">{metrics.total}</p>
+                <p className="text-[10px] text-slate-500">{metrics.withEmail} con email</p>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-white/10">
+                <p className="text-[10px] uppercase font-bold text-yellow-300">Con Token Hash</p>
+                <p className="text-xl font-black text-white mt-0.5">{metrics.withHash}</p>
+                <p className="text-[10px] text-yellow-300/70">
+                  {metrics.withoutHash > 0 ? `${metrics.withoutHash} pendientes` : '100% listos'}
+                </p>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+                <p className="text-[10px] uppercase font-bold text-emerald-300">Emails Enviados</p>
+                <p className="text-xl font-black text-emerald-300 mt-0.5">{metrics.emailSentCount}</p>
+                <p className="text-[10px] text-emerald-200/60">{metrics.emailSentPct}% despachado</p>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30">
+                <p className="text-[10px] uppercase font-bold text-purple-300">Pendientes</p>
+                <p className="text-xl font-black text-purple-300 mt-0.5">
+                  {Math.max(0, metrics.withEmail - metrics.emailSentCount)}
+                </p>
+                <p className="text-[10px] text-purple-200/60">con email listo</p>
+              </div>
+            </div>
+
+            {/* Banner Informativo */}
+            <div className="p-3.5 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-xs text-indigo-200 flex items-start gap-2.5 mb-6">
+              <Sparkles size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+              <div className="leading-relaxed">
+                El sistema lee los participantes directamente de <strong>Supabase</strong>, genera el enlace seguro con su token hash, e inserta las credenciales en la plantilla HTML responsive oficial de la <strong>Semana de la Inocuidad 2026</strong>.
+              </div>
+            </div>
+
+            {/* Sección 1: Enviar Correo de Prueba */}
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 space-y-3 mb-5">
+              <div className="flex items-center gap-2 text-xs font-bold text-white">
+                <Eye size={15} className="text-yellow-400" />
+                <span>1. Enviar Correo de Prueba (Previsualización Real)</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Envía un correo de muestra a cualquier casilla para verificar cómo se renderiza el diseño y los botones antes de enviar masivamente.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="email"
+                  value={testEmailAddress}
+                  onChange={(e) => setTestEmailAddress(e.target.value)}
+                  placeholder="Ingresa tu correo (ej: tu-nombre@donyeyo.com.ar)"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/15 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSendTestEmail}
+                  disabled={isSendingTest || isMailingRunning}
+                  className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all shadow flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isSendingTest ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+                  <span>{isSendingTest ? 'Enviando...' : 'Enviar Prueba'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Sección 2: Despacho Masivo / Reenvío */}
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 space-y-4 mb-5">
+              <div className="flex items-center gap-2 text-xs font-bold text-white">
+                <SendHorizontal size={15} className="text-emerald-400" />
+                <span>2. Despacho Masivo a Colaboradores</span>
+              </div>
+
+              {isMailingRunning && (
+                <div className="p-3.5 rounded-xl bg-purple-500/20 border border-purple-500/40 text-xs text-purple-200 flex items-center gap-3 animate-pulse">
+                  <RefreshCw size={16} className="animate-spin text-purple-300" />
+                  <div className="flex-1">
+                    <p className="font-bold text-white">{mailingStatusMsg}</p>
+                    <p className="text-[11px] text-purple-300 mt-0.5">
+                      Enviados: {mailingProgress.sent} | Fallidos: {mailingProgress.failed}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Botón Enviar a Pendientes */}
+                <button
+                  type="button"
+                  onClick={() => handleBatchMailing('PENDING')}
+                  disabled={isMailingRunning || isSendingTest}
+                  className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  <MailCheck size={16} />
+                  <span>
+                    Enviar a Pendientes ({Math.max(0, metrics.withEmail - metrics.emailSentCount)})
+                  </span>
+                </button>
+
+                {/* Botón Reenviar a Todos */}
+                <button
+                  type="button"
+                  onClick={() => handleBatchMailing('ALL')}
+                  disabled={isMailingRunning || isSendingTest}
+                  className="p-3.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  title="Reenvía el enlace a todos los colaboradores con correo cargado"
+                >
+                  <RefreshCw size={16} />
+                  <span>Reenviar a Todos ({metrics.withEmail})</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Sección 3: Acciones Rápidas de Marcas en Base de Datos */}
+            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                <Settings2 size={15} className="text-slate-400" />
+                <span>3. Sincronización Masiva de Marcas (Sin enviar correos)</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Útil para auditoría o para marcar todos como completados si ya se enviaron por otra plataforma:
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleMarkAllEmails(true)}
+                  disabled={isMailingRunning}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Marcar TODOS como Enviados
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMarkAllEmails(false)}
+                  disabled={isMailingRunning}
+                  className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/15 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Marcar TODOS como Pendientes
+                </button>
+              </div>
+            </div>
+
+            {/* Pie de modal */}
+            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setIsMailingModalOpen(false)}
+                disabled={isMailingRunning}
+                className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-40"
+              >
+                Cerrar Panel
               </button>
             </div>
           </div>

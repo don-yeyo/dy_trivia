@@ -253,11 +253,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
 
       const result = await saveAppConfig(configPayload);
       if (result && result.success) {
-        if (result.syncedWithSheet) {
-          setSaveSuccessMsg('¡Configuración guardada y sincronizada con Google Sheets exitosamente!');
-        } else {
-          setSaveSuccessMsg(`⚠️ Configuración aplicada en la sesión, pero Google Sheets no se actualizó: ${result.warning || 'Webhook no respondió'}`);
-        }
+        setSaveSuccessMsg('¡Configuración guardada y sincronizada con la Base de Datos exitosamente!');
         // Recargar vista previa con el cupo y fase actualizados
         const res = await fetchClassification(activePhase, topCount);
         if (res && (res.data || res.previewData)) {
@@ -652,7 +648,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
       </div>
 
       {/* =========================================================================
-          PANEL INTEGRAL DE CONFIGURACIÓN DE LA TRIVIA (PESTAÑA GOOGLE SHEETS)
+          PANEL INTEGRAL DE CONFIGURACIÓN DE LA TRIVIA
           ========================================================================= */}
       <div className="casual-card text-left shadow-2xl w-full p-6 sm:p-10 rounded-3xl mb-8 sm:mb-12 border-2 border-slate-200/90">
         {/* Cabecera del Panel */}
@@ -667,7 +663,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
               </span>
               <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
                 <FileSpreadsheet size={14} className="text-emerald-600" />
-                Sincronizado con la pestaña <strong>"Configuracion"</strong> de Google Sheets
+                Sincronizado con la base de datos Supabase (PostgreSQL)
               </span>
             </div>
           </div>

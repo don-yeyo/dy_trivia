@@ -18,10 +18,10 @@ export function getDatabaseEngine() {
   const engine = (
     getServerEnv('DB_ENGINE') ||
     getServerEnv('DATABASE_ENGINE') ||
-    'sheets'
+    'supabase'
   ).toLowerCase().trim();
 
-  return engine === 'supabase' ? 'supabase' : 'sheets';
+  return engine === 'sheets' ? 'sheets' : 'supabase';
 }
 
 /**

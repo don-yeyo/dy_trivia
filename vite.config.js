@@ -13,6 +13,7 @@ import { handler as questionsHandler } from './netlify/functions/questions.js';
 import { handler as submitAnswerHandler } from './netlify/functions/submit-answer.js';
 import { handler as triviaApiHandler } from './netlify/functions/trivia-api.js';
 import { handler as participantsHandler } from './netlify/functions/participants.js';
+import { handler as mailingHandler } from './netlify/functions/mailing.js';
 
 const apiHandlers = {
   'admin-auth': adminAuthHandler,
@@ -21,6 +22,7 @@ const apiHandlers = {
   'config': configHandler,
   'import-participants': importParticipantsHandler,
   'participants': participantsHandler,
+  'mailing': mailingHandler,
   'questions': questionsHandler,
   'submit-answer': submitAnswerHandler,
   'trivia-api': triviaApiHandler

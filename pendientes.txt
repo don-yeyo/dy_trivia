@@ -1,10 +1,12 @@
 
-# no avanzar aun
-- [x] gestion de participantes CRUD, generacion dehash, marca de email enviado, reset de trivia para el usuario, copiar link de participación
-- [ ] reenvio de mailin
+# Tareas del Proyecto Trivia Don Yeyo 2026
+
+- [x] Gestión de participantes CRUD, generación de hash, marca de email enviado, reset de trivia para el usuario, copiar link de participación
+- [x] Corregir flag y visualización de Estado Trivia en grilla de participantes (Completado 15/15, Parcial 1-14 rtas, Sin jugar 0)
+- [x] Marca masiva de email enviado a todos los participantes en Supabase
+- [x] Reenvío de mailing (opciones individual por fila y masivo por lote, test de visualización, modal interactivo en Admin)
+- [x] Quitar el uso de Google Sheets (trivia y mailing funcionando 100% con Supabase)
 - [ ] CRUD de preguntas y fases
-- [ ] mail con respuestas correctas e incorrectas y las explicaciones de cada una
-- [ ] que el mailin soporte tanto el modo google sheet como supabase
-- [ ] quitar el uso de google sheet
-- [ ] detectar si no hay conexion o falla algo contra la api y google sheet
-- [ ] config: mostrar o no mostrar area del participante
+- [ ] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una
+- [ ] Detectar si no hay conexión o falla algo contra la API de Supabase
+- [ ] Config: mostrar o no mostrar área del participante

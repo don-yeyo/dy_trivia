@@ -177,17 +177,44 @@ npm run db:migrate
 - **Estado Publicado:**
   - **Experiencia Desktop Intacta:** Despliega el **Podio de Honor 3D Gamer** en cuadrícula con pedestales volumétricos (1° Puesto Oro en el centro, 2° Plata y 3° Bronce a los costados) junto a la **Tabla General de Clasificados** con 12 columnas informativas completas.
   - **Experiencia Mobile Optimizada (100% Responsive):** En dispositivos móviles, el podio se transforma automáticamente en tarjetas horizontales ordenadas por mérito (1° Oro Campeón con corona animada, 2° Plata y 3° Bronce) con avatares, medallas, nombres sin truncamientos y métricas nítidas. La tabla de clasificados se adapta a una lista de items flex compactos y legibles, evitando desbordes horizontales o textos cortados.
-- **Conformación de la Tabla según Flags de Google Sheets:**
+- **Conformación de la Tabla según Flags de Supabase (`config`):**
   - `MOSTRAR_PARCIALES_EN_TABLA`: cuando es `true`, incluye en la tabla a quienes respondieron parcialmente pero no completaron todas las preguntas de la fase (con badge distintivo `Parcial (X/N)`). Cuando es `false`, los excluye de la tabla.
   - `MOSTRAR_NO_RESPONDIDOS_EN_TABLA`: cuando es `true`, incluye en la tabla a los colaboradores inscriptos del padrón que aún no participaron de la fase (con badge `Sin jugar` y valores `-`). Cuando es `false`, los excluye de la tabla.
   - Colaboradores que completaron el 100% de las preguntas de la fase siempre se incluyen y se ordenan por mérito oficial: 1° Puntaje (suma de respuestas correctas según el punto asignado a cada pregunta), 2° Menor tiempo total acumulado (desempate).
 
 ---
 
+## 📬 Sistema Integral de Mailing y Notificaciones (100% Supabase)
+
+El sistema cuenta con un motor de despacho de correos electrónicos transaccionales diseñado para entregar a cada colaborador su enlace de acceso único y personalizado con la plantilla oficial HTML de la **Semana de la Inocuidad 2026**:
+
+1. **Persistencia y Control Centralizado en Supabase**:
+   - Ya no utiliza Google Sheets. Los datos de colaboradores, emails y marcas de envío se leen y actualizan directamente en la base de datos PostgreSQL de Supabase (tablas `participants` y clave `EMAILS_ENVIADOS` en `config`).
+2. **Panel de Despacho en Tiempo Real (Admin > Colaboradores > Botón Mailing)**:
+   - **Métricas instantáneas**: Total de colaboradores, cantidad con email válido, enlaces con hash generados, correos enviados y pendientes.
+   - **Previsualización / Envío de Prueba**: Permite ingresar cualquier casilla de correo y enviar una muestra fidedigna con datos reales para verificar cómo se renderiza la plantilla en Outlook Desktop, Outlook Web y Gmail.
+   - **Envío a Pendientes**: Despacha invitaciones únicamente a quienes tienen `email_enviado === false` y cuentan con dirección de correo y hash.
+   - **Reenvío a Todos**: Permite relanzar o recordar la trivia reenviando los enlaces a la totalidad de la nómina con email registrado.
+   - **Sincronización Masiva de Marcas**: Botones para marcar a todos como enviados o pendientes en la base de datos sin disparar correos (ideal para auditoría o migraciones).
+3. **Acciones Individuales por Fila**:
+   - En la grilla de participantes, cada fila incluye un botón de acción rápida para enviar o reenviar el correo de participación directamente al colaborador seleccionado.
+4. **Estados de Trivia Fidedignos en la Grilla**:
+   - **Completado (15/15)**: Badge verde con check cuando el participante respondió todas las preguntas de la trivia.
+   - **En Curso / Parcial (X/15)**: Badge ámbar con rayo cuando el participante inició la trivia pero aún tiene preguntas pendientes de responder.
+   - **Sin jugar (0/15)**: Indicador tenue para colaboradores que aún no ingresaron a responder.
+   - **Filtro Avanzado de Trivia**: Dropdown en la barra de herramientas para segmentar la nómina por *Todos*, *Completados*, *En Curso / Parcial* y *Sin jugar*.
+5. **CLI Automatizado de Terminal (`scripts/enviarMailing.js`)**:
+   - `npm run mailing:test` -> Envía correo de prueba a `TEST_EMAIL`.
+   - `npm run mailing:send` -> Envía a colaboradores pendientes.
+   - `npm run mailing:resend` -> Reenvía masivamente a toda la nómina.
+   - `node scripts/enviarMailing.js --legajo <n>` -> Envía o reenvía a un legajo específico.
+
+---
+
 ## 🛡️ Arquitectura de Seguridad & Backend Serverless (Netlify Functions)
 
 Para garantizar la **máxima seguridad de datos y transparencia del concurso**:
-1. **Credenciales y Secretos 100% Protegidos**: La `API Key` de Google Sheets, el `Spreadsheet ID`, las credenciales de administrador (`ADMIN_USER`, `ADMIN_PASSWORD`) y el webhook de Apps Script residen exclusivamente en el entorno seguro de **Netlify Functions** (`netlify/functions/`). NUNCA se exponen al navegador cliente ni viajan en peticiones de red del frontend.
+1. **Credenciales y Secretos 100% Protegidos**: La `API Key`, credenciales de Supabase (`SUPABASE_SERVICE_ROLE_KEY`), credenciales de administrador (`ADMIN_USER`, `ADMIN_PASSWORD`) y configuración SMTP residen exclusivamente en el entorno seguro de **Netlify Functions** (`netlify/functions/`). NUNCA se exponen al navegador cliente ni viajan en peticiones de red del frontend.
 2. **Sanitización de Respuestas Correctas**: El endpoint `/api/questions` devuelve al frontend las preguntas y opciones **sin incluir la columna de respuesta correcta ni pistas**.
 3. **Evaluación de Respuestas en Servidor**: Al responder una pregunta, el frontend envía la selección a `POST /api/submit-answer`. La Serverless Function es la única que contrasta la opción elegida contra la respuesta correcta original, calcula el punto obtenido (1 punto por acierto) y persiste el resultado en la base de datos en tiempo real.
 4. **Cálculo y Auditoría de Clasificados**: `/api/classification` calcula las posiciones oficiales aplicando la regla oficial de la trivia: 1° Mayor puntaje (suma de aciertos ponderados por pregunta), 2° Menor tiempo total acumulado en responder (desempate por velocidad), 3° Mayor cantidad de respuestas correctas, y 4° Fecha/hora de envío.
@@ -195,11 +222,14 @@ Para garantizar la **máxima seguridad de datos y transparencia del concurso**:
 ### 🌐 Endpoints Serverless Disponibles:
 - `POST /api/admin-auth`: Autentica al Administrador de forma segura y emite tokens de sesión firmados (validez de 12 horas).
 - `GET /api/classification?phase=1&topCount=30`: Obtiene el podio y los clasificados (modo público si está publicado, o preview con token de admin).
-- `POST /api/classification`: Dispara la determinación de clasificados o el reinicio de publicación oficial (requiere token de admin; si el token expiró retorna 403 Forbidden y el cliente limpia la sesión caducada).
+- `POST /api/classification`: Dispara la determinación de clasificados o el reinicio de publicación oficial (requiere token de admin).
 - `GET /api/auth?token=...&phase=1`: Valida el hash/token del colaborador y obtiene su progreso sin exponer listas completas de nómina.
-- `GET /api/questions?phase=1`: Devuelve las preguntas de la fase activa sanitizadas.
-- `POST /api/submit-answer`: Evalúa en servidor el acierto/fallo de la respuesta y la persiste en Google Sheets vía Apps Script.
-- `POST /api/import-participants`: Endpoint exclusivo de administración para importar masivamente el padrón de colaboradores desde CSV a la hoja "Participantes" de Google Sheets con hashes SHA-256 únicos y desduplicación.
+- `GET /api/questions?phase=1`: Devuelve las preguntas de la fase activa sanitizadas (entrega atómica 1 a 1 protegida con HMAC).
+- `POST /api/submit-answer`: Evalúa en servidor el acierto/fallo de la respuesta, calcula el tiempo real y persiste en Supabase.
+- `GET /api/participants`: Lista completa de nómina para el panel de administración con estadísticas de progreso y marcas de email.
+- `POST /api/participants`: Endpoints CRUD para crear, actualizar, eliminar, regenerar hashes, marcar emails y resetear trivias.
+- `GET /api/mailing?action=GET_STATUS`: Consulta métricas y estado del servicio de mailing.
+- `POST /api/mailing`: Endpoint administrativo para envío individual, masivo, pruebas y marcado masivo en Supabase.
 
 ### 📥 Herramienta de Importación de Colaboradores (CSV a Google Sheets):
 - **Panel Administrativo Visual:** En `/admin`, botón **"Importar CSV"** que abre un modal interactivo donde se puede:

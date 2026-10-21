@@ -296,47 +296,9 @@ export class SupabaseAdapter extends DatabaseAdapter {
           return item;
         });
       }
+      return [];
     } catch (e) {
-      console.warn('[SupabaseAdapter] Preguntas no disponibles en Supabase, recurriendo a Sheets:', e.message);
-    }
-
-    // Fallback inteligente a Google Sheets
-    const questionsRange = getServerEnv('GOOGLE_SHEETS_QUESTIONS_RANGE') || 'Preguntas!A1:Z100';
-    try {
-      const rows = await fetchSheetValues(questionsRange);
-      const phaseRows = (rows || []).filter(r => parseInt(r.fase || r.phase || '1', 10) === targetPhase);
-      const result = [];
-
-      phaseRows.forEach((r, idx) => {
-        const explicitId = r.id || r.numero || r.id_pregunta;
-        const qId = (explicitId !== undefined && explicitId !== '') ? parseInt(explicitId, 10) : (idx + 1);
-        const questionText = r.pregunta || r.question || '';
-        const points = parseInt(r.puntos || r.points || '100', 10);
-
-        const options = [];
-        for (let i = 1; i <= 5; i++) {
-          const letter = String.fromCharCode(96 + i);
-          const optText = r[`opcion${i}`] || r[`opcion_${i}`] || r[`opcion${letter}`] || r[`opcion_${letter}`] || r[letter] || r[`opcion ${i}`] || '';
-          if (optText && String(optText).trim() !== '') {
-            options.push({ id: i, text: String(optText).trim() });
-          }
-        }
-
-        const rawCorrect = String(
-          r.respuesta_correcta || r.respuestacorrecta || r.opcion_correcta || r.opcioncorrecta || r.correcta || '1'
-        ).trim().toUpperCase();
-        const correctMap = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5 };
-        const correctOptionId = correctMap[rawCorrect] || parseInt(rawCorrect, 10) || 1;
-
-        if (questionText && options.length >= 2) {
-          const qObj = { id: qId, phase: targetPhase, question: questionText, points, options };
-          if (!sanitized) qObj.correctOptionId = correctOptionId;
-          result.push(qObj);
-        }
-      });
-      return result;
-    } catch (err) {
-      console.error('[SupabaseAdapter] Error en fallback de preguntas:', err);
+      console.error('[SupabaseAdapter] Error obteniendo preguntas de Supabase:', e.message);
       return [];
     }
   }
