@@ -28,6 +28,7 @@ export default function AdminHeader({
   activePhase = 1
 }) {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const brandName = import.meta.env.VITE_ADMIN_BRAND_NAME || 'DY-TRIVIA';
 
   return (
     <header className="sticky top-0 z-40 w-full bg-slate-900/95 backdrop-blur-md border-b border-white/10 shadow-xl transition-all">
@@ -52,7 +53,7 @@ export default function AdminHeader({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-heading font-black text-white text-sm sm:text-base tracking-tight">
-                  DY-TRIVIA
+                  {brandName}
                 </span>
                 <span className="px-2 py-0.5 rounded-md bg-red-600/90 text-white font-mono text-[10px] font-black uppercase tracking-wider shadow-sm">
                   Admin
@@ -62,84 +63,12 @@ export default function AdminHeader({
                   <span>Supabase</span>
                 </span>
               </div>
-              <p className="hidden sm:block text-[11px] text-slate-400 font-medium">
-                Panel de Gestión | Semana de la Inocuidad 2026
-              </p>
             </div>
           </div>
         </div>
 
-        {/* Centro: Barra de Navegación Rápida (Desktop) */}
-        <nav className="hidden lg:flex items-center gap-1.5 bg-slate-950/60 p-1.5 rounded-xl border border-white/10">
-          <button
-            type="button"
-            onClick={() => onSelectSection('PARTICIPANTS')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeSection === 'PARTICIPANTS'
-                ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Users size={15} />
-            <span>Colaboradores</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onSelectSection('CLASSIFICATION')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeSection === 'CLASSIFICATION'
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Trophy size={15} />
-            <span>Clasificación & Podio</span>
-            {isPublished && (
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" title="Publicada" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onSelectSection('CONFIG')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeSection === 'CONFIG'
-                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Sliders size={15} />
-            <span>Configuración (Fase {activePhase})</span>
-          </button>
-        </nav>
-
-        {/* Derecha: Acciones Rápidas + Perfil Admin */}
+        {/* Derecha: Perfil Admin */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Botón Lanzar Proyección */}
-          <button
-            type="button"
-            onClick={() => {
-              window.open(`${window.location.origin}${window.location.pathname}?view=proyeccion`, '_blank');
-            }}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow border border-purple-400/30 cursor-pointer"
-            title="Abrir pantalla limpia de auditorio / proyección en nueva pestaña"
-          >
-            <Tv size={14} />
-            <span>Proyección</span>
-            <ExternalLink size={12} className="opacity-70" />
-          </button>
-
-          {/* Botón Volver a la Trivia */}
-          <button
-            type="button"
-            onClick={onBackToGame}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white text-xs font-bold transition-all border border-white/15 cursor-pointer"
-            title="Ir a la pantalla de juego de la Trivia"
-          >
-            <ArrowLeft size={14} />
-            <span className="hidden sm:inline">Ir al Juego</span>
-          </button>
 
           {/* Usuario / Dropdown */}
           <div className="relative">
@@ -169,12 +98,33 @@ export default function AdminHeader({
                   type="button"
                   onClick={() => {
                     setShowUserDropdown(false);
+                    onSelectSection('DASHBOARD');
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                >
+                  <span>Dashboard</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    onSelectSection('QUESTIONS');
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                >
+                  <span>Preguntas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
                     onSelectSection('PARTICIPANTS');
                   }}
                   className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
                 >
-                  <Users size={14} />
-                  <span>Nómina de Participantes</span>
+                  <span>Participantes</span>
                 </button>
 
                 <button
@@ -185,8 +135,7 @@ export default function AdminHeader({
                   }}
                   className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
                 >
-                  <Trophy size={14} />
-                  <span>Clasificados & Podio</span>
+                  <span>Participación</span>
                 </button>
 
                 <button
@@ -197,8 +146,7 @@ export default function AdminHeader({
                   }}
                   className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
                 >
-                  <Sliders size={14} />
-                  <span>Configuración de Trivia</span>
+                  <span>Configuración</span>
                 </button>
 
                 <div className="my-1 border-t border-white/10" />

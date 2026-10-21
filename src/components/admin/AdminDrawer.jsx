@@ -5,6 +5,8 @@
 import React, { useEffect } from 'react';
 import {
   X,
+  LayoutDashboard,
+  HelpCircle,
   Users,
   Trophy,
   Sliders,
@@ -22,7 +24,7 @@ import {
 export default function AdminDrawer({
   isOpen = false,
   onClose,
-  activeSection = 'PARTICIPANTS',
+  activeSection = 'DASHBOARD',
   onSelectSection,
   onLogout,
   onBackToGame,
@@ -30,6 +32,8 @@ export default function AdminDrawer({
   isPublished = false,
   activePhase = 1
 }) {
+  const brandName = import.meta.env.VITE_ADMIN_BRAND_NAME || 'DY-TRIVIA';
+
   // Cerrar Drawer al presionar Escape
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -84,7 +88,7 @@ export default function AdminDrawer({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-heading font-black text-white text-base tracking-tight">
-                  DY-TRIVIA
+                  {brandName}
                 </span>
                 <span className="px-1.5 py-0.5 rounded bg-red-600 text-white font-mono text-[9px] font-black uppercase">
                   v1.2.0
@@ -112,7 +116,45 @@ export default function AdminDrawer({
               Módulos del Sistema
             </p>
             <div className="space-y-1">
-              {/* Nómina de Participantes */}
+              {/* 1. Dashboard */}
+              <button
+                type="button"
+                onClick={() => handleNavClick('DASHBOARD')}
+                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${
+                  activeSection === 'DASHBOARD'
+                    ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <LayoutDashboard size={18} className={activeSection === 'DASHBOARD' ? 'text-white' : 'text-amber-400'} />
+                <div className="flex-1">
+                  <span>Dashboard</span>
+                  <span className="block text-[10px] font-normal opacity-70">
+                    Métricas clave, KPIs y resumen ejecutivo
+                  </span>
+                </div>
+              </button>
+
+              {/* 2. Preguntas */}
+              <button
+                type="button"
+                onClick={() => handleNavClick('QUESTIONS')}
+                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${
+                  activeSection === 'QUESTIONS'
+                    ? 'bg-blue-600 text-white shadow-md font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <HelpCircle size={18} className={activeSection === 'QUESTIONS' ? 'text-white' : 'text-blue-400'} />
+                <div className="flex-1">
+                  <span>Preguntas</span>
+                  <span className="block text-[10px] font-normal opacity-70">
+                    CRUD, opciones, fases y explicaciones
+                  </span>
+                </div>
+              </button>
+
+              {/* 3. Participantes */}
               <button
                 type="button"
                 onClick={() => handleNavClick('PARTICIPANTS')}
@@ -124,14 +166,14 @@ export default function AdminDrawer({
               >
                 <Users size={18} className={activeSection === 'PARTICIPANTS' ? 'text-white' : 'text-red-400'} />
                 <div className="flex-1">
-                  <span>Nómina de Participantes</span>
+                  <span>Participantes</span>
                   <span className="block text-[10px] font-normal opacity-70">
-                    CRUD, Hashes, Envío Mailing, Resets
+                    Nómina, hashes, mailing y resets
                   </span>
                 </div>
               </button>
 
-              {/* Clasificación y Podio */}
+              {/* 4. Participación */}
               <button
                 type="button"
                 onClick={() => handleNavClick('CLASSIFICATION')}
@@ -144,7 +186,7 @@ export default function AdminDrawer({
                 <Trophy size={18} className={activeSection === 'CLASSIFICATION' ? 'text-slate-950' : 'text-amber-400'} />
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span>Clasificación & Podio</span>
+                    <span>Participación</span>
                     {isPublished && (
                       <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-black">
                         Publicada
@@ -152,12 +194,12 @@ export default function AdminDrawer({
                     )}
                   </div>
                   <span className="block text-[10px] font-normal opacity-70">
-                    Ganadores, Podio 3D Gamer y Publicación
+                    Resultados, podio 3D y auditoría
                   </span>
                 </div>
               </button>
 
-              {/* Configuración de la Trivia */}
+              {/* 5. Configuración */}
               <button
                 type="button"
                 onClick={() => handleNavClick('CONFIG')}
@@ -169,9 +211,9 @@ export default function AdminDrawer({
               >
                 <Sliders size={18} className={activeSection === 'CONFIG' ? 'text-white' : 'text-indigo-400'} />
                 <div className="flex-1">
-                  <span>Configuración de Trivia</span>
+                  <span>Configuración</span>
                   <span className="block text-[10px] font-normal opacity-70">
-                    Fase {activePhase}, Tiempos, Parámetros Supabase
+                    Fases, tiempos y parámetros de juego
                   </span>
                 </div>
               </button>

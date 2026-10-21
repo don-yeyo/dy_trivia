@@ -73,10 +73,20 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 
 10. **Panel de Administración Corporativo Don Yeyo (Guideline Profesional)**:
    - **Desacople de la Estética Gamer:** El área de administración prescinde del fondo giratorio animado (`SunburstBackground`) y adopta una interfaz corporativa limpia de sistema de gestión en tono `slate-950` inspirada en la directiva de diseño de Don Yeyo (`dy_shigma`).
-   - **Aprovechamiento de Pantalla Completa (Full Width):** La grilla de participantes se expande en toda la anchura del monitor sin restricciones de contenedor angosto, otorgando máxima legibilidad y confort para auditoría masiva de colaboradores y estados de trivia.
-   - **Header Sticky Corporativo (`AdminHeader`):** Barra superior fija con isotipo Don Yeyo, badge de motor de base de datos (`Supabase`), accesos rápidos a las secciones principales, botón para lanzar la Pantalla Limpia de Proyección, retorno al juego y dropdown de sesión del usuario administrador.
-   - **Menú Drawer Deslizable (`AdminDrawer`):** Menú lateral categorizado con overlay y efecto `backdrop-blur`, agrupando: Módulos del Sistema (Nómina de Participantes, Clasificación & Podio, Configuración de Trivia), Vistas Públicas & Auditorio (Proyección, Ranking Público, Volver al Juego) y Logout seguro.
+   - **Aprovechamiento de Pantalla Completa (Full Width):** Las vistas y tablas se expanden en toda la anchura del monitor sin restricciones de contenedor angosto, otorgando máxima legibilidad y confort.
+   - **Header Sobrio y Limpio (`AdminHeader`):** Barra superior fija con isotipo Don Yeyo, marca parametrizable por variable de entorno (`VITE_ADMIN_BRAND_NAME`), badge de motor de base de datos (`Supabase`) y menú de usuario con logout.
+   - **Menú Drawer Deslizable (`AdminDrawer`):** Menú lateral categorizado con overlay y efecto `backdrop-blur`, estructurado en las siguientes 5 secciones clave:
+     1. **Dashboard:** Vista por defecto al ingresar, con KPIs de inscriptos, progreso de participación, estado de fase y podio provisional.
+     2. **Preguntas:** Gestor CRUD integral de preguntas por fase con opciones dinámicas y explicaciones pedagógicas.
+     3. **Participantes:** Auditoría de colaboradores, generación de links únicos con hash, seguimiento de mailing y resets.
+     4. **Participación:** Control de auditoría y publicación oficial, podio 3D Gamer y exportación a planilla Excel.
+     5. **Configuración:** Parámetros de juego, temporizador por pregunta, penalizaciones, fases y fórmulas de cálculo.
    - **Conservación Estricta de la Pantalla de Juego y Podio 3D:** Toda la experiencia lúdica del participante (`TriviaGame`, `SplashIntro`, `GameOver`) y la estética 3D del Podio Gamer se mantienen 100% intactas para cuando se proyecten o consulten los resultados oficiales.
+
+11. **Gestor CRUD de Preguntas y Fases (Admin API & UI)**:
+   - **Gestión por Fase Numérica:** Selector de fase (Fase 1, 2, 3...) con conteo en tiempo real de preguntas registradas.
+   - **Opciones Dinámicas de Respuesta:** Soporte para agregar o quitar opciones (A, B, C, D...), con selector visual para marcar la respuesta correcta.
+   - **Explicación Pedagógica:** Campo dedicado para registrar el fundamento de la respuesta correcta según los estándares de inocuidad alimentaria de Don Yeyo S.A., preparado para retroalimentación formativa y mailing post-trivia.
 
 ---
 

@@ -216,4 +216,44 @@ export class DatabaseAdapter {
   async resetParticipantTrivia(legajo, phase = null) {
     throw new Error(`${this.name}.resetParticipantTrivia() no implementado`);
   }
+
+  /**
+   * Obtiene la lista completa de preguntas con respuesta correcta y explicación para el administrador.
+   * @param {number|null} [phase=null]
+   * @returns {Promise<Array<any>>}
+   */
+  async getQuestionsAdmin(phase = null) {
+    throw new Error(`${this.name}.getQuestionsAdmin() no implementado`);
+  }
+
+  /**
+   * Crea una nueva pregunta en el sistema.
+   * @param {Object} questionData
+   * @returns {Promise<{success: boolean, data?: any, error?: string}>}
+   */
+  async createQuestion(questionData) {
+    throw new Error(`${this.name}.createQuestion() no implementado`);
+  }
+
+  /**
+   * Actualiza una pregunta existente.
+   * @param {number} fase
+   * @param {number} id
+   * @param {Object} questionData
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async updateQuestion(fase, id, questionData) {
+    throw new Error(`${this.name}.updateQuestion() no implementado`);
+  }
+
+  /**
+   * Elimina una pregunta.
+   * @param {number} fase
+   * @param {number} id
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async deleteQuestion(fase, id) {
+    throw new Error(`${this.name}.deleteQuestion() no implementado`);
+  }
 }
+

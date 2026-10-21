@@ -31,6 +31,8 @@ import ClassificationTable from './ClassificationTable';
 import ProjectionView from './ProjectionView';
 import ImportParticipantsModal from './ImportParticipantsModal';
 import AdminParticipantsView from './AdminParticipantsView';
+import AdminDashboardView from './admin/AdminDashboardView';
+import AdminQuestionsView from './admin/AdminQuestionsView';
 import AdminHeader from './admin/AdminHeader';
 import AdminDrawer from './admin/AdminDrawer';
 import {
@@ -64,8 +66,8 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
   // Modo del admin: 'CONFIG' (panel técnico) o 'PROJECTION' (pantalla limpia para proyector)
   const [adminMode, setAdminMode] = useState('CONFIG');
 
-  // Sección activa del panel: 'PARTICIPANTS' | 'CLASSIFICATION' | 'CONFIG'
-  const [adminSection, setAdminSection] = useState('PARTICIPANTS');
+  // Sección activa del panel: 'DASHBOARD' | 'QUESTIONS' | 'PARTICIPANTS' | 'CLASSIFICATION' | 'CONFIG'
+  const [adminSection, setAdminSection] = useState('DASHBOARD');
 
   // Estados de configuración de Google Sheets
   const [activePhase, setActivePhase] = useState(appConfig?.activePhase || 1);
@@ -337,17 +339,14 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
             <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-white p-3.5 shadow-xl flex items-center justify-center border border-white/10">
               <img src="/logo-donyeyo.svg" alt="Don Yeyo" className="w-full h-full object-contain" />
             </div>
-            <div className="flex items-center justify-center gap-2 mb-1.5">
+            <div className="flex items-center justify-center gap-2">
               <span className="font-heading font-black text-white text-xl tracking-tight">
-                DY-TRIVIA
+                {import.meta.env.VITE_ADMIN_BRAND_NAME || 'DY-TRIVIA'}
               </span>
               <span className="px-2 py-0.5 rounded-md bg-red-600 text-white font-mono text-[10px] font-black uppercase">
                 Admin Console
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-medium">
-              Gestión Integral • Semana de la Inocuidad 2026
-            </p>
           </div>
 
           {/* Formulario */}
@@ -509,7 +508,33 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
 
       {/* Contenido Principal a Ancho Completo */}
       <main className="flex-1 w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-6">
-        {/* SECCIÓN 1: NÓMINA DE PARTICIPANTES (FULL WIDTH) */}
+        {/* SECCIÓN 1: DASHBOARD EJECUTIVO */}
+        {adminSection === 'DASHBOARD' && (
+          <div className="w-full max-w-7xl mx-auto animate-casual-in">
+            <AdminDashboardView
+              activePhase={activePhase}
+              isPhaseClosed={isPhaseClosed}
+              isPublished={isPublished}
+              classificationData={classificationData}
+              onNavigateSection={setAdminSection}
+              onOpenProjection={() => {
+                window.open(
+                  `${window.location.origin}${window.location.pathname}?view=proyeccion`,
+                  '_blank'
+                );
+              }}
+            />
+          </div>
+        )}
+
+        {/* SECCIÓN 2: GESTIÓN CRUD DE PREGUNTAS */}
+        {adminSection === 'QUESTIONS' && (
+          <div className="w-full max-w-7xl mx-auto animate-casual-in">
+            <AdminQuestionsView initialPhase={activePhase} />
+          </div>
+        )}
+
+        {/* SECCIÓN 3: PARTICIPANTES (FULL WIDTH) */}
         {adminSection === 'PARTICIPANTS' && (
           <div className="w-full animate-casual-in">
             <AdminParticipantsView

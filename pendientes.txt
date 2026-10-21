@@ -7,7 +7,9 @@
 - [x] Reenvío de mailing (opciones individual por fila y masivo por lote, test de visualización, modal interactivo en Admin)
 - [x] Quitar el uso de Google Sheets (trivia y mailing funcionando 100% con Supabase)
 - [x] Rediseño profesional del Panel de Admin (sin fondo giratorio gamer, ancho completo, Header corporativo sticky, Drawer deslizable y modularización de Participantes, Podio/Clasificación y Configuración)
-- [ ] CRUD de preguntas y fases
+- [x] Drawer de navegación con orden estricto: Dashboard (default), Preguntas, Participantes, Participación y Configuración
+- [x] CRUD de preguntas y fases (con opciones dinámicas, fase numérica, puntos, respuesta correcta y explicación pedagógica)
+- [x] Limpieza de Header (sin nav central, sin botones redundantes) y parametrización de marca por VITE_ADMIN_BRAND_NAME
 - [ ] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una
 - [ ] Detectar si no hay conexión o falla algo contra la API de Supabase
 - [ ] Config: mostrar o no mostrar área del participante

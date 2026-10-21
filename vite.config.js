@@ -14,6 +14,7 @@ import { handler as submitAnswerHandler } from './netlify/functions/submit-answe
 import { handler as triviaApiHandler } from './netlify/functions/trivia-api.js';
 import { handler as participantsHandler } from './netlify/functions/participants.js';
 import { handler as mailingHandler } from './netlify/functions/mailing.js';
+import { handler as adminQuestionsHandler } from './netlify/functions/admin-questions.js';
 
 const apiHandlers = {
   'admin-auth': adminAuthHandler,
@@ -24,6 +25,7 @@ const apiHandlers = {
   'participants': participantsHandler,
   'mailing': mailingHandler,
   'questions': questionsHandler,
+  'admin-questions': adminQuestionsHandler,
   'submit-answer': submitAnswerHandler,
   'trivia-api': triviaApiHandler
 };

@@ -916,4 +916,246 @@ export class SupabaseAdapter extends DatabaseAdapter {
 
     return { success: true };
   }
+
+  // ==========================================================================
+  // 📚 GESTIÓN CRUD DE PREGUNTAS (ADMIN CONSOLE)
+  // ==========================================================================
+
+  /**
+   * Helper para obtener mapa de explicaciones desde la tabla config
+   */
+  async _getExplanationsMap() {
+    try {
+      const supabase = this.getClient();
+      const { data } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'QUESTION_EXPLANATIONS')
+        .maybeSingle();
+
+      if (data && data.valor) {
+        return typeof data.valor === 'string' ? JSON.parse(data.valor) : data.valor;
+      }
+    } catch (e) {
+      // Ignorar fallback
+    }
+    return {};
+  }
+
+  /**
+   * Helper para guardar mapa de explicaciones en la tabla config
+   */
+  async _saveExplanationsMap(map) {
+    try {
+      const supabase = this.getClient();
+      await supabase
+        .from('config')
+        .upsert({
+          clave: 'QUESTION_EXPLANATIONS',
+          valor: JSON.stringify(map),
+          descripcion: 'Explicaciones pedagógicas de respuestas correctas por fase y pregunta',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'clave' });
+    } catch (e) {
+      console.warn('[SupabaseAdapter] Advertencia guardando explicaciones:', e.message);
+    }
+  }
+
+  /**
+   * Obtiene la lista completa de preguntas para el administrador (con respuestas correctas y explicaciones)
+   */
+  async getQuestionsAdmin(phase = null) {
+    const supabase = this.getClient();
+    try {
+      let query = supabase.from('questions').select('*').order('fase', { ascending: true }).order('id', { ascending: true });
+
+      if (phase !== null && phase !== undefined && phase !== '') {
+        query = query.eq('fase', parseInt(phase, 10));
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('[SupabaseAdapter] Error en getQuestionsAdmin:', error.message);
+        return [];
+      }
+
+      const explanationsMap = await this._getExplanationsMap();
+
+      return (data || []).map(q => {
+        const key = `${q.fase}_${q.id}`;
+        let parsedOptions = [];
+        try {
+          parsedOptions = Array.isArray(q.opciones) ? q.opciones : JSON.parse(q.opciones || '[]');
+        } catch (e) {
+          parsedOptions = [];
+        }
+
+        return {
+          id: q.id,
+          fase: q.fase,
+          pregunta: q.pregunta,
+          opciones: parsedOptions,
+          respuesta_correcta: q.respuesta_correcta,
+          puntos: q.puntos || 100,
+          explicacion: q.explicacion || explanationsMap[key] || '',
+          created_at: q.created_at
+        };
+      });
+    } catch (err) {
+      console.error('[SupabaseAdapter] Excepción en getQuestionsAdmin:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Crea una nueva pregunta en una fase
+   */
+  async createQuestion(questionData = {}) {
+    const supabase = this.getClient();
+    const fase = parseInt(questionData.fase, 10) || 1;
+    const pregunta = String(questionData.pregunta || '').trim();
+    const puntos = parseInt(questionData.puntos, 10) || 100;
+    const respuestaCorrecta = parseInt(questionData.respuesta_correcta, 10) || 1;
+    const explicacion = String(questionData.explicacion || '').trim();
+
+    if (!pregunta) {
+      return { success: false, error: 'El texto de la pregunta es obligatorio' };
+    }
+
+    const opciones = Array.isArray(questionData.opciones) ? questionData.opciones : [];
+    if (opciones.length < 2) {
+      return { success: false, error: 'La pregunta debe tener al menos 2 opciones' };
+    }
+
+    try {
+      // Determinar ID correlativo para la fase si no se provee
+      let targetId = parseInt(questionData.id, 10);
+      if (!targetId || isNaN(targetId)) {
+        const { data: existingQuestions } = await supabase
+          .from('questions')
+          .select('id')
+          .eq('fase', fase)
+          .order('id', { ascending: false })
+          .limit(1);
+
+        targetId = existingQuestions && existingQuestions.length > 0 ? (existingQuestions[0].id + 1) : 1;
+      }
+
+      const insertPayload = {
+        id: targetId,
+        fase,
+        pregunta,
+        opciones,
+        respuesta_correcta: respuestaCorrecta,
+        puntos
+      };
+
+      const { data, error } = await supabase
+        .from('questions')
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[SupabaseAdapter] Error insertando pregunta:', error.message);
+        return { success: false, error: error.message };
+      }
+
+      // Guardar explicación si se proporcionó
+      if (explicacion) {
+        const map = await this._getExplanationsMap();
+        map[`${fase}_${targetId}`] = explicacion;
+        await this._saveExplanationsMap(map);
+      }
+
+      return {
+        success: true,
+        data: {
+          ...data,
+          explicacion
+        }
+      };
+    } catch (err) {
+      console.error('[SupabaseAdapter] Excepción en createQuestion:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Actualiza una pregunta existente
+   */
+  async updateQuestion(fase, id, questionData = {}) {
+    const supabase = this.getClient();
+    const targetFase = parseInt(fase, 10);
+    const targetId = parseInt(id, 10);
+
+    const updates = {};
+    if (questionData.pregunta !== undefined) updates.pregunta = String(questionData.pregunta).trim();
+    if (questionData.puntos !== undefined) updates.puntos = parseInt(questionData.puntos, 10);
+    if (questionData.respuesta_correcta !== undefined) updates.respuesta_correcta = parseInt(questionData.respuesta_correcta, 10);
+    if (questionData.opciones !== undefined) {
+      updates.opciones = Array.isArray(questionData.opciones) ? questionData.opciones : [];
+    }
+
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .update(updates)
+        .eq('fase', targetFase)
+        .eq('id', targetId);
+
+      if (error) {
+        console.error('[SupabaseAdapter] Error actualizando pregunta:', error.message);
+        return { success: false, error: error.message };
+      }
+
+      // Actualizar explicación si viene en el payload
+      if (questionData.explicacion !== undefined) {
+        const map = await this._getExplanationsMap();
+        map[`${targetFase}_${targetId}`] = String(questionData.explicacion).trim();
+        await this._saveExplanationsMap(map);
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('[SupabaseAdapter] Excepción en updateQuestion:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Elimina una pregunta de la fase
+   */
+  async deleteQuestion(fase, id) {
+    const supabase = this.getClient();
+    const targetFase = parseInt(fase, 10);
+    const targetId = parseInt(id, 10);
+
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .delete()
+        .eq('fase', targetFase)
+        .eq('id', targetId);
+
+      if (error) {
+        console.error('[SupabaseAdapter] Error eliminando pregunta:', error.message);
+        return { success: false, error: error.message };
+      }
+
+      // Limpiar explicación si existía
+      const map = await this._getExplanationsMap();
+      const key = `${targetFase}_${targetId}`;
+      if (map[key]) {
+        delete map[key];
+        await this._saveExplanationsMap(map);
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('[SupabaseAdapter] Excepción en deleteQuestion:', err);
+      return { success: false, error: err.message };
+    }
+  }
 }
+
