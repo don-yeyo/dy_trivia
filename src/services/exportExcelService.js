@@ -107,13 +107,13 @@ export function exportClassificationToExcel({
   const qualifiedList = allParticipants.filter(p => p.rank <= topCount);
   const qualifiedRows = [
     ['DON YEYO S.A. - DESAFÍO DE INOCUIDAD 2026'],
-    [`NÓMINA DE COLABORADORES CLASIFICADOS - FASE ${phase} (TOP ${topCount})`],
+    [`NÓMINA DE PARTICIPANTES CLASIFICADOS - FASE ${phase} (TOP ${topCount})`],
     [`Pasan oficialmente a la siguiente instancia de la Trivia de Inocuidad`],
     [],
     [
       'Puesto',
       'Legajo',
-      'Colaborador',
+      'Participante',
       'Sector',
       'Puntaje',
       'Aciertos',
@@ -152,7 +152,7 @@ export function exportClassificationToExcel({
     ['DON YEYO S.A. - DESAFÍO DE INOCUIDAD 2026'],
     [`PODIO DE HONOR - FASE ${phase}`],
     [],
-    ['Medalla', 'Puesto', 'Legajo', 'Colaborador', 'Sector', 'Puntaje', 'Aciertos', 'Tiempo Total']
+    ['Medalla', 'Puesto', 'Legajo', 'Participante', 'Sector', 'Puntaje', 'Aciertos', 'Tiempo Total']
   ];
 
   const medallas = ['ORO (1° Campeón)', 'PLATA (2° Puesto)', 'BRONCE (3° Puesto)'];

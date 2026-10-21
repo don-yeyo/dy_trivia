@@ -159,7 +159,7 @@ export default function ClassificationTable({
                   <span>2. El tiempo desempata</span>
                 </div>
                 <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-                  Entre colaboradores con la <strong>misma cantidad de aciertos</strong>, se suma un bonus de velocidad: <strong>(Aciertos ÷ Segundos totales) × 1.000</strong>. Quien respondió más rápido suma más bonus.
+                  Entre participantes con la <strong>misma cantidad de aciertos</strong>, se suma un bonus de velocidad: <strong>(Aciertos ÷ Segundos totales) × 1.000</strong>. Quien respondió más rápido suma más bonus.
                 </p>
               </div>
             </div>
@@ -170,7 +170,7 @@ export default function ClassificationTable({
                 💡 Ejemplo práctico de cálculo:
               </span>
               <p className="text-xs text-slate-200 mb-2.5 leading-snug">
-                Si un colaborador responde correctamente <strong className="text-emerald-400">15 preguntas</strong> y tardó en total <strong className="text-cyan-400">3 minutos y 13 segundos (193 segundos)</strong>:
+                Si un participante responde correctamente <strong className="text-emerald-400">15 preguntas</strong> y tardó en total <strong className="text-cyan-400">3 minutos y 13 segundos (193 segundos)</strong>:
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
@@ -203,7 +203,7 @@ export default function ClassificationTable({
         {/* Cabecera de la Tabla (EXCLUSIVA DESKTOP) */}
         <div className="hidden sm:grid sm:grid-cols-12 sm:gap-2 px-8 py-5 bg-slate-900/90 border-b border-white/10 text-sm font-black text-slate-300 uppercase tracking-wider text-left">
           <div className="sm:col-span-1 text-center">Pos.</div>
-          <div className="sm:col-span-6">Colaborador</div>
+          <div className="sm:col-span-6">Participante</div>
           <div className="sm:col-span-3 text-right">Puntaje</div>
           <div className="sm:col-span-2 text-right">Tiempo</div>
         </div>
@@ -324,7 +324,7 @@ export default function ClassificationTable({
                       </span>
                     </div>
 
-                    {/* Colaborador */}
+                    {/* Participante */}
                     <div className="sm:col-span-6 flex flex-col justify-center min-w-0 pr-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-white truncate text-base">

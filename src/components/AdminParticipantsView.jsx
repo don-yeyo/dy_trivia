@@ -64,8 +64,9 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
   const [triviaStatusFilter, setTriviaStatusFilter] = useState('ALL'); // 'ALL' | 'COMPLETED' | 'PARTIAL' | 'NOT_PLAYED'
 
   // Paginación
+  // Paginación parametrizada por variable de entorno (por defecto 100)
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 20;
+  const pageSize = Number(import.meta.env.VITE_ADMIN_PARTICIPANTS_PER_PAGE) || 100;
 
   // Estado de Copia
   const [copiedLegajo, setCopiedLegajo] = useState(null);
@@ -250,7 +251,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
   // 1. Copiar Link de Participación
   const handleCopyLink = (p) => {
     if (!p.token_hash) {
-      alert('Este colaborador no tiene token hash generado aún. Primero genera su hash.');
+      alert('Este participante no tiene token hash generado aún. Primero genera su hash.');
       return;
     }
     const url = buildParticipationUrl(p.token_hash);
@@ -293,11 +294,11 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
   // 3. Enviar / Reenviar Email Individual
   const handleSendSingleEmail = async (p) => {
     if (!p.email) {
-      alert(`El colaborador ${p.nombre} ${p.apellido} no tiene email registrado.`);
+      alert(`El participante ${p.nombre} ${p.apellido} no tiene email registrado.`);
       return;
     }
     if (!p.token_hash) {
-      alert(`El colaborador ${p.nombre} ${p.apellido} no tiene token hash generado. Genera su hash primero.`);
+      alert(`El participante ${p.nombre} ${p.apellido} no tiene token hash generado. Genera su hash primero.`);
       return;
     }
 
@@ -352,15 +353,15 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
     if (targetCount === 0) {
       alert(
         isPending
-          ? 'No hay colaboradores pendientes de envío con email válido.'
-          : 'No hay colaboradores con email válido.'
+          ? 'No hay participantes pendientes de envío con email válido.'
+          : 'No hay participantes con email válido.'
       );
       return;
     }
 
     const confirmMsg = isPending
-      ? `¿Iniciar envío masivo de invitaciones a los ${targetCount} colaboradores PENDIENTES?`
-      : `⚠️ ATENCIÓN: Se REENVIARÁ el correo de invitación a TODOS los ${targetCount} colaboradores con email registrado.\n\n¿Deseas continuar?`;
+      ? `¿Iniciar envío masivo de invitaciones a los ${targetCount} participantes PENDIENTES?`
+      : `⚠️ ATENCIÓN: Se REENVIARÁ el correo de invitación a TODOS los ${targetCount} participantes con email registrado.\n\n¿Deseas continuar?`;
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -441,7 +442,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
 
     if (
       !window.confirm(
-        `Hay ${metrics.withoutHash} colaborador(es) sin hash de acceso.\n\n¿Deseas generarlos ahora automáticamente utilizando la frase semilla oficial?`
+        `Hay ${metrics.withoutHash} participante(s) sin hash de acceso.\n\n¿Deseas generarlos ahora automáticamente utilizando la frase semilla oficial?`
       )
     ) {
       return;
@@ -532,7 +533,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
 
       if (res.success) {
         setIsEditModalOpen(false);
-        notify(`✨ Nuevo colaborador registrado: ${formData.nombre} ${formData.apellido} (${formData.legajo})`);
+        notify(`✨ Nuevo participante registrado: ${formData.nombre} ${formData.apellido} (${formData.legajo})`);
         await loadParticipants();
       } else {
         setFormError(res.error || 'No se pudo crear el participante.');
@@ -570,7 +571,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
     setIsDeleting(false);
 
     if (res.success) {
-      notify(`🗑️ Colaborador ${p.nombre} ${p.apellido} (${p.legajo}) eliminado correctamente.`);
+      notify(`🗑️ Participante ${p.nombre} ${p.apellido} (${p.legajo}) eliminado correctamente.`);
       setDeleteModalParticipant(null);
       await loadParticipants();
     } else {
@@ -595,12 +596,12 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
           TARJETAS KPI RESUMEN DE PARTICIPANTES
           ========================================================================= */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Total Colaboradores */}
+        {/* Total Participantes */}
         <div className="glass-panel p-4 sm:p-5 rounded-2xl flex items-center justify-between border border-white/10 shadow-lg">
           <div>
             <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Total Nómina</p>
             <h3 className="text-2xl sm:text-3xl font-black text-white mt-1">{metrics.total}</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Colaboradores registrados</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Participantes registrados</p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center">
             <Users size={24} />
@@ -687,7 +688,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                 onClick={handleGenerateAllMissing}
                 disabled={isBulkGenerating}
                 className="px-4 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-                title="Genera token hash para todos los colaboradores que aún no lo tienen"
+                title="Genera token hash para todos los participantes que aún no lo tienen"
               >
                 <Zap size={16} className={isBulkGenerating ? 'animate-spin' : ''} />
                 <span>Generar {metrics.withoutHash} Hashes</span>
@@ -699,7 +700,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               className="px-4 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-2 cursor-pointer"
             >
               <UserPlus size={16} />
-              <span>Nuevo Colaborador</span>
+              <span>Nuevo Participante</span>
             </button>
 
             {onOpenImportCsv && (
@@ -802,12 +803,12 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             <h4 className="text-white font-bold text-base">No se encontraron participantes</h4>
             <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
               {searchTerm ||
-              sectorFilter !== 'ALL' ||
-              emailStatusFilter !== 'ALL' ||
-              hashStatusFilter !== 'ALL' ||
-              triviaStatusFilter !== 'ALL'
+                sectorFilter !== 'ALL' ||
+                emailStatusFilter !== 'ALL' ||
+                hashStatusFilter !== 'ALL' ||
+                triviaStatusFilter !== 'ALL'
                 ? 'No hay registros que coincidan con los filtros aplicados. Prueba limpiar la búsqueda.'
-                : 'Aún no hay colaboradores cargados. Agrega uno nuevo o importa una lista CSV.'}
+                : 'Aún no hay participantes cargados. Agrega uno nuevo o importa una lista CSV.'}
             </p>
             {(searchTerm || sectorFilter !== 'ALL' || emailStatusFilter !== 'ALL' || hashStatusFilter !== 'ALL' || triviaStatusFilter !== 'ALL') && (
               <button
@@ -829,7 +830,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-900/80 border-b border-white/15 text-[11px] font-black uppercase tracking-wider text-slate-300">
-                  <th className="py-3.5 px-4">Colaborador</th>
+                  <th className="py-3.5 px-4">Participante</th>
                   <th className="py-3.5 px-4">Sector</th>
                   <th className="py-3.5 px-4">Email</th>
                   <th className="py-3.5 px-4 text-center">Link de Acceso / Hash</th>
@@ -851,7 +852,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                       key={p.legajo}
                       className="hover:bg-white/5 transition-colors group"
                     >
-                      {/* Colaborador */}
+                      {/* Participante */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow">
@@ -895,15 +896,14 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                             {/* Botón Copiar Link */}
                             <button
                               onClick={() => handleCopyLink(p)}
-                              className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
-                                isCopied
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${isCopied
                                   ? 'bg-emerald-500 text-white shadow-md'
                                   : 'bg-yellow-400 hover:bg-yellow-300 text-slate-950'
-                              }`}
+                                }`}
                               title="Copiar enlace de acceso directo único"
                             >
                               {isCopied ? <Check size={14} /> : <Copy size={14} />}
-                              <span>{isCopied ? '¡Copiado!' : 'Copiar Link'}</span>
+                              <span>{isCopied ? '¡Copiado!' : ''}</span>
                             </button>
 
                             {/* Abrir en nueva pestaña */}
@@ -944,11 +944,10 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                         <button
                           onClick={() => handleToggleEmail(p)}
                           disabled={isRowLoading}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                            p.email_enviado
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${p.email_enviado
                               ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
                               : 'bg-slate-800/80 text-slate-400 border-white/10 hover:border-white/30 hover:text-white'
-                          }`}
+                            }`}
                           title={p.email_enviado ? 'Click para marcar como NO enviado' : 'Click para marcar como ENVIADO'}
                         >
                           {p.email_enviado ? (
@@ -995,19 +994,18 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                           <button
                             onClick={() => handleSendSingleEmail(p)}
                             disabled={!p.email || isRowLoading}
-                            className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                              !p.email
+                            className={`p-2 rounded-lg transition-colors cursor-pointer ${!p.email
                                 ? 'text-slate-600 opacity-40 cursor-not-allowed'
                                 : p.email_enviado
-                                ? 'text-purple-300 hover:text-white hover:bg-purple-500/20'
-                                : 'text-amber-400 hover:text-white hover:bg-amber-500/20'
-                            }`}
+                                  ? 'text-purple-300 hover:text-white hover:bg-purple-500/20'
+                                  : 'text-amber-400 hover:text-white hover:bg-amber-500/20'
+                              }`}
                             title={
                               !p.email
                                 ? 'Sin correo electrónico cargado'
                                 : p.email_enviado
-                                ? `Reenviar invitación a ${p.email}`
-                                : `Enviar invitación a ${p.email}`
+                                  ? `Reenviar invitación a ${p.email}`
+                                  : `Enviar invitación a ${p.email}`
                             }
                           >
                             <Send size={15} />
@@ -1017,7 +1015,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                           <button
                             onClick={() => handleOpenEditModal(p)}
                             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                            title="Editar datos del colaborador"
+                            title="Editar datos del participante"
                           >
                             <Edit3 size={15} />
                           </button>
@@ -1038,7 +1036,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                           <button
                             onClick={() => setDeleteModalParticipant(p)}
                             className="p-2 rounded-lg text-red-400/80 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer"
-                            title="Eliminar colaborador y sus respuestas"
+                            title="Eliminar participante y sus respuestas"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -1057,7 +1055,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
           <div className="p-4 bg-slate-900/60 border-t border-white/10 flex items-center justify-between text-xs">
             <span className="text-slate-400">
               Página <strong className="text-white">{currentPage}</strong> de{' '}
-              <strong className="text-white">{totalPages}</strong> ({filteredParticipants.length} colaboradores)
+              <strong className="text-white">{totalPages}</strong> ({filteredParticipants.length} participantes)
             </span>
             <div className="flex items-center gap-1.5">
               <button
@@ -1098,7 +1096,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               </div>
               <div>
                 <h3 className="text-lg font-black text-white">
-                  {editingParticipant ? 'Editar Colaborador' : 'Registrar Nuevo Colaborador'}
+                  {editingParticipant ? 'Editar Participante' : 'Registrar Nuevo Participante'}
                 </h3>
                 <p className="text-xs text-slate-300">
                   {editingParticipant
@@ -1221,7 +1219,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black uppercase tracking-wider transition-all shadow-lg shadow-red-600/30 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isSavingForm && <RefreshCw size={14} className="animate-spin" />}
-                  <span>{editingParticipant ? 'Guardar Cambios' : 'Crear Colaborador'}</span>
+                  <span>{editingParticipant ? 'Guardar Cambios' : 'Crear Participante'}</span>
                 </button>
               </div>
             </form>
@@ -1249,18 +1247,17 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             </div>
 
             <p className="text-xs text-slate-300 mb-4 leading-relaxed">
-              Esta acción eliminará las respuestas grabadas para este colaborador, permitiéndole ingresar nuevamente al
+              Esta acción eliminará las respuestas grabadas para este participante, permitiéndole ingresar nuevamente al
               enlace y responder la trivia desde cero como si fuera su primera vez.
             </p>
 
             {/* Opciones de Reset */}
             <div className="space-y-2 mb-6">
               <label
-                className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                  resetPhaseOption === 'ACTIVE'
+                className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${resetPhaseOption === 'ACTIVE'
                     ? 'bg-amber-500/15 border-amber-500/60 text-white'
                     : 'bg-slate-900/60 border-white/10 text-slate-400 hover:border-white/20'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2.5 text-xs font-bold">
                   <input
@@ -1277,11 +1274,10 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               </label>
 
               <label
-                className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                  resetPhaseOption === 'ALL'
+                className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${resetPhaseOption === 'ALL'
                     ? 'bg-red-500/15 border-red-500/60 text-white'
                     : 'bg-slate-900/60 border-white/10 text-slate-400 hover:border-white/20'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2.5 text-xs font-bold">
                   <input
@@ -1331,7 +1327,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                 <Trash2 size={22} />
               </div>
               <div>
-                <h3 className="text-lg font-black text-white">Eliminar Colaborador</h3>
+                <h3 className="text-lg font-black text-white">Eliminar Participante</h3>
                 <p className="text-xs text-red-300">
                   {deleteModalParticipant.nombre} {deleteModalParticipant.apellido} (Legajo:{' '}
                   {deleteModalParticipant.legajo})
@@ -1340,7 +1336,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             </div>
 
             <p className="text-xs text-slate-300 mb-6 leading-relaxed">
-              ¿Estás seguro de que deseas eliminar este colaborador? Se borrarán sus datos de la nómina y todas las
+              ¿Estás seguro de que deseas eliminar este participante? Se borrarán sus datos de la nómina y todas las
               respuestas que haya enviado en la trivia. Esta acción no se puede deshacer.
             </p>
 
@@ -1465,7 +1461,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/10 space-y-4 mb-5">
               <div className="flex items-center gap-2 text-xs font-bold text-white">
                 <SendHorizontal size={15} className="text-emerald-400" />
-                <span>2. Despacho Masivo a Colaboradores</span>
+                <span>2. Despacho Masivo a Participantes</span>
               </div>
 
               {isMailingRunning && (
@@ -1500,7 +1496,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                   onClick={() => handleBatchMailing('ALL')}
                   disabled={isMailingRunning || isSendingTest}
                   className="p-3.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-                  title="Reenvía el enlace a todos los colaboradores con correo cargado"
+                  title="Reenvía el enlace a todos los participantes con correo cargado"
                 >
                   <RefreshCw size={16} />
                   <span>Reenviar a Todos ({metrics.withEmail})</span>

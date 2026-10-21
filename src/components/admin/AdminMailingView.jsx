@@ -112,8 +112,8 @@ export default function AdminMailingView({ activePhase = 1 }) {
   const handleSendBatch = async () => {
     const isResend = resendAll;
     const confirmMsg = isResend
-      ? `¿Estás seguro de que deseas REENVIAR masivamente el correo a TODOS los colaboradores (${mailingStatus?.totalWithEmail || 0} con email)?\n\nEsta acción enviará invitaciones incluso a quienes ya la hayan recibido.`
-      : `¿Confirmas el envío de invitaciones a los ${mailingStatus?.pendingCount || 0} colaboradores que aún no la recibieron?`;
+      ? `¿Estás seguro de que deseas REENVIAR masivamente el correo a TODOS los participantes (${mailingStatus?.totalWithEmail || 0} con email)?\n\nEsta acción enviará invitaciones incluso a quienes ya la hayan recibido.`
+      : `¿Confirmas el envío de invitaciones a los ${mailingStatus?.pendingCount || 0} participantes que aún no la recibieron?`;
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -542,7 +542,7 @@ export default function AdminMailingView({ activePhase = 1 }) {
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
                 Esta campaña está preparada para dispararse una vez finalizada la fase del torneo.
-                Cada colaborador recibirá su reporte individual con los puntos logrados, las preguntas en las que acertó, en cuáles se equivocó, y la <strong>justificación normativa de la respuesta correcta</strong> cargada en el banco de preguntas.
+                Cada participante recibirá su reporte individual con los puntos logrados, las preguntas en las que acertó, en cuáles se equivocó, y la <strong>justificación normativa de la respuesta correcta</strong> cargada en el banco de preguntas.
               </p>
             </div>
 
@@ -563,7 +563,7 @@ export default function AdminMailingView({ activePhase = 1 }) {
                 </h4>
               </div>
               <span className="text-xs text-slate-400 font-semibold">
-                Ejemplo con colaborador simulado
+                Ejemplo con participante simulado
               </span>
             </div>
 

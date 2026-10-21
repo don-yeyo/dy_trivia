@@ -250,7 +250,7 @@ export default function ImportParticipantsModal({ isOpen, onClose, onSuccess }) 
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                   <FileText size={14} className="text-slate-600" />
-                  2. Vista Previa de Registros a Insertar ({parsedParticipants.length} colaboradores)
+                  2. Vista Previa de Registros a Insertar ({parsedParticipants.length} participantes)
                 </h4>
                 <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
                   Sin Duplicados por Legajo
@@ -321,7 +321,7 @@ export default function ImportParticipantsModal({ isOpen, onClose, onSuccess }) 
             ) : (
               <>
                 <Users size={18} />
-                <span>Importar {parsedParticipants.length} Colaboradores</span>
+                <span>Importar {parsedParticipants.length} Participantes</span>
               </>
             )}
           </button>

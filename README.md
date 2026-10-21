@@ -137,6 +137,7 @@ Las configuraciones dinámicas de la trivia (fases, cierre, clasificados, tiempo
 | `SCORE_TIME_FACTOR` | 🔒 Backend | Factor multiplicador para el bonus por velocidad | `1000` (default) |
 | `VITE_SCORE_TIME_FACTOR` | 🌐 Frontend | Factor multiplicador de velocidad para el cliente | `1000` (default) |
 | `VITE_APP_TITLE` | 🌐 Frontend | Título institucional de la aplicación | `"Trivia Inocuidad 2026 - Don Yeyo"` |
+| `VITE_ADMIN_PARTICIPANTS_PER_PAGE` | 🌐 Frontend | Cantidad de participantes por página en grilla admin | `100` (default) |
 | `VITE_DATA_SOURCE` | 🌐 Frontend | Switch de origen de datos | `"google_sheets_api"` o `"csv"` |
 | `VITE_MAX_TIME_TOTAL` | 🌐 Frontend | Tiempo máximo de permanencia total en segundos | `600` |
 | `VITE_ALLOW_SESSION_RESET` | 🌐 Frontend | Modo desarrollo: permitir reinicio de sesión | `false` (prod) / `true` (dev) |

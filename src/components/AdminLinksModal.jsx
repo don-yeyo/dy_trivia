@@ -38,7 +38,7 @@ export default function AdminLinksModal({ isOpen, onClose }) {
         </div>
 
         <p className="text-xs text-gray-300 mb-4">
-          Aquí puedes probar la aplicación accediendo con los enlaces únicos generados a partir de la frase semilla y los datos de cada colaborador:
+          Aquí puedes probar la aplicación accediendo con los enlaces únicos generados a partir de la frase semilla y los datos de cada participante:
         </p>
 
         <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">

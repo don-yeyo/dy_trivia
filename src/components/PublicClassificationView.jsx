@@ -142,7 +142,7 @@ export default function PublicClassificationView({ onBackToGame, appConfig }) {
           </h3>
           {/* 
           <p className="text-xs sm:text-sm text-yellow-300 font-bold mt-1.5 sm:mt-2">
-            {classificationData.totalJugados || 0} colaboradores evaluados de {classificationData.totalInscriptos || 0} inscriptos
+            {classificationData.totalJugados || 0} participantes evaluados de {classificationData.totalInscriptos || 0} inscriptos
           </p>
           */}
         </div>

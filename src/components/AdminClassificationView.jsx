@@ -606,7 +606,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
             {isPublished
-              ? `Los colaboradores ya pueden ver el podio de 3 ganadores y la tabla oficial en sus dispositivos. Publicado el: ${publishedAt ? new Date(publishedAt).toLocaleString() : 'Recientemente'
+              ? `Los participantes ya pueden ver el podio de 3 ganadores y la tabla oficial en sus dispositivos. Publicado el: ${publishedAt ? new Date(publishedAt).toLocaleString() : 'Recientemente'
               }.`
               : 'La fase puede estar cerrada para responder, pero los participantes verán la pantalla de espera o fin de fase hasta que pulses este botón para oficializar el podio.'}
           </p>
@@ -867,7 +867,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                 </div>
                 <p className="text-[10px] text-slate-500 mt-2">
                   {isPublished
-                    ? 'Podio y ranking visibles a todos los colaboradores.'
+                    ? 'Podio y ranking visibles a todos los participantes.'
                     : 'Fase en auditoría: podio oculto a participantes.'}
                 </p>
               </div>
@@ -1022,7 +1022,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
                   MOSTRAR_NO_RESPONDIDOS_EN_TABLA
                 </span>
                 <span className="text-[10px] text-slate-500 block mb-2">
-                  Mostrar a colaboradores inscriptos que aún no participaron.
+                  Mostrar a participantes inscriptos que aún no participaron.
                 </span>
                 <button
                   type="button"
@@ -1170,7 +1170,7 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={(result) => {
-          setStatusMessage(`¡${result.total || 'Lista de'} colaboradores importados exitosamente!`);
+          setStatusMessage(`¡${result.total || 'Lista de'} participantes importados exitosamente!`);
           setTimeout(() => setStatusMessage(''), 8000);
         }}
       />

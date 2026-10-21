@@ -135,7 +135,7 @@ export default function AdminDashboardView({
         <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-white/10 shadow-xl flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-              Colaboradores Inscriptos
+              Participantes Inscriptos
             </span>
             <span className="text-2xl sm:text-3xl font-heading font-black text-white">
               {totalInscriptos}
@@ -199,7 +199,7 @@ export default function AdminDashboardView({
               {isPublished ? 'Publicado' : 'Borrador'}
             </span>
             <span className="text-[11px] text-slate-400 block mt-1">
-              {isPublished ? 'Visible a los colaboradores' : 'En auditoría técnica'}
+              {isPublished ? 'Visible a los participantes' : 'En auditoría técnica'}
             </span>
           </div>
           <div className={`w-13 h-13 rounded-2xl flex items-center justify-center shrink-0 border ${
@@ -221,7 +221,7 @@ export default function AdminDashboardView({
                 <span>Progreso de Participación &bull; Fase {activePhase}</span>
               </h3>
               <span className="text-xs text-slate-400 font-bold">
-                {totalJugados} de {totalInscriptos} colaboradores
+                {totalJugados} de {totalInscriptos} participantes
               </span>
             </div>
 
