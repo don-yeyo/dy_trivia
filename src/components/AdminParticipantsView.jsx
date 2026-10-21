@@ -694,16 +694,6 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               </button>
             )}
 
-            {/* Botón Acceso Modal Mailing */}
-            <button
-              onClick={() => setIsMailingModalOpen(true)}
-              className="px-4 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-2 cursor-pointer border border-purple-400/30"
-              title="Panel de envío y reenvío de mailing para participación en la trivia"
-            >
-              <Mail size={16} />
-              <span>Mailing ({metrics.emailSentCount}/{metrics.total})</span>
-            </button>
-
             <button
               onClick={handleOpenCreateModal}
               className="px-4 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-2 cursor-pointer"

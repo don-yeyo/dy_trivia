@@ -10,6 +10,8 @@
 - [x] Drawer de navegación con orden estricto: Dashboard (default), Preguntas, Participantes, Participación y Configuración
 - [x] CRUD de preguntas y fases (con opciones dinámicas, fase numérica, puntos, respuesta correcta y explicación pedagógica)
 - [x] Limpieza de Header (sin nav central, sin botones redundantes) y parametrización de marca por VITE_ADMIN_BRAND_NAME
-- [ ] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una
+- [x] Sección de Mailing exclusiva en Panel de Admin (despacho de invitación masiva con enlace único, selector de campaña, métricas de cobertura, live preview desktop/mobile, test individual y base para feedback pedagógico)
+- [x] Remoción de botón de mailing redundante en la grilla de participantes
+- [ ] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una (disparo masivo de resultados)
 - [ ] Detectar si no hay conexión o falla algo contra la API de Supabase
 - [ ] Config: mostrar o no mostrar área del participante

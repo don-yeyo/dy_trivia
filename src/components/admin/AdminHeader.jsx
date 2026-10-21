@@ -142,6 +142,17 @@ export default function AdminHeader({
                   type="button"
                   onClick={() => {
                     setShowUserDropdown(false);
+                    onSelectSection('MAILING');
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                >
+                  <span>Mailing</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
                     onSelectSection('CONFIG');
                   }}
                   className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"

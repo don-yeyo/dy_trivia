@@ -35,6 +35,7 @@ import AdminDashboardView from './admin/AdminDashboardView';
 import AdminQuestionsView from './admin/AdminQuestionsView';
 import AdminHeader from './admin/AdminHeader';
 import AdminDrawer from './admin/AdminDrawer';
+import AdminMailingView from './admin/AdminMailingView';
 import {
   loginAdmin,
   getStoredAdminToken,
@@ -709,7 +710,14 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           </div>
         )}
 
-        {/* SECCIÓN 3: CONFIGURACIÓN INTEGRAL DE TRIVIA */}
+        {/* SECCIÓN 5: GESTIÓN DE MAILING Y COMUNICACIONES */}
+        {adminSection === 'MAILING' && (
+          <div className="w-full max-w-7xl mx-auto animate-casual-in">
+            <AdminMailingView activePhase={activePhase} />
+          </div>
+        )}
+
+        {/* SECCIÓN 6: CONFIGURACIÓN INTEGRAL DE TRIVIA */}
         {adminSection === 'CONFIG' && (
           <div className="max-w-5xl mx-auto animate-casual-in">
             {/* =========================================================================

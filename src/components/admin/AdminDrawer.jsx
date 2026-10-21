@@ -199,7 +199,26 @@ export default function AdminDrawer({
                 </div>
               </button>
 
-              {/* 5. Configuración */}
+              {/* 5. Mailing */}
+              <button
+                type="button"
+                onClick={() => handleNavClick('MAILING')}
+                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${
+                  activeSection === 'MAILING'
+                    ? 'bg-purple-600 text-white shadow-md font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Mail size={18} className={activeSection === 'MAILING' ? 'text-white' : 'text-purple-400'} />
+                <div className="flex-1">
+                  <span>Mailing</span>
+                  <span className="block text-[10px] font-normal opacity-70">
+                    Invitaciones y devoluciones pedagógicas
+                  </span>
+                </div>
+              </button>
+
+              {/* 6. Configuración */}
               <button
                 type="button"
                 onClick={() => handleNavClick('CONFIG')}
