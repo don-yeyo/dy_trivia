@@ -93,8 +93,8 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 12. **Centro de Gestión de Mailing, Parametrización Dinámica y Live Preview**:
    - **Sección Exclusiva e Independiente:** Módulo integral de control de comunicaciones Don Yeyo en el Panel Administrativo.
    - **Dos Plantillas Oficiales Responsive con URLs Absolutas:**
-     - `mailing/invitacion.html`: Plantilla para convocar a participar con enlaces criptográficos individuales (`{{link_trivia}}`).
-     - `mailing/resultados.html`: Plantilla para la devolución de resultados con botón destacado a la tabla y podio oficial (`{{link_podio}}`), aciertos, puntaje y bloque pedagógico interactivo (`{{feedback_detalle}}`).
+     - `email_templates/invitacion.html`: Plantilla para convocar a participar con enlaces criptográficos individuales (`{{link_trivia}}`).
+     - `email_templates/resultados.html`: Plantilla para la devolución de resultados con botón destacado a la tabla y podio oficial (`{{link_podio}}`), aciertos, puntaje y bloque pedagógico interactivo (`{{feedback_detalle}}`).
     - **Bloque Pedagógico Pregunta por Pregunta en Email de Resultados:**
       - Muestra el estado individual de cada consigna de la fase: `✅ CORRECTA`, `❌ INCORRECTA` o `⏳ SIN RESPONDER`.
       - Presenta la opción elegida por el participante y resalta la opción correcta de la pregunta en caso de error o consigna omitida.

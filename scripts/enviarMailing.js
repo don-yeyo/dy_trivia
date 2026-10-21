@@ -161,15 +161,21 @@ function getMailerTransport() {
 // 6. RENDERIZACIÓN DE PLANTILLA HTML Y ADJUNTOS
 // ------------------------------------------------------------------------------
 function getTemplateHtml() {
-  const templatePath = path.resolve(ROOT_DIR, getEnv('MAILING_TEMPLATE_PATH', 'mailing/mailing.html'));
-  if (fs.existsSync(templatePath)) {
-    return fs.readFileSync(templatePath, 'utf8');
+  const candidatePaths = [
+    path.resolve(ROOT_DIR, getEnv('MAILING_TEMPLATE_PATH', 'email_templates/invitacion.html')),
+    path.resolve(ROOT_DIR, 'email_templates', 'invitacion.html'),
+    path.resolve(ROOT_DIR, 'email_templates', 'mailing.html'),
+    path.resolve(ROOT_DIR, 'mailing', 'invitacion.html'),
+    path.resolve(ROOT_DIR, 'mailing', 'mailing.html')
+  ];
+
+  for (const p of candidatePaths) {
+    if (fs.existsSync(p)) {
+      return fs.readFileSync(p, 'utf8');
+    }
   }
-  const altPath = path.resolve(ROOT_DIR, 'mailing', 'mailing.html');
-  if (fs.existsSync(altPath)) {
-    return fs.readFileSync(altPath, 'utf8');
-  }
-  throw new Error(`No se encontró la plantilla HTML en ${templatePath}`);
+
+  throw new Error(`No se encontró la plantilla HTML en ninguna de las rutas esperadas (ej. email_templates/invitacion.html)`);
 }
 
 function renderHtml(template, user) {

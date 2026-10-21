@@ -9,6 +9,7 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { getDatabase } from './_db/index.js';
 import { verifyAdminToken, getServerEnv } from './utils/googleSheets.js';
+import { defaultInvitacionHtml, defaultResultadosHtml } from './templates/defaultTemplates.js';
 
 /**
  * Carga la configuración SMTP base desde .env o variables de entorno
@@ -72,12 +73,14 @@ function loadTemplateFile(emailTipo = 'INVITACION') {
   const rootDir = path.resolve(currentDir, '..', '..');
 
   const possiblePaths = [
-    path.resolve(rootDir, 'mailing', fileName),
+    path.resolve(rootDir, 'email_templates', fileName),
+    path.resolve(process.cwd(), 'email_templates', fileName),
     path.resolve(rootDir, fileName),
-    path.resolve(process.cwd(), 'mailing', fileName),
     path.resolve(process.cwd(), fileName),
-    path.resolve(rootDir, 'mailing', legacyFileName),
-    path.resolve(process.cwd(), 'mailing', legacyFileName)
+    path.resolve(rootDir, 'email_templates', legacyFileName),
+    path.resolve(process.cwd(), 'email_templates', legacyFileName),
+    path.resolve(rootDir, 'mailing', fileName),
+    path.resolve(process.cwd(), 'mailing', fileName)
   ];
 
   for (const p of possiblePaths) {
@@ -86,23 +89,8 @@ function loadTemplateFile(emailTipo = 'INVITACION') {
     }
   }
 
-  // Plantilla de respaldo en memoria si no se encuentra el archivo
-  return `
-    <div style="font-family: Arial, sans-serif; background: #07152b; color: #ffffff; padding: 30px; border-radius: 16px;">
-      <h1 style="color: #ffb800;">%TITULO_EMAIL%</h1>
-      <p style="color: #93c5fd;">%SUBTITULO%</p>
-      <p>Hola <strong>{{nombre}} {{apellido}}</strong> (Legajo: {{legajo}}),</p>
-      <div>%MENSAJE_PRINCIPAL%</div>
-      <div style="margin: 30px 0; text-align: center;">
-        <a href="{{link_trivia}}" style="background: #e40521; color: #ffffff; padding: 15px 30px; border-radius: 12px; font-weight: bold; text-decoration: none; display: inline-block;">
-          %CALL_TO_ACTION_TEXTO%
-        </a>
-      </div>
-      <p style="font-size: 12px; color: #94a3b8;">%MENSAJE_SECUNDARIO%</p>
-      <hr style="border: 1px solid rgba(255,255,255,0.1); margin: 20px 0;" />
-      <p style="font-size: 11px; color: #64748b;">%EMPRESA_NOMBRE% - %ANIO_ACTUAL%</p>
-    </div>
-  `;
+  // Fallback garantizado en memoria: las plantillas oficiales Don Yeyo completas
+  return isResultados ? defaultResultadosHtml : defaultInvitacionHtml;
 }
 
 /**
