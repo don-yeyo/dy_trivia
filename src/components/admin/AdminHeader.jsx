@@ -1,0 +1,224 @@
+// ==============================================================================
+// HEADER DEL PANEL DE ADMINISTRACIÓN (ESTÁNDAR DON YEYO S.A.)
+// Don Yeyo S.A. | Trivia Inocuidad 2026
+// ==============================================================================
+import React, { useState } from 'react';
+import {
+  Menu,
+  Users,
+  Trophy,
+  Sliders,
+  Tv,
+  LogOut,
+  User,
+  ArrowLeft,
+  Sparkles,
+  Database,
+  ExternalLink
+} from 'lucide-react';
+
+export default function AdminHeader({
+  adminUsername = 'admin',
+  activeSection = 'PARTICIPANTS',
+  onSelectSection,
+  onOpenDrawer,
+  onLogout,
+  onBackToGame,
+  isPublished = false,
+  activePhase = 1
+}) {
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+
+  return (
+    <header className="sticky top-0 z-40 w-full bg-slate-900/95 backdrop-blur-md border-b border-white/10 shadow-xl transition-all">
+      <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        {/* Izquierda: Botón Menú + Marca Corporativa */}
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+          <button
+            type="button"
+            onClick={onOpenDrawer}
+            className="p-2 sm:p-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-slate-200 hover:text-white border border-white/10 transition-colors cursor-pointer"
+            title="Abrir menú de navegación"
+            aria-label="Abrir menú"
+          >
+            <Menu size={22} />
+          </button>
+
+          {/* Logo Don Yeyo */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white p-1.5 shadow-md flex items-center justify-center shrink-0">
+              <img src="/logo-donyeyo.svg" alt="Don Yeyo" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-heading font-black text-white text-sm sm:text-base tracking-tight">
+                  DY-TRIVIA
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-red-600/90 text-white font-mono text-[10px] font-black uppercase tracking-wider shadow-sm">
+                  Admin
+                </span>
+                <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                  <Database size={10} />
+                  <span>Supabase</span>
+                </span>
+              </div>
+              <p className="hidden sm:block text-[11px] text-slate-400 font-medium">
+                Panel de Gestión | Semana de la Inocuidad 2026
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Centro: Barra de Navegación Rápida (Desktop) */}
+        <nav className="hidden lg:flex items-center gap-1.5 bg-slate-950/60 p-1.5 rounded-xl border border-white/10">
+          <button
+            type="button"
+            onClick={() => onSelectSection('PARTICIPANTS')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeSection === 'PARTICIPANTS'
+                ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Users size={15} />
+            <span>Colaboradores</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectSection('CLASSIFICATION')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeSection === 'CLASSIFICATION'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md font-black'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Trophy size={15} />
+            <span>Clasificación & Podio</span>
+            {isPublished && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" title="Publicada" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectSection('CONFIG')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeSection === 'CONFIG'
+                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Sliders size={15} />
+            <span>Configuración (Fase {activePhase})</span>
+          </button>
+        </nav>
+
+        {/* Derecha: Acciones Rápidas + Perfil Admin */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Botón Lanzar Proyección */}
+          <button
+            type="button"
+            onClick={() => {
+              window.open(`${window.location.origin}${window.location.pathname}?view=proyeccion`, '_blank');
+            }}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow border border-purple-400/30 cursor-pointer"
+            title="Abrir pantalla limpia de auditorio / proyección en nueva pestaña"
+          >
+            <Tv size={14} />
+            <span>Proyección</span>
+            <ExternalLink size={12} className="opacity-70" />
+          </button>
+
+          {/* Botón Volver a la Trivia */}
+          <button
+            type="button"
+            onClick={onBackToGame}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white text-xs font-bold transition-all border border-white/15 cursor-pointer"
+            title="Ir a la pantalla de juego de la Trivia"
+          >
+            <ArrowLeft size={14} />
+            <span className="hidden sm:inline">Ir al Juego</span>
+          </button>
+
+          {/* Usuario / Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowUserDropdown(!showUserDropdown)}
+              className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-white border border-white/10 transition-all cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-amber-600 text-white font-black text-xs flex items-center justify-center shadow">
+                {adminUsername ? adminUsername[0].toUpperCase() : 'A'}
+              </div>
+              <div className="hidden md:block text-left">
+                <span className="block text-xs font-bold leading-tight">@{adminUsername}</span>
+                <span className="block text-[10px] text-yellow-300 font-semibold leading-tight">Administrador</span>
+              </div>
+            </button>
+
+            {/* Dropdown Menu */}
+            {showUserDropdown && (
+              <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl bg-slate-900 border border-white/15 shadow-2xl overflow-hidden py-1.5 z-50 animate-casual-in">
+                <div className="px-4 py-2.5 border-b border-white/10">
+                  <p className="text-xs font-bold text-white">Sesión Activa</p>
+                  <p className="text-[11px] text-slate-400 truncate">@{adminUsername}</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    onSelectSection('PARTICIPANTS');
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                >
+                  <Users size={14} />
+                  <span>Nómina de Participantes</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    onSelectSection('CLASSIFICATION');
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                >
+                  <Trophy size={14} />
+                  <span>Clasificados & Podio</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    onSelectSection('CONFIG');
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-2"
+                >
+                  <Sliders size={14} />
+                  <span>Configuración de Trivia</span>
+                </button>
+
+                <div className="my-1 border-t border-white/10" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    onLogout();
+                  }}
+                  className="w-full px-4 py-2 text-left text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 font-bold flex items-center gap-2"
+                >
+                  <LogOut size={14} />
+                  <span>Cerrar Sesión</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}

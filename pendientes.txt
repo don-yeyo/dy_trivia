@@ -6,6 +6,7 @@
 - [x] Marca masiva de email enviado a todos los participantes en Supabase
 - [x] Reenvío de mailing (opciones individual por fila y masivo por lote, test de visualización, modal interactivo en Admin)
 - [x] Quitar el uso de Google Sheets (trivia y mailing funcionando 100% con Supabase)
+- [x] Rediseño profesional del Panel de Admin (sin fondo giratorio gamer, ancho completo, Header corporativo sticky, Drawer deslizable y modularización de Participantes, Podio/Clasificación y Configuración)
 - [ ] CRUD de preguntas y fases
 - [ ] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una
 - [ ] Detectar si no hay conexión o falla algo contra la API de Supabase

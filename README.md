@@ -71,6 +71,13 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - **Reset de Trivia por Colaborador:** Permite habilitar a un participante a volver a responder la trivia desde cero (borrando sus respuestas en la fase activa o en todas las fases).
    - **Métricas y Filtros en Tiempo Real:** Tarjetas KPI con totales de nómina, cobertura de hashes, % de emails enviados y tasa de participación, con búsqueda libre y filtros por sector y estado.
 
+10. **Panel de Administración Corporativo Don Yeyo (Guideline Profesional)**:
+   - **Desacople de la Estética Gamer:** El área de administración prescinde del fondo giratorio animado (`SunburstBackground`) y adopta una interfaz corporativa limpia de sistema de gestión en tono `slate-950` inspirada en la directiva de diseño de Don Yeyo (`dy_shigma`).
+   - **Aprovechamiento de Pantalla Completa (Full Width):** La grilla de participantes se expande en toda la anchura del monitor sin restricciones de contenedor angosto, otorgando máxima legibilidad y confort para auditoría masiva de colaboradores y estados de trivia.
+   - **Header Sticky Corporativo (`AdminHeader`):** Barra superior fija con isotipo Don Yeyo, badge de motor de base de datos (`Supabase`), accesos rápidos a las secciones principales, botón para lanzar la Pantalla Limpia de Proyección, retorno al juego y dropdown de sesión del usuario administrador.
+   - **Menú Drawer Deslizable (`AdminDrawer`):** Menú lateral categorizado con overlay y efecto `backdrop-blur`, agrupando: Módulos del Sistema (Nómina de Participantes, Clasificación & Podio, Configuración de Trivia), Vistas Públicas & Auditorio (Proyección, Ranking Público, Volver al Juego) y Logout seguro.
+   - **Conservación Estricta de la Pantalla de Juego y Podio 3D:** Toda la experiencia lúdica del participante (`TriviaGame`, `SplashIntro`, `GameOver`) y la estética 3D del Podio Gamer se mantienen 100% intactas para cuando se proyecten o consulten los resultados oficiales.
+
 ---
 
 ## 🛠️ Tecnologías Utilizadas

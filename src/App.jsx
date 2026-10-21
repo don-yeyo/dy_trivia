@@ -343,6 +343,25 @@ export default function App() {
     );
   }
 
+  // =========================================================================
+  // VISTA ADMIN: CONSOLA DE GESTIÓN CORPORATIVA DON YEYO (PANTALLA COMPLETA)
+  // Sin fondo giratorio, con layout administrativo profesional, drawer y header
+  // =========================================================================
+  if (currentView === 'ADMIN') {
+    return (
+      <AdminClassificationView
+        appConfig={appConfig}
+        onBackToGame={() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('admin');
+          url.searchParams.delete('view');
+          window.history.pushState({}, '', url.toString());
+          setCurrentView('GAME');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-layout relative overflow-hidden">
       {/* Fondo de rayos rectos giratorios reactivo en todas las pantallas */}
@@ -353,22 +372,6 @@ export default function App() {
 
       {/* Contenido Principal según Vista Activa */}
       <main className={`app-main ${currentView !== 'GAME' ? 'app-main--wide' : ''}`}>
-        {/* ================================================================= */}
-        {/* VISTA 1: PANEL DE ADMINISTRACIÓN                                   */}
-        {/* ================================================================= */}
-        {currentView === 'ADMIN' && (
-          <AdminClassificationView
-            appConfig={appConfig}
-            onBackToGame={() => {
-              const url = new URL(window.location.href);
-              url.searchParams.delete('admin');
-              url.searchParams.delete('view');
-              window.history.pushState({}, '', url.toString());
-              setCurrentView('GAME');
-            }}
-          />
-        )}
-
         {/* ================================================================= */}
         {/* VISTA 2: CLASIFICACIÓN PÚBLICA Y PODIO                             */}
         {/* ================================================================= */}

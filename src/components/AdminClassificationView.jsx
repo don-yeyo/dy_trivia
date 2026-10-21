@@ -31,6 +31,8 @@ import ClassificationTable from './ClassificationTable';
 import ProjectionView from './ProjectionView';
 import ImportParticipantsModal from './ImportParticipantsModal';
 import AdminParticipantsView from './AdminParticipantsView';
+import AdminHeader from './admin/AdminHeader';
+import AdminDrawer from './admin/AdminDrawer';
 import {
   loginAdmin,
   getStoredAdminToken,
@@ -53,13 +55,16 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
   const [loginError, setLoginError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Estado del menú Drawer lateral
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
   // Modal de importación de participantes
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Modo del admin: 'CONFIG' (panel técnico) o 'PROJECTION' (pantalla limpia para proyector)
   const [adminMode, setAdminMode] = useState('CONFIG');
 
-  // Sección activa del panel: 'PARTICIPANTS' (Gestión de Participantes) o 'CLASSIFICATION' (Clasificación & Podio)
+  // Sección activa del panel: 'PARTICIPANTS' | 'CLASSIFICATION' | 'CONFIG'
   const [adminSection, setAdminSection] = useState('PARTICIPANTS');
 
   // Estados de configuración de Google Sheets
@@ -318,71 +323,79 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
   };
 
   // =========================================================================
-  // VISTA 1: FORMULARIO DE LOGIN LIMPIO Y ELEGANTE
+  // VISTA 1: FORMULARIO DE LOGIN PROFESIONAL CORPORATIVO (ESTÁNDAR DON YEYO)
   // =========================================================================
   if (!isAuthenticated) {
     return (
-      <div className="w-full max-w-lg mx-auto py-8 sm:py-16 px-4 animate-casual-in">
-        <div className="casual-card p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-2xl relative overflow-hidden">
+      <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 selection:bg-red-600 selection:text-white">
+        <div className="w-full max-w-md p-8 sm:p-10 rounded-3xl bg-slate-900/90 border border-white/10 shadow-2xl relative overflow-hidden backdrop-blur-md">
+          {/* Acento superior decorativo */}
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-red-600" />
+
           {/* Header del Login */}
           <div className="text-center mb-8">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-white p-3 shadow-xl flex items-center justify-center border border-slate-100">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-white p-3.5 shadow-xl flex items-center justify-center border border-white/10">
               <img src="/logo-donyeyo.svg" alt="Don Yeyo" className="w-full h-full object-contain" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
-              Panel de Administración
-            </h2>
-            <p className="text-xs sm:text-sm text-amber-900 font-bold mt-1.5">
-              Configuración y Clasificación • Desafío de Inocuidad 2026
+            <div className="flex items-center justify-center gap-2 mb-1.5">
+              <span className="font-heading font-black text-white text-xl tracking-tight">
+                DY-TRIVIA
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-red-600 text-white font-mono text-[10px] font-black uppercase">
+                Admin Console
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 font-medium">
+              Gestión Integral • Semana de la Inocuidad 2026
             </p>
           </div>
 
           {/* Formulario */}
-          <form onSubmit={handleLoginSubmit} className="space-y-6">
+          <form onSubmit={handleLoginSubmit} className="space-y-5">
             {loginError && (
-              <div className="p-3.5 rounded-xl bg-red-100 border border-red-300 text-red-700 text-xs sm:text-sm font-bold text-center flex items-center justify-center gap-2 shadow-sm">
-                <ShieldAlert size={18} className="text-red-600" />
+              <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-bold text-center flex items-center justify-center gap-2 shadow-sm animate-shake">
+                <ShieldAlert size={16} className="text-red-400 shrink-0" />
                 <span>{loginError}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-black text-slate-800 mb-2 uppercase tracking-wider">
+              <label className="block text-xs font-black text-slate-300 mb-2 uppercase tracking-wider">
                 Usuario Administrador
               </label>
               <div className="relative">
-                <User size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
                   required
                   value={loginForm.username}
                   onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                   placeholder="admin"
-                  className="w-full pl-12 pr-4 py-3.5 sm:py-4 rounded-2xl bg-white border-2 border-slate-200 text-slate-900 placeholder-slate-400 text-sm sm:text-base font-semibold focus:outline-none focus:border-red-600 transition-colors shadow-inner"
+                  className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-slate-950 border border-white/15 text-white placeholder-slate-500 text-sm font-semibold focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors shadow-inner"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-800 mb-2 uppercase tracking-wider">
+              <label className="block text-xs font-black text-slate-300 mb-2 uppercase tracking-wider">
                 Contraseña
               </label>
               <div className="relative">
-                <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={loginForm.password}
                   onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                   placeholder="••••••••"
-                  className="w-full pl-12 pr-12 py-3.5 sm:py-4 rounded-2xl bg-white border-2 border-slate-200 text-slate-900 placeholder-slate-400 text-sm sm:text-base font-semibold focus:outline-none focus:border-red-600 transition-colors shadow-inner"
+                  className="w-full pl-11 pr-11 py-3.5 rounded-xl bg-slate-950 border border-white/15 text-white placeholder-slate-500 text-sm font-semibold focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors shadow-inner"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -390,31 +403,31 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full py-4 sm:py-5 px-6 min-h-[56px] rounded-2xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-sm sm:text-base uppercase tracking-wider shadow-xl shadow-red-600/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 mt-6 transform hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-6"
             >
               {isLoggingIn ? (
                 <>
-                  <RefreshCw size={18} className="animate-spin" />
+                  <RefreshCw size={16} className="animate-spin" />
                   <span>Verificando Credenciales...</span>
                 </>
               ) : (
                 <>
-                  <ShieldCheck size={20} />
-                  <span>Ingresar al Panel de Admin</span>
+                  <ShieldCheck size={18} />
+                  <span>Ingresar al Panel de Gestión</span>
                 </>
               )}
             </button>
           </form>
 
           {/* Volver a la Trivia */}
-          <div className="mt-8 pt-6 border-t border-slate-200/80 text-center">
+          <div className="mt-8 pt-6 border-t border-white/10 text-center">
             <button
               onClick={onBackToGame}
               type="button"
-              className="text-xs sm:text-sm text-slate-500 hover:text-slate-800 font-bold flex items-center justify-center gap-2 mx-auto transition-colors cursor-pointer"
+              className="text-xs text-slate-400 hover:text-white font-bold flex items-center justify-center gap-2 mx-auto transition-colors cursor-pointer"
             >
-              <ArrowLeft size={16} />
-              <span>Volver a la Trivia</span>
+              <ArrowLeft size={14} />
+              <span>Volver a la Trivia (Modo Juego)</span>
             </button>
           </div>
         </div>
@@ -439,115 +452,76 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
   }
 
   // =========================================================================
-  // VISTA 2: PANEL DE CONFIGURACIÓN TÉCNICA DEL ADMINISTRADOR
+  // VISTA 2: PANEL DE GESTIÓN Y ADMINISTRACIÓN PROFESIONAL DON YEYO
   // =========================================================================
   return (
-    <div className="w-full max-w-5xl mx-auto py-6 sm:py-10 px-3 sm:px-6 animate-casual-in">
-      {/* Barra Superior de Admin */}
-      <div className="glass-panel p-5 sm:p-6 rounded-2xl mb-8 sm:mb-10 shadow-2xl flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-13 h-13 rounded-2xl bg-white p-2.5 shadow-md flex items-center justify-center shrink-0">
-            <img src="/logo-donyeyo.svg" alt="Don Yeyo" className="w-full h-full object-contain" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-3 py-0.5 rounded-full bg-red-600/90 text-white text-[10px] font-black uppercase tracking-wider shadow">
-                Configuración Admin
-              </span>
-              <span className="text-xs text-yellow-300 font-bold">
-                @{adminUsername}
-              </span>
-            </div>
-            <h2 className="text-base sm:text-xl font-black text-white">
-              Gestor de Clasificación y Parámetros
-            </h2>
-          </div>
-        </div>
+    <div className="w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-red-500 selection:text-white">
+      {/* Header Corporativo Sticky Top */}
+      <AdminHeader
+        activeSection={adminSection}
+        onSelectSection={setAdminSection}
+        adminUsername={adminUsername}
+        onLogout={handleLogout}
+        onToggleDrawer={() => setIsDrawerOpen(prev => !prev)}
+        onBackToGame={onBackToGame}
+        onOpenProjection={() => {
+          window.open(
+            `${window.location.origin}${window.location.pathname}?view=proyeccion`,
+            '_blank'
+          );
+        }}
+      />
 
-        {/* Acciones de Cabecera */}
-        <div className="flex items-center gap-3">
-          {/* Indicador de Estado */}
-          <div
-            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2.5 shadow-md ${isPublished
-                ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/50'
-                : 'bg-yellow-500/25 text-yellow-300 border border-yellow-400/50'
-              }`}
-          >
-            <div className={`w-2.5 h-2.5 rounded-full ${isPublished ? 'bg-emerald-400 animate-ping' : 'bg-yellow-400'}`} />
-            <span>{isPublished ? 'Publicada Oficialmente' : 'Borrador / No Publicada'}</span>
-          </div>
+      {/* Menú Drawer Deslizable */}
+      <AdminDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        activeSection={adminSection}
+        onSelectSection={(sec) => {
+          setAdminSection(sec);
+          setIsDrawerOpen(false);
+        }}
+        adminUsername={adminUsername}
+        onLogout={handleLogout}
+        onBackToGame={onBackToGame}
+        onOpenProjection={() => {
+          window.open(
+            `${window.location.origin}${window.location.pathname}?view=proyeccion`,
+            '_blank'
+          );
+        }}
+      />
 
-          {/* Botón Importar Participantes CSV */}
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white border border-blue-400/50 text-xs font-black transition-all cursor-pointer shadow-md flex items-center gap-2 transform hover:scale-105 active:scale-95"
-            title="Importar lista de colaboradores desde archivo CSV a Google Sheets"
-          >
-            <UserPlus size={16} />
-            <span className="hidden sm:inline">Importar CSV</span>
-          </button>
-
-          <button
-            onClick={onBackToGame}
-            className="p-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer border border-white/20 shadow"
-            title="Ir a pantalla de Trivia / Home"
-          >
-            <ArrowLeft size={18} />
-          </button>
-
-          <button
-            onClick={handleLogout}
-            className="p-3 rounded-xl bg-red-600/40 hover:bg-red-600 text-white border border-red-500/50 text-xs font-bold transition-all cursor-pointer shadow"
-            title="Cerrar Sesión"
-          >
-            <LogOut size={18} />
-          </button>
-        </div>
-      </div>
-
-      {/* Mensaje de Estado / Notificación */}
+      {/* Notificación Flotante / Status Message */}
       {statusMessage && (
-        <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-emerald-600/40 border border-emerald-400 text-white text-sm sm:text-base font-black text-center shadow-2xl animate-bounce">
-          {statusMessage}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 w-full">
+          <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-500 text-emerald-200 text-sm font-bold flex items-center justify-between shadow-xl backdrop-blur-md">
+            <span>{statusMessage}</span>
+            <button
+              onClick={() => setStatusMessage('')}
+              className="text-xs text-emerald-300 hover:text-white underline cursor-pointer ml-4"
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Navegación por Secciones Principales del Admin */}
-      <div className="flex items-center gap-3 mb-8 p-1.5 rounded-2xl bg-slate-900/80 border border-white/15 backdrop-blur-md shadow-xl">
-        <button
-          type="button"
-          onClick={() => setAdminSection('PARTICIPANTS')}
-          className={`flex-1 py-3.5 px-5 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2.5 cursor-pointer ${
-            adminSection === 'PARTICIPANTS'
-              ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-lg shadow-red-600/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Users size={18} />
-          <span>Gestión de Participantes</span>
-        </button>
+      {/* Contenido Principal a Ancho Completo */}
+      <main className="flex-1 w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-6">
+        {/* SECCIÓN 1: NÓMINA DE PARTICIPANTES (FULL WIDTH) */}
+        {adminSection === 'PARTICIPANTS' && (
+          <div className="w-full animate-casual-in">
+            <AdminParticipantsView
+              activePhase={activePhase}
+              onOpenImportCsv={() => setIsImportModalOpen(true)}
+            />
+          </div>
+        )}
 
-        <button
-          type="button"
-          onClick={() => setAdminSection('CLASSIFICATION')}
-          className={`flex-1 py-3.5 px-5 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2.5 cursor-pointer ${
-            adminSection === 'CLASSIFICATION'
-              ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30'
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
-          }`}
-        >
-          <Trophy size={18} />
-          <span>Clasificación & Podio</span>
-        </button>
-      </div>
-
-      {adminSection === 'PARTICIPANTS' ? (
-        <AdminParticipantsView
-          activePhase={activePhase}
-          onOpenImportCsv={() => setIsImportModalOpen(true)}
-        />
-      ) : (
-        <>
+        {/* SECCIÓN 2: CLASIFICACIÓN Y PODIO (CONSERVA ESTÉTICA GAMER DEL PODIO) */}
+        {adminSection === 'CLASSIFICATION' && (
+          <div className="max-w-6xl mx-auto space-y-8 animate-casual-in">
           {/* =========================================================================
               BOTÓN DESTACADO: ABRIR PANTALLA LIMPIA DE PROYECCIÓN PARA EL SALÓN
               ========================================================================= */}
@@ -647,7 +621,73 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
         </div>
       </div>
 
-      {/* =========================================================================
+      
+        {/* Previsualización del Podio y Tabla de Clasificación */}
+        {/* =========================================================================
+          PREVISUALIZACIÓN DE DATOS (CON MÁRGENES Y ESPACIADOS DESPEJADOS)
+          ========================================================================= */}
+      {classificationData ? (
+        <div className="space-y-12 sm:space-y-16">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-white/20 gap-3">
+            <div>
+              <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">
+                Vista Previa de Clasificación
+              </h3>
+              <span className="text-xs text-yellow-300 font-bold">
+                {classificationData.totalJugados || 0} evaluados
+                {classificationData.totalCompletados !== undefined ? ` (${classificationData.totalCompletados} completos, ${classificationData.totalParciales || 0} parciales)` : ''}
+                {` de ${classificationData.totalInscriptos || 0} inscriptos`}
+              </span>
+            </div>
+
+            {/* Botón destacado de Exportación a Excel para Fases Cerradas */}
+            {isPhaseClosed && (
+              <button
+                onClick={handleExportExcel}
+                type="button"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2.5 cursor-pointer transition-all transform hover:scale-105 active:scale-95 border border-emerald-400/50"
+                title="Descargar planilla Excel (.xlsx) con clasificación completa, top clasificados y podio"
+              >
+                <FileSpreadsheet size={16} />
+                <span>Exportar a Excel (.xlsx)</span>
+                <Download size={14} className="text-emerald-200" />
+              </button>
+            )}
+          </div>
+
+          {/* Podio Gamer de los 3 Primeros (Sin solapamientos) */}
+          <Podium podiumUsers={classificationData.podio || []} />
+
+          {/* Tabla de Clasificados restantes */}
+          <div className="mt-10 sm:mt-16">
+            <div className="text-center mb-8">
+              <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-wide">
+                Tabla General de Clasificación (Top {topCount})
+              </h3>
+            </div>
+
+            <ClassificationTable
+              participants={classificationData.allParticipants || []}
+              topCount={topCount}
+              showPodiumInList={true}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="glass-card p-12 text-center rounded-3xl border border-white/20 text-slate-300">
+          <Trophy size={48} className="mx-auto text-yellow-400/50 mb-3" />
+          <p className="font-bold text-sm sm:text-base">
+            No hay datos de clasificación disponibles todavía. Abre la <strong>Pantalla de Proyección</strong> para disparar el cálculo oficial.
+          </p>
+        </div>
+      )}
+          </div>
+        )}
+
+        {/* SECCIÓN 3: CONFIGURACIÓN INTEGRAL DE TRIVIA */}
+        {adminSection === 'CONFIG' && (
+          <div className="max-w-5xl mx-auto animate-casual-in">
+            {/* =========================================================================
           PANEL INTEGRAL DE CONFIGURACIÓN DE LA TRIVIA
           ========================================================================= */}
       <div className="casual-card text-left shadow-2xl w-full p-6 sm:p-10 rounded-3xl mb-8 sm:mb-12 border-2 border-slate-200/90">
@@ -1083,74 +1123,21 @@ export default function AdminClassificationView({ onBackToGame, appConfig }) {
           </div>
         </div>
       </div>
-
-      {/* =========================================================================
-          PREVISUALIZACIÓN DE DATOS (CON MÁRGENES Y ESPACIADOS DESPEJADOS)
-          ========================================================================= */}
-      {classificationData ? (
-        <div className="space-y-12 sm:space-y-16">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-white/20 gap-3">
-            <div>
-              <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-wide">
-                Vista Previa de Clasificación
-              </h3>
-              <span className="text-xs text-yellow-300 font-bold">
-                {classificationData.totalJugados || 0} evaluados
-                {classificationData.totalCompletados !== undefined ? ` (${classificationData.totalCompletados} completos, ${classificationData.totalParciales || 0} parciales)` : ''}
-                {` de ${classificationData.totalInscriptos || 0} inscriptos`}
-              </span>
-            </div>
-
-            {/* Botón destacado de Exportación a Excel para Fases Cerradas */}
-            {isPhaseClosed && (
-              <button
-                onClick={handleExportExcel}
-                type="button"
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2.5 cursor-pointer transition-all transform hover:scale-105 active:scale-95 border border-emerald-400/50"
-                title="Descargar planilla Excel (.xlsx) con clasificación completa, top clasificados y podio"
-              >
-                <FileSpreadsheet size={16} />
-                <span>Exportar a Excel (.xlsx)</span>
-                <Download size={14} className="text-emerald-200" />
-              </button>
-            )}
           </div>
+        )}
+      </main>
 
-          {/* Podio Gamer de los 3 Primeros (Sin solapamientos) */}
-          <Podium podiumUsers={classificationData.podio || []} />
-
-          {/* Tabla de Clasificados restantes */}
-          <div className="mt-10 sm:mt-16">
-            <div className="text-center mb-8">
-              <h3 className="text-xl sm:text-2xl font-black text-white uppercase tracking-wide">
-                Tabla General de Clasificación (Top {topCount})
-              </h3>
-            </div>
-
-            <ClassificationTable
-              participants={classificationData.allParticipants || []}
-              topCount={topCount}
-              showPodiumInList={true}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="glass-card p-12 text-center rounded-3xl border border-white/20 text-slate-300">
-          <Trophy size={48} className="mx-auto text-yellow-400/50 mb-3" />
-          <p className="font-bold text-sm sm:text-base">
-            No hay datos de clasificación disponibles todavía. Abre la <strong>Pantalla de Proyección</strong> para disparar el cálculo oficial.
-          </p>
-        </div>
-      )}
-        </>
-      )}
+      {/* Footer Corporativo Sobrio */}
+      <footer className="w-full py-4 border-t border-slate-800/80 bg-slate-950/90 text-center text-xs text-slate-500">
+        <p>Don Yeyo S.A. &copy; {new Date().getFullYear()} &mdash; Panel Administrativo &bull; Semana de la Inocuidad</p>
+      </footer>
 
       {/* Modal de Importación de Participantes (CSV) */}
       <ImportParticipantsModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={(result) => {
-          setStatusMessage(`¡${result.total || 'Lista de'} colaboradores importados exitosamente a Google Sheets!`);
+          setStatusMessage(`¡${result.total || 'Lista de'} colaboradores importados exitosamente!`);
           setTimeout(() => setStatusMessage(''), 8000);
         }}
       />
