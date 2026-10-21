@@ -11,21 +11,11 @@ import { getDatabase } from './_db/index.js';
 import { verifyAdminToken, getServerEnv } from './utils/googleSheets.js';
 
 /**
- * Carga la configuración SMTP base desde .env_mailn o variables de entorno
+ * Carga la configuración SMTP base desde .env o variables de entorno
  */
 function getSmtpConfig() {
-  let mailnEnv = {};
-  try {
-    const envMailnPath = path.resolve(process.cwd(), '.env_mailn');
-    if (fs.existsSync(envMailnPath)) {
-      mailnEnv = dotenv.parse(fs.readFileSync(envMailnPath));
-    }
-  } catch (e) {
-    mailnEnv = {};
-  }
-
   const getVal = (key, fallback = '') => {
-    return mailnEnv[key] || process.env[key] || getServerEnv(key) || fallback;
+    return process.env[key] || getServerEnv(key) || fallback;
   };
 
   return {
@@ -45,7 +35,7 @@ function getSmtpConfig() {
  */
 function createTransporter(cfg) {
   if (!cfg.smtpUser || !cfg.smtpPass) {
-    throw new Error('Credenciales SMTP no configuradas (SMTP_USER / SMTP_PASS faltantes en .env_mailn o variables de entorno)');
+    throw new Error('Credenciales SMTP no configuradas (SMTP_USER / SMTP_PASS faltantes en .env o variables de entorno)');
   }
 
   return nodemailer.createTransport({

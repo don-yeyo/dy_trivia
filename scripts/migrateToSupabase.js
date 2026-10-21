@@ -19,15 +19,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
 
-// Cargar variables de entorno de .env y .env_mailn
+// Cargar variables de entorno de .env
 const envPath = path.join(ROOT_DIR, '.env');
 if (fs.existsSync(envPath)) dotenv.config({ path: envPath });
-
-const envMailn = path.join(ROOT_DIR, '.env_mailn');
-if (fs.existsSync(envMailn)) {
-  const cfg = dotenv.parse(fs.readFileSync(envMailn));
-  for (const k in cfg) if (!process.env[k]) process.env[k] = cfg[k];
-}
 
 function getEnv(key, fallback = '') {
   return process.env[key] || process.env[`VITE_${key}`] || fallback;

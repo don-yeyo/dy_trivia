@@ -24,19 +24,11 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
 
 // ------------------------------------------------------------------------------
-// 1. CARGA DE VARIABLES DE ENTORNO (.env y .env_mailn)
+// 1. CARGA DE VARIABLES DE ENTORNO (.env)
 // ------------------------------------------------------------------------------
 const envBasePath = path.join(ROOT_DIR, '.env');
 if (fs.existsSync(envBasePath)) {
   dotenv.config({ path: envBasePath });
-}
-
-const envMailnPath = path.join(ROOT_DIR, '.env_mailn');
-if (fs.existsSync(envMailnPath)) {
-  const mailnConfig = dotenv.parse(fs.readFileSync(envMailnPath));
-  for (const k in mailnConfig) {
-    process.env[k] = mailnConfig[k];
-  }
 }
 
 function getEnv(key, fallback = '') {
@@ -107,7 +99,7 @@ USO:
 
 OPCIONES:
   --test, -t [email]       Envía un único correo de prueba a la casilla indicada
-                           (o a TEST_EMAIL de .env_mailn) sin modificar la base.
+                           (o a TEST_EMAIL de .env) sin modificar la base.
   --send, --masivo, -s     Ejecuta el envío masivo a los colaboradores con email
                            que aún no tengan la marca en Supabase.
   --resend, -r             Fuerza el reenvío a los participantes aunque ya figuren enviados.
@@ -150,7 +142,7 @@ function getMailerTransport() {
   const pass = getEnv('SMTP_PASS');
 
   if (!user || !pass) {
-    throw new Error('Variables SMTP_USER y SMTP_PASS no encontradas en .env_mailn');
+    throw new Error('Variables SMTP_USER y SMTP_PASS no encontradas en .env');
   }
 
   return nodemailer.createTransport({

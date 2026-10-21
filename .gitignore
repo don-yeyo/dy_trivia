@@ -28,8 +28,6 @@ dist-ssr
 .env.production
 .env.local
 !.env.template
-.env_mailn
-!.env_mailn.template
 
 # Netlify functions & cache
 .netlify

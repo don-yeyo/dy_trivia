@@ -41,7 +41,7 @@ import {
 } from '../../services/mailingService';
 import { getStoredAdminToken } from '../../services/adminService';
 
-// Valores por defecto iniciales (tomados de .env_mailn)
+// Valores por defecto iniciales para plantillas de mailing
 const DEFAULT_PARAMS = {
   INVITACION: {
     TITULO_EMAIL: '¡ACÁ EMPIEZA EL DESAFÍO DE INOCUIDAD!',

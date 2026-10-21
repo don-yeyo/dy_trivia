@@ -846,68 +846,67 @@ La plantilla de mailing (`mailing/mailing.html` y en la raíz `mailing.html`) re
 
 > 💡 **Nota sobre `{{link_trivia}}`:** El bot calcula o toma el hash SHA-256 de cada colaborador usando la frase clave `SEED_PHRASE` y su legajo/apellido/nombre, generando un enlace de acceso directo de 1 clic sin necesidad de que el colaborador escriba su usuario.
 
-#### Comodines de Campaña y Entorno (desde `.env_mailn`):
-| Comodín | Variable en `.env_mailn` | Descripción |
+#### Comodines Dinámicos de Plantilla (Persistidos en Base de Datos):
+Los parámetros de cada plantilla de correo (`INVITACION` y `RESULTADOS`) se configuran directamente desde el **Panel de Administración (`/admin` > Gestión de Despacho de Emails)** y se almacenan en la tabla `mailing_parametros` de Supabase:
+
+| Comodín | Campo / Parámetro | Descripción |
 | :--- | :--- | :--- |
 | `%TITULO_EMAIL%` | `TITULO_EMAIL` | Título del correo en el encabezado. |
-| `%SUBTITULO%` | `SUBTITULO` | Subtítulo descriptivo de la campaña. |
-| `%MENSAJE_PRINCIPAL%` | `MENSAJE_PRINCIPAL` | Cuerpo principal del mensaje (soporta HTML o texto). |
-| `%MENSAJE_SECUNDARIO%` | `MENSAJE_SECUNDARIO` | Consejos, tips o recordatorios destacados en cuadro celeste. |
-| `%CALL_TO_ACTION_TEXTO%` | `CALL_TO_ACTION_TEXTO` | Texto del botón principal (ej: "INGRESAR A LA TRIVIA AHORA"). |
-| `%NEWSLETER_ACTUAL%` | `NEWSLETER_ACTUAL` | Nombre de la columna de campaña en Google Sheets. |
-| `%EMPRESA_NOMBRE%` | `EMPRESA_NOMBRE` | Nombre del departamento o empresa en el footer. |
-| `%CONTACTO_SOPORTE%` | `CONTACTO_SOPORTE` | Datos de contacto para consultas de colaboradores. |
+| `%SUBTITULO%` | `SUBTITULO` | Subtítulo descriptivo de la campaña o feedback. |
+| `%MENSAJE_PRINCIPAL%` | `MENSAJE_PRINCIPAL` | Cuerpo principal del mensaje (soporta texto y HTML enriquecido). |
+| `%MENSAJE_SECUNDARIO%` | `MENSAJE_SECUNDARIO` | Consejos, advertencias o recordatorios destacados en panel resaltado. |
+| `%CALL_TO_ACTION_TEXTO%` | `CALL_TO_ACTION_TEXTO` | Texto del botón principal (ej: "INGRESAR AL DESAFÍO AHORA" o "VER TABLA DE POSICIONES"). |
+| `%EMPRESA_NOMBRE%` | `EMPRESA_NOMBRE` | Nombre de la empresa o departamento organizador. |
+| `%CONTACTO_SOPORTE%` | `CONTACTO_SOPORTE` | Datos de contacto y canal de soporte. |
 | `%ANIO_ACTUAL%` | `ANIO_ACTUAL` | Año en curso (ej: 2026). |
 
-*(Cualquier variable adicional declarada en `.env_mailn` puede usarse con la sintaxis `%MI_VARIABLE%`).*
+*(Cualquier comodín adicional puede ser agregado dinámicamente y previsualizado en tiempo real en el Live Preview del Admin).*
 
 ---
 
-### ⚙️ 3. Configuración en `.env_mailn`
+### ⚙️ 3. Configuración del Servidor SMTP en `.env`
 
-Copiar el archivo de plantilla `.env_mailn.template` a `.env_mailn` y completar con las credenciales correspondientes:
+Toda la configuración del transporte de correos (Microsoft 365, Outlook o Gmail) está centralizada en el archivo `.env` de la raíz del proyecto (ver plantilla de referencia en `.env.template`):
 
-```bash
-cp .env_mailn.template .env_mailn
+```env
+# ==============================================================================
+# 📧 SERVICIO DE MAILING (SMTP)
+# ==============================================================================
+SMTP_HOST="smtp-mail.outlook.com"
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER="conectados@donyeyo.com.ar"
+SMTP_PASS="tu_contraseña_o_app_password"
+SMTP_FROM="conectados@donyeyo.com.ar"
+SMTP_DELAY_MS=600
+APP_BASE_URL="https://dy-inocuidad.netlify.app"
+TEST_EMAIL="tu_email_de_prueba@donyeyo.com.ar"
 ```
 
-Variables clave en `.env_mailn`:
-- `NEWSLETER_ACTUAL`: Nombre exacto de la columna en Google Sheets (ej: `"Email Link de Trivia"`).
-- `SMTP_HOST`: Host del servidor SMTP (ej: `smtp.gmail.com` o `smtp.office365.com`).
-- `SMTP_PORT`: Puerto (`587` para STARTTLS o `465` para SSL).
-- `SMTP_USER` y `SMTP_PASS`: Usuario y contraseña (para Gmail se recomienda *Contraseña de Aplicación*).
-- `SMTP_FROM`: Remitente visible (ej: `"\"Trivia Don Yeyo\" <calidad@donyeyo.com.ar>"`).
-- `TEST_EMAIL`: Correo electrónico personal para envíos de prueba antes de la salida masiva.
-- `SMTP_DELAY_MS`: Pausa en milisegundos entre envíos (por defecto `1200` ms para evitar bloqueos por spam).
+---
+
+### 🛡️ 4. Flujo de Control y Envío con Supabase
+
+1. **Gestión en el Panel Admin**:
+   - Ingresar a `/admin` y abrir el Drawer de navegación en **Mailing**.
+   - Elegir el tipo de correo: **Invitación a Jugar** o **Informe de Resultados**.
+   - Ajustar textos y comodines con **Live Preview interactivo en tiempo real**.
+   - Presionar **"Guardar Parámetros"** para sincronizar con la base de datos Supabase (`mailing_parametros`).
+2. **Envío de Pruebas**:
+   - Con un solo clic en **"Enviar Correo de Prueba"**, el backend serverless despacha un correo a la casilla configurada en `TEST_EMAIL` con datos reales simulados.
+3. **Despacho Masivo Controlado**:
+   - Se puede filtrar por estado (ej: sólo pendientes de envío o todos para reenvío masivo).
+   - El sistema actualiza en tiempo real la marca de envío en Supabase (`mail_enviado = true`), evitando duplicidades accidentales.
 
 ---
 
-### 🛡️ 4. Flujo de Control y Validación Estricta de Columnas
+### 🚀 5. Comandos de Terminal (CLI Alternativo)
 
-1. **El Administrador crea la columna en Google Sheets**:
-   - En la pestaña `Participantes`, el administrador agrega una nueva columna con el título deseado, por ejemplo: `Email Link de Trivia` (o `Recordatorio Fase 1`, etc.).
-   - Configura en `.env_mailn`: `NEWSLETER_ACTUAL="Email Link de Trivia"`.
-2. **Validación automática**:
-   - Al ejecutar el script, el bot consulta la hoja de cálculo.
-   - **Si la columna NO existe:** El bot arroja un **ERROR FATAL**, lista las columnas disponibles y **se detiene inmediatamente sin enviar ningún correo**.
-3. **Filtro inteligente de envíos**:
-   - Revisa fila por fila la celda correspondiente a esa columna.
-   - Si la celda **ya tiene una marca temporal**, el participante es **omitido** (ya fue notificado).
-   - Solo se envía a las casillas cuya celda esté **vacía**.
-4. **Inserción de Marca Temporal**:
-   - Tras enviar con éxito cada correo vía SMTP, el bot llama al Webhook de Google Apps Script (`action: "MARCAR_NEWSLETTER"`).
-   - Inserta la fecha y hora exacta (ej: `13/10/2026 09:30:15`) en la celda del participante.
-   - Si la conexión se interrumpe a mitad de camino, los correos ya procesados quedan marcados y al relanzar el script continuará únicamente con los pendientes.
-
----
-
-### 🚀 5. Comandos de Ejecución
-
-#### A. Modo de Prueba (Recomendado antes de envíos masivos)
-Envía un único correo a tu casilla personal simulando los datos de un participante real. **NO modifica Google Sheets**.
+#### A. Modo de Prueba
+Envía un único correo a tu casilla personal simulando los datos de un participante real sin alterar la base de datos:
 
 ```bash
-# Envía a la casilla TEST_EMAIL configurada en .env_mailn
+# Envía a la casilla TEST_EMAIL configurada en .env
 npm run mailing:test
 
 # O envía a una casilla específica por argumento:
@@ -915,38 +914,18 @@ node scripts/enviarMailing.js --test tu_correo@donyeyo.com.ar
 ```
 
 #### B. Simulación sin envíos (Dry Run)
-Permite inspeccionar la conexión, los encabezados y cuántos correos se enviarían sin hacer envíos SMTP ni alterar la planilla:
+Permite inspeccionar la conexión y destinatarios sin realizar envíos SMTP:
 
 ```bash
 node scripts/enviarMailing.js --dry-run
 ```
 
 #### C. Envío Masivo Real
-Ejecuta el envío a todos los colaboradores que tengan la celda vacía en la columna `%NEWSLETER_ACTUAL%`:
+Ejecuta el envío a todos los participantes con email que aún no tengan la marca en Supabase:
 
 ```bash
 npm run mailing:send
 ```
-
-Opciones adicionales de terminal:
-```bash
-# Sobreescribir la columna de campaña en la ejecución actual:
-node scripts/enviarMailing.js --send --columna "Recordatorio Fase 2"
-
-# Limitar la tanda a un máximo de correos (ej: primeros 25):
-node scripts/enviarMailing.js --send --limit 25
-```
-
----
-
-### 🔄 6. Actualización de Google Apps Script (`Código.gs`)
-
-Para que la planilla de Google Sheets registre las marcas temporales en tiempo real, asegúrese de tener la última versión de `google-apps-script.js`:
-1. Abrir la planilla en Google Sheets: **Extensiones > Apps Script**.
-2. Pegar el código actualizado de `google-apps-script.js`.
-3. Guardar cambios.
-4. Hacer clic en el botón superior azul: **Implementar > Administrar implementaciones**.
-5. Clic en el icono del lápiz (**Editar**), seleccionar **"Nueva versión"** y presionar **Implementar**.
 
 ---
 
