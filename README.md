@@ -74,8 +74,9 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
 10. **Panel de Administración Corporativo Don Yeyo (Guideline Profesional)**:
    - **Desacople de la Estética Gamer:** El área de administración prescinde del fondo giratorio animado (`SunburstBackground`) y adopta una interfaz corporativa limpia de sistema de gestión en tono `slate-950` inspirada en la directiva de diseño de Don Yeyo (`dy_shigma`).
    - **Aprovechamiento de Pantalla Completa (Full Width):** Las vistas y tablas se expanden en toda la anchura del monitor sin restricciones de contenedor angosto, otorgando máxima legibilidad y confort.
-   - **Header Sobrio y Limpio (`AdminHeader`):** Barra superior fija con isotipo Don Yeyo, marca parametrizable por variable de entorno (`VITE_ADMIN_BRAND_NAME`), badge de motor de base de datos (`Supabase`) y menú de usuario con logout.
-   - **Menú Drawer Deslizable (`AdminDrawer`):** Menú lateral categorizado con overlay y efecto `backdrop-blur`, estructurado en las siguientes 5 secciones clave:
+   - **Header Sobrio y Limpio (`AdminHeader`):** Barra superior fija con isotipo Don Yeyo, marca parametrizable por variable de entorno (`VITE_ADMIN_BRAND_NAME`), versión dinámica de la trivia vinculada a `package.json` (`v1.0.0`), badge de motor de base de datos (`Supabase`) y menú de usuario con logout.
+   - **Modales con Scroll Interno y Máxima Prioridad (`z-[100]`):** Los modales de participantes, preguntas e importación se abren siempre perfectamente centrados cubriendo toda la pantalla (por encima del Header con `z-[100]`), bloquean el scroll de fondo del `body` e integran el scroll internamente mediante `.custom-modal-scrollbar`.
+   - **Menú Drawer Deslizable (`AdminDrawer`):** Menú lateral categorizado con overlay y efecto `backdrop-blur`, estructurado en las siguientes 6 secciones clave:
      1. **Dashboard:** Vista por defecto al ingresar, con KPIs de inscriptos, progreso de participación, estado de fase y podio provisional.
      2. **Preguntas:** Gestor CRUD integral de preguntas por fase con opciones dinámicas y explicaciones pedagógicas.
      3. **Participantes:** Auditoría de colaboradores, generación de links únicos con hash, seguimiento de mailing y resets.

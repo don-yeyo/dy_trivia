@@ -16,12 +16,14 @@ import {
   Database,
   ExternalLink
 } from 'lucide-react';
+import packageJson from '../../../package.json';
 
 export default function AdminHeader({
   adminUsername = 'admin',
   activeSection = 'PARTICIPANTS',
   onSelectSection,
   onOpenDrawer,
+  onToggleDrawer,
   onLogout,
   onBackToGame,
   isPublished = false,
@@ -29,6 +31,7 @@ export default function AdminHeader({
 }) {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const brandName = import.meta.env.VITE_ADMIN_BRAND_NAME || 'DY-TRIVIA';
+  const handleToggle = onOpenDrawer || onToggleDrawer;
 
   return (
     <header className="sticky top-0 z-40 w-full bg-slate-900/95 backdrop-blur-md border-b border-white/10 shadow-xl transition-all">
@@ -37,7 +40,7 @@ export default function AdminHeader({
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <button
             type="button"
-            onClick={onOpenDrawer}
+            onClick={handleToggle}
             className="p-2 sm:p-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-slate-200 hover:text-white border border-white/10 transition-colors cursor-pointer"
             title="Abrir menú de navegación"
             aria-label="Abrir menú"
@@ -63,6 +66,9 @@ export default function AdminHeader({
                   <span>Supabase</span>
                 </span>
               </div>
+              <p className="text-[10px] font-mono font-medium text-slate-400 leading-tight">
+                v{packageJson.version}
+              </p>
             </div>
           </div>
         </div>

@@ -849,3 +849,29 @@ h4,
     border-radius: 10px;
   }
 }
+
+/* ==========================================================================
+   SCROLLBAR INTEGRADO Y CORPORATIVO PARA MODALES DON YEYO
+   ========================================================================== */
+.custom-modal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+.custom-modal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-modal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-modal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+
+.custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}

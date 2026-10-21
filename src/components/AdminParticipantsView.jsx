@@ -107,6 +107,19 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
   const [mailingStatusMsg, setMailingStatusMsg] = useState('');
   const [mailingProgress, setMailingProgress] = useState({ sent: 0, failed: 0, total: 0 });
 
+  // Bloquear scroll de la página cuando algún modal esté abierto
+  useEffect(() => {
+    const isAnyModalOpen = isEditModalOpen || Boolean(resetModalParticipant) || Boolean(deleteModalParticipant) || isMailingModalOpen;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isEditModalOpen, resetModalParticipant, deleteModalParticipant, isMailingModalOpen]);
+
   // Mostrar mensaje tipo Toast autodescartable
   const notify = (msg) => {
     setSuccessToast(msg);
@@ -897,13 +910,13 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                             <button
                               onClick={() => handleCopyLink(p)}
                               className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${isCopied
-                                  ? 'bg-emerald-500 text-white shadow-md'
-                                  : 'bg-yellow-400 hover:bg-yellow-300 text-slate-950'
+                                ? 'bg-emerald-500 text-white shadow-md'
+                                : 'bg-yellow-400 hover:bg-yellow-300 text-slate-950'
                                 }`}
                               title="Copiar enlace de acceso directo único"
                             >
                               {isCopied ? <Check size={14} /> : <Copy size={14} />}
-                              <span>{isCopied ? '¡Copiado!' : ''}</span>
+                              <span>{isCopied ? '¡Copiado!' : 'Copiar Link'}</span>
                             </button>
 
                             {/* Abrir en nueva pestaña */}
@@ -945,8 +958,8 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                           onClick={() => handleToggleEmail(p)}
                           disabled={isRowLoading}
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${p.email_enviado
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
-                              : 'bg-slate-800/80 text-slate-400 border-white/10 hover:border-white/30 hover:text-white'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                            : 'bg-slate-800/80 text-slate-400 border-white/10 hover:border-white/30 hover:text-white'
                             }`}
                           title={p.email_enviado ? 'Click para marcar como NO enviado' : 'Click para marcar como ENVIADO'}
                         >
@@ -995,10 +1008,10 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                             onClick={() => handleSendSingleEmail(p)}
                             disabled={!p.email || isRowLoading}
                             className={`p-2 rounded-lg transition-colors cursor-pointer ${!p.email
-                                ? 'text-slate-600 opacity-40 cursor-not-allowed'
-                                : p.email_enviado
-                                  ? 'text-purple-300 hover:text-white hover:bg-purple-500/20'
-                                  : 'text-amber-400 hover:text-white hover:bg-amber-500/20'
+                              ? 'text-slate-600 opacity-40 cursor-not-allowed'
+                              : p.email_enviado
+                                ? 'text-purple-300 hover:text-white hover:bg-purple-500/20'
+                                : 'text-amber-400 hover:text-white hover:bg-amber-500/20'
                               }`}
                             title={
                               !p.email
@@ -1081,131 +1094,138 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
           MODAL 1: CREAR / EDITAR PARTICIPANTE
           ========================================================================= */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="glass-panel w-full max-w-lg p-6 rounded-3xl border border-white/20 shadow-2xl relative">
-            <button
-              onClick={() => setIsEditModalOpen(false)}
-              className="absolute right-5 top-5 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <X size={20} />
-            </button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
+          <div className="w-full max-w-lg bg-slate-900 border border-white/20 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden relative">
+            {/* Header fijo */}
+            <div className="shrink-0 p-5 sm:p-6 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-red-600/30 text-red-400 flex items-center justify-center border border-red-500/40">
+                  {editingParticipant ? <Edit3 size={20} /> : <UserPlus size={20} />}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">
+                    {editingParticipant ? 'Editar Participante' : 'Registrar Nuevo Participante'}
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    {editingParticipant
+                      ? `Modificando legajo ${editingParticipant.legajo}`
+                      : 'Agrega un participante a la nómina de la trivia'}
+                  </p>
+                </div>
+              </div>
 
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-11 h-11 rounded-2xl bg-red-600/30 text-red-400 flex items-center justify-center border border-red-500/40">
-                {editingParticipant ? <Edit3 size={20} /> : <UserPlus size={20} />}
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-white">
-                  {editingParticipant ? 'Editar Participante' : 'Registrar Nuevo Participante'}
-                </h3>
-                <p className="text-xs text-slate-300">
-                  {editingParticipant
-                    ? `Modificando legajo ${editingParticipant.legajo}`
-                    : 'Agrega un participante a la nómina de la trivia'}
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            {formError && (
-              <div className="mb-4 p-3 rounded-xl bg-red-600/30 border border-red-500/50 text-red-200 text-xs font-bold flex items-center gap-2">
-                <AlertTriangle size={16} className="shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
+            {/* Formulario con cuerpo scrolleable y footer fijo */}
+            <form onSubmit={handleSubmitForm} className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 custom-modal-scrollbar text-xs">
+                {formError && (
+                  <div className="p-3 rounded-xl bg-red-600/30 border border-red-500/50 text-red-200 text-xs font-bold flex items-center gap-2">
+                    <AlertTriangle size={16} className="shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
 
-            <form onSubmit={handleSubmitForm} className="space-y-4 text-xs">
-              {/* Legajo */}
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">
-                  Legajo <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  disabled={Boolean(editingParticipant)}
-                  value={formData.legajo}
-                  onChange={(e) => setFormData({ ...formData, legajo: e.target.value.trim() })}
-                  placeholder="Ej: 1042"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-white/15 text-white placeholder-slate-500 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono text-sm"
-                />
-                {editingParticipant && (
-                  <p className="text-[10px] text-slate-400 mt-0.5">El número de legajo es identificador único y no puede cambiarse.</p>
+                {/* Legajo */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">
+                    Legajo <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    disabled={Boolean(editingParticipant)}
+                    value={formData.legajo}
+                    onChange={(e) => setFormData({ ...formData, legajo: e.target.value.trim() })}
+                    placeholder="Ej: 1042"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white placeholder-slate-500 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono text-sm"
+                  />
+                  {editingParticipant && (
+                    <p className="text-[10px] text-slate-400 mt-0.5">El número de legajo es identificador único y no puede cambiarse.</p>
+                  )}
+                </div>
+
+                {/* Nombre y Apellido */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      Nombre <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.nombre}
+                      onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                      placeholder="Ej: Juan"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-bold mb-1">
+                      Apellido <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.apellido}
+                      onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
+                      placeholder="Ej: Pérez"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Sector */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Sector / Área</label>
+                  <input
+                    type="text"
+                    value={formData.sector}
+                    onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
+                    placeholder="Ej: Producción, Calidad, Logística..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Email Corporativo / Personal</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Ej: jperez@donyeyo.com.ar"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                  />
+                </div>
+
+                {/* Checkbox Auto-generar Hash (solo al crear) */}
+                {!editingParticipant && (
+                  <div className="pt-2">
+                    <label className="flex items-center gap-2.5 cursor-pointer text-slate-300 select-none">
+                      <input
+                        type="checkbox"
+                        checked={formData.autoGenerateHash}
+                        onChange={(e) => setFormData({ ...formData, autoGenerateHash: e.target.checked })}
+                        className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-white/20"
+                      />
+                      <span className="font-semibold text-xs">
+                        Generar enlace único (token hash) automáticamente con la frase semilla
+                      </span>
+                    </label>
+                  </div>
                 )}
               </div>
 
-              {/* Nombre y Apellido */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">
-                    Nombre <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    placeholder="Ej: Juan"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">
-                    Apellido <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.apellido}
-                    onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
-                    placeholder="Ej: Pérez"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                  />
-                </div>
-              </div>
-
-              {/* Sector */}
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">Sector / Área</label>
-                <input
-                  type="text"
-                  value={formData.sector}
-                  onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
-                  placeholder="Ej: Producción, Calidad, Logística..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-slate-300 font-bold mb-1">Email Corporativo / Personal</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="Ej: jperez@donyeyo.com.ar"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                />
-              </div>
-
-              {/* Checkbox Auto-generar Hash (solo al crear) */}
-              {!editingParticipant && (
-                <div className="pt-2">
-                  <label className="flex items-center gap-2.5 cursor-pointer text-slate-300 select-none">
-                    <input
-                      type="checkbox"
-                      checked={formData.autoGenerateHash}
-                      onChange={(e) => setFormData({ ...formData, autoGenerateHash: e.target.checked })}
-                      className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-white/20"
-                    />
-                    <span className="font-semibold text-xs">
-                      Generar enlace único (token hash) automáticamente con la frase semilla
-                    </span>
-                  </label>
-                </div>
-              )}
-
-              {/* Botones de acción */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-white/10">
+              {/* Footer fijo con botones de acción */}
+              <div className="shrink-0 p-4 sm:p-5 border-t border-white/10 bg-slate-950/70 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
@@ -1231,7 +1251,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
           MODAL 2: RESETEAR TRIVIA PARA UN USUARIO
           ========================================================================= */}
       {resetModalParticipant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
           <div className="glass-panel w-full max-w-md p-6 rounded-3xl border border-amber-500/30 shadow-2xl relative">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/40">
@@ -1255,8 +1275,8 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             <div className="space-y-2 mb-6">
               <label
                 className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${resetPhaseOption === 'ACTIVE'
-                    ? 'bg-amber-500/15 border-amber-500/60 text-white'
-                    : 'bg-slate-900/60 border-white/10 text-slate-400 hover:border-white/20'
+                  ? 'bg-amber-500/15 border-amber-500/60 text-white'
+                  : 'bg-slate-900/60 border-white/10 text-slate-400 hover:border-white/20'
                   }`}
               >
                 <div className="flex items-center gap-2.5 text-xs font-bold">
@@ -1275,8 +1295,8 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
 
               <label
                 className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${resetPhaseOption === 'ALL'
-                    ? 'bg-red-500/15 border-red-500/60 text-white'
-                    : 'bg-slate-900/60 border-white/10 text-slate-400 hover:border-white/20'
+                  ? 'bg-red-500/15 border-red-500/60 text-white'
+                  : 'bg-slate-900/60 border-white/10 text-slate-400 hover:border-white/20'
                   }`}
               >
                 <div className="flex items-center gap-2.5 text-xs font-bold">
@@ -1320,7 +1340,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
           MODAL 3: ELIMINAR PARTICIPANTE
           ========================================================================= */}
       {deleteModalParticipant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
           <div className="glass-panel w-full max-w-md p-6 rounded-3xl border border-red-500/40 shadow-2xl relative">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-11 h-11 rounded-2xl bg-red-600/25 text-red-400 flex items-center justify-center border border-red-500/40">

@@ -20,6 +20,7 @@ import {
   Mail,
   FileSpreadsheet
 } from 'lucide-react';
+import packageJson from '../../../package.json';
 
 export default function AdminDrawer({
   isOpen = false,
@@ -67,17 +68,15 @@ export default function AdminDrawer({
       {/* Overlay Backdrop Blur */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
-          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
         aria-hidden="true"
       />
 
       {/* Drawer Lateral Deslizable */}
       <aside
-        className={`fixed top-0 left-0 bottom-0 z-50 w-80 max-w-[85vw] bg-slate-900 border-r border-white/10 shadow-2xl flex flex-col justify-between transition-transform duration-300 ease-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 left-0 bottom-0 z-50 w-80 max-w-[85vw] bg-slate-900 border-r border-white/10 shadow-2xl flex flex-col justify-between transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         {/* Encabezado del Drawer */}
         <div className="p-5 border-b border-white/10 flex items-center justify-between">
@@ -91,7 +90,7 @@ export default function AdminDrawer({
                   {brandName}
                 </span>
                 <span className="px-1.5 py-0.5 rounded bg-red-600 text-white font-mono text-[9px] font-black uppercase">
-                  v1.2.0
+                  v{packageJson.version}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 font-medium">Administración Central</p>
@@ -120,11 +119,10 @@ export default function AdminDrawer({
               <button
                 type="button"
                 onClick={() => handleNavClick('DASHBOARD')}
-                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${
-                  activeSection === 'DASHBOARD'
-                    ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md font-black'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
+                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${activeSection === 'DASHBOARD'
+                  ? 'bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
               >
                 <LayoutDashboard size={18} className={activeSection === 'DASHBOARD' ? 'text-white' : 'text-amber-400'} />
                 <div className="flex-1">
@@ -139,11 +137,10 @@ export default function AdminDrawer({
               <button
                 type="button"
                 onClick={() => handleNavClick('QUESTIONS')}
-                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${
-                  activeSection === 'QUESTIONS'
-                    ? 'bg-blue-600 text-white shadow-md font-black'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
+                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${activeSection === 'QUESTIONS'
+                  ? 'bg-blue-600 text-white shadow-md font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
               >
                 <HelpCircle size={18} className={activeSection === 'QUESTIONS' ? 'text-white' : 'text-blue-400'} />
                 <div className="flex-1">
@@ -158,11 +155,10 @@ export default function AdminDrawer({
               <button
                 type="button"
                 onClick={() => handleNavClick('PARTICIPANTS')}
-                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${
-                  activeSection === 'PARTICIPANTS'
-                    ? 'bg-red-600 text-white shadow-md font-black'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
+                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${activeSection === 'PARTICIPANTS'
+                  ? 'bg-red-600 text-white shadow-md font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
               >
                 <Users size={18} className={activeSection === 'PARTICIPANTS' ? 'text-white' : 'text-red-400'} />
                 <div className="flex-1">
@@ -177,11 +173,10 @@ export default function AdminDrawer({
               <button
                 type="button"
                 onClick={() => handleNavClick('CLASSIFICATION')}
-                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${
-                  activeSection === 'CLASSIFICATION'
-                    ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
+                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${activeSection === 'CLASSIFICATION'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
               >
                 <Trophy size={18} className={activeSection === 'CLASSIFICATION' ? 'text-slate-950' : 'text-amber-400'} />
                 <div className="flex-1">
@@ -203,11 +198,10 @@ export default function AdminDrawer({
               <button
                 type="button"
                 onClick={() => handleNavClick('MAILING')}
-                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${
-                  activeSection === 'MAILING'
-                    ? 'bg-purple-600 text-white shadow-md font-black'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
+                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${activeSection === 'MAILING'
+                  ? 'bg-purple-600 text-white shadow-md font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
               >
                 <Mail size={18} className={activeSection === 'MAILING' ? 'text-white' : 'text-purple-400'} />
                 <div className="flex-1">
@@ -222,11 +216,10 @@ export default function AdminDrawer({
               <button
                 type="button"
                 onClick={() => handleNavClick('CONFIG')}
-                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${
-                  activeSection === 'CONFIG'
-                    ? 'bg-indigo-600 text-white shadow-md font-black'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}
+                className={`w-full px-3.5 py-3 rounded-xl flex items-center gap-3 text-xs font-bold transition-all text-left cursor-pointer ${activeSection === 'CONFIG'
+                  ? 'bg-indigo-600 text-white shadow-md font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
               >
                 <Sliders size={18} className={activeSection === 'CONFIG' ? 'text-white' : 'text-indigo-400'} />
                 <div className="flex-1">
@@ -239,60 +232,7 @@ export default function AdminDrawer({
             </div>
           </div>
 
-          {/* SECCIÓN 2: Vistas Públicas y Auditorio */}
-          <div>
-            <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
-              Vistas Públicas & Auditorio
-            </p>
-            <div className="space-y-1">
-              {/* Pantalla de Proyección */}
-              <button
-                type="button"
-                onClick={() => {
-                  window.open(`${window.location.origin}${window.location.pathname}?view=proyeccion`, '_blank');
-                  onClose();
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl flex items-center justify-between text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <Tv size={17} className="text-purple-400" />
-                  <span>Pantalla de Proyección (Salón)</span>
-                </div>
-                <ExternalLink size={14} className="text-slate-500" />
-              </button>
-
-              {/* Ranking Público */}
-              <button
-                type="button"
-                onClick={() => {
-                  window.open(`${window.location.origin}${window.location.pathname}?view=clasificacion`, '_blank');
-                  onClose();
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl flex items-center justify-between text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <Share2 size={17} className="text-emerald-400" />
-                  <span>Ranking Público Oficial</span>
-                </div>
-                <ExternalLink size={14} className="text-slate-500" />
-              </button>
-
-              {/* Ir al Juego */}
-              <button
-                type="button"
-                onClick={() => {
-                  onBackToGame();
-                  onClose();
-                }}
-                className="w-full px-3.5 py-2.5 rounded-xl flex items-center gap-3 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/5 transition-all text-left cursor-pointer"
-              >
-                <Gamepad2 size={17} className="text-yellow-400" />
-                <span>Volver a la Trivia (Juego)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* SECCIÓN 3: Motor y Estado Técnico */}
+          {/* SECCIÓN 2: Motor y Estado Técnico */}
           <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-white/10 text-xs">
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-bold text-white flex items-center gap-1.5">

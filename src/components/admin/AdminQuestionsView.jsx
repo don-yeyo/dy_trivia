@@ -81,6 +81,18 @@ export default function AdminQuestionsView({ initialPhase = 1 }) {
     fetchQuestions(selectedPhase);
   }, [selectedPhase]);
 
+  // Bloquear scroll de la página cuando algún modal esté abierto
+  useEffect(() => {
+    if (isModalOpen || Boolean(deletingQuestion)) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isModalOpen, deletingQuestion]);
+
   const showStatus = (text, type = 'success') => {
     setStatusMessage({ text, type });
     setTimeout(() => setStatusMessage({ text: '', type: 'success' }), 6000);
@@ -504,10 +516,10 @@ export default function AdminQuestionsView({ initialPhase = 1 }) {
           MODAL DE CREAR / EDITAR PREGUNTA
           ===================================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-casual-in">
-          <div className="w-full max-w-2xl bg-slate-900 border border-white/15 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-6 my-8 max-h-[90vh] overflow-y-auto">
-            {/* Header del Modal */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-fade-in">
+          <div className="w-full max-w-2xl bg-slate-900 border border-white/15 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            {/* Header fijo del Modal */}
+            <div className="shrink-0 p-5 sm:p-6 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center">
                   <HelpCircle size={20} />
@@ -531,8 +543,9 @@ export default function AdminQuestionsView({ initialPhase = 1 }) {
               </button>
             </div>
 
-            {/* Formulario */}
-            <form onSubmit={handleSaveQuestion} className="space-y-5">
+            {/* Formulario con cuerpo scrolleable y footer fijo */}
+            <form onSubmit={handleSaveQuestion} className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 custom-modal-scrollbar">
               {/* Fila 1: Fase, Número de Pregunta y Puntos */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
@@ -684,36 +697,37 @@ export default function AdminQuestionsView({ initialPhase = 1 }) {
                   className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+            </div>
 
-              {/* Botones de Acción */}
-              <div className="pt-4 border-t border-white/10 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
-                >
-                  Cancelar
-                </button>
+            {/* Footer fijo con Botones de Acción */}
+            <div className="shrink-0 p-4 sm:p-5 border-t border-white/10 bg-slate-950/70 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
 
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs uppercase tracking-wide flex items-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
-                >
-                  {isSaving ? (
-                    <>
-                      <RefreshCw size={14} className="animate-spin" />
-                      <span>Guardando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save size={14} />
-                      <span>{editingQuestion ? 'Actualizar Pregunta' : 'Crear Pregunta'}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs uppercase tracking-wide flex items-center gap-2 cursor-pointer shadow-lg disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    <span>{editingQuestion ? 'Actualizar Pregunta' : 'Crear Pregunta'}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
           </div>
         </div>
       )}
@@ -722,7 +736,7 @@ export default function AdminQuestionsView({ initialPhase = 1 }) {
           MODAL DE CONFIRMACIÓN DE ELIMINACIÓN
           ===================================================================== */}
       {deletingQuestion && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-casual-in">
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-fade-in">
           <div className="w-full max-w-md bg-slate-900 border border-rose-500/30 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-4 text-center">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 mx-auto flex items-center justify-center">
               <Trash2 size={28} />

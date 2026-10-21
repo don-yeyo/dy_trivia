@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import {
   Upload,
@@ -22,6 +22,18 @@ export default function ImportParticipantsModal({ isOpen, onClose, onSuccess }) 
   const [parseError, setParseError] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Bloquear scroll de la página mientras el modal esté abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -160,7 +172,7 @@ export default function ImportParticipantsModal({ isOpen, onClose, onSuccess }) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-casual-in overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-hidden">
       <div className="casual-card w-full max-w-4xl p-6 sm:p-8 rounded-3xl border-2 border-slate-200 shadow-2xl relative my-auto max-h-[90vh] flex flex-col overflow-hidden bg-white text-slate-900">
         {/* Cabecera del Modal */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 shrink-0">
@@ -188,8 +200,8 @@ export default function ImportParticipantsModal({ isOpen, onClose, onSuccess }) 
           </button>
         </div>
 
-        {/* Contenido Scrolleable */}
-        <div className="flex-1 overflow-y-auto py-5 space-y-6 pr-1">
+        {/* Contenido Scrolleable con scrollbar estilizado */}
+        <div className="flex-1 overflow-y-auto py-5 space-y-6 pr-1 custom-modal-scrollbar">
           {/* Mensajes de Estado */}
           {successMessage && (
             <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-800 text-sm font-bold flex items-center gap-3 shadow-sm animate-casual-in">

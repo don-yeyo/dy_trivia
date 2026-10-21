@@ -14,7 +14,10 @@
 - [x] Remoción de botón de mailing redundante en la grilla de participantes
 - [x] Preguntas en pantallazo único (sin paginación obligatoria) para facilitar la auditoría rápida
 - [x] Paginación de participantes parametrizada por VITE_ADMIN_PARTICIPANTS_PER_PAGE (default: 100)
-- [x] Reemplazo del término 'colaboradores' por 'participantes' en toda la interfaz y reportes
+- [x] Corrección de apertura de Drawer lateral desde el Header administrativo
+- [x] Visualización sutil de versión dinámica de la trivia tomada desde package.json (v1.0.0) debajo del nombre
+- [x] Modales centrados con scroll interno (.custom-modal-scrollbar), z-[100] por encima del header y bloqueo de scroll de fondo
+- [x] Botón de 'Copiar Link' sobrio solo icono con tooltip y feedback al portapapeles sin fondo amarillo
 - [ ] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una (disparo masivo de resultados)
 - [ ] Detectar si no hay conexión o falla algo contra la API de Supabase
 - [ ] Config: mostrar o no mostrar área del participante
