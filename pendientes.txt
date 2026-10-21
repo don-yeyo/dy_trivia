@@ -20,7 +20,7 @@
 - [x] Botón de 'Copiar Link' sobrio solo icono con tooltip y feedback al portapapeles sin fondo amarillo
 - [x] Unificación de variables SMTP de mailing en .env y .env.template, eliminación de archivos obsoletos (.env_mailn, .env_mailn.template y google-apps-script.js)
 - [x] Grilla de participantes: email integrado bajo el nombre (ahorro de columna), iconografía encendida/apagada con tooltip para Invitación y Resultados, acciones de reenvío individual y corrección de métricas reales de mailing (474 inscriptos/cobertura)
-- [ ] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una (disparo masivo de resultados)
+- [x] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una (disparo masivo de resultados)
 - [ ] Detectar si no hay conexión o falla algo contra la API de Supabase
 - [ ] Config: mostrar o no mostrar área del participante
 

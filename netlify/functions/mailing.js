@@ -106,6 +106,191 @@ function loadTemplateFile(emailTipo = 'INVITACION') {
 }
 
 /**
+ * Helper para extraer el texto legible de una opción
+ */
+function getOptionText(options, optVal) {
+  if (optVal === null || optVal === undefined) return '';
+  const num = parseInt(optVal, 10);
+  if (Array.isArray(options)) {
+    const matchObj = options.find((o, idx) => {
+      if (typeof o === 'object' && o !== null) {
+        return o.id !== undefined ? o.id === num : (idx + 1) === num;
+      }
+      return (idx + 1) === num;
+    });
+
+    if (matchObj) {
+      if (typeof matchObj === 'object' && matchObj !== null) {
+        return matchObj.text || matchObj.texto || matchObj.title || '';
+      }
+      return String(matchObj);
+    }
+
+    if (num >= 1 && num <= options.length) {
+      const item = options[num - 1];
+      return typeof item === 'object' && item !== null
+        ? (item.text || item.texto || '')
+        : String(item);
+    }
+  }
+  return `Opción ${num}`;
+}
+
+/**
+ * Genera el bloque HTML con el detalle de resultados pedagógicos pregunta por pregunta
+ * @param {Array} questions - Lista de preguntas de la fase
+ * @param {Array} userResponses - Respuestas registradas del participante
+ * @returns {string} Bloque HTML seguro para correos (estilos inline)
+ */
+function buildFeedbackDetalleHtml(questions = [], userResponses = []) {
+  if (!questions || questions.length === 0) {
+    return '';
+  }
+
+  // Mapa de respuestas por pregunta_id
+  const respMap = new Map();
+  (userResponses || []).forEach(r => {
+    const qId = parseInt(r.pregunta_id, 10);
+    if (!isNaN(qId)) {
+      respMap.set(qId, r);
+    }
+  });
+
+  const cardsHtml = questions.map((q, idx) => {
+    const qNum = idx + 1;
+    const qId = parseInt(q.id, 10);
+    const userResp = respMap.get(qId);
+
+    const hasAnswered = userResp !== undefined && userResp.respuesta_seleccionada !== null && userResp.respuesta_seleccionada !== undefined;
+    const isCorrect = hasAnswered && Boolean(userResp.es_correcta);
+    const options = Array.isArray(q.opciones) ? q.opciones : [];
+
+    const correctOptionText = getOptionText(options, q.respuesta_correcta);
+    const userOptionText = hasAnswered ? getOptionText(options, userResp.respuesta_seleccionada) : '';
+    const explicacion = String(q.explicacion || '').trim();
+
+    // Estilos compatibles con clientes de correo (Outlook, Gmail, etc.)
+    let statusBadge = '';
+    let borderColor = '#64748b';
+    let cardBg = '#0d2244';
+
+    if (!hasAnswered) {
+      borderColor = '#94a3b8';
+      cardBg = '#13284c';
+      statusBadge = `
+        <span style="display: inline-block; background-color: #334155; color: #cbd5e1; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 9px; border-radius: 6px; border: 1px solid #475569;">
+          ⏳ SIN RESPONDER
+        </span>
+      `;
+    } else if (isCorrect) {
+      borderColor = '#10b981';
+      cardBg = '#0a2e2d';
+      statusBadge = `
+        <span style="display: inline-block; background-color: rgba(16, 185, 129, 0.25); color: #34d399; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 9px; border-radius: 6px; border: 1px solid #10b981;">
+          ✅ CORRECTA
+        </span>
+      `;
+    } else {
+      borderColor = '#ef4444';
+      cardBg = '#2d141e';
+      statusBadge = `
+        <span style="display: inline-block; background-color: rgba(239, 68, 68, 0.25); color: #f87171; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 9px; border-radius: 6px; border: 1px solid #ef4444;">
+          ❌ INCORRECTA
+        </span>
+      `;
+    }
+
+    // Bloque de respuesta correcta (se enfatiza si el participante se equivocó o no contestó)
+    let correctBlock = '';
+    if (!isCorrect) {
+      correctBlock = `
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.12); font-size: 13px; color: #cbd5e1;">
+          <span style="color: #94a3b8; font-size: 12px;">Opción correcta:</span>
+          <strong style="color: #34d399; margin-left: 5px;">${correctOptionText || `Opción ${q.respuesta_correcta}`}</strong>
+        </div>
+      `;
+    }
+
+    // Bloque de justificación pedagógica de la opción correcta (si fue establecida)
+    let explicacionBlock = '';
+    if (explicacion) {
+      explicacionBlock = `
+        <div style="margin-top: 10px; background-color: rgba(14, 165, 233, 0.12); border-left: 3px solid #38bdf8; border-radius: 6px; padding: 10px 14px;">
+          <div style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #38bdf8; margin-bottom: 3px; letter-spacing: 0.5px;">
+            💡 Justificación de Calidad e Inocuidad:
+          </div>
+          <div style="font-size: 12px; line-height: 18px; color: #e0f2fe;">
+            ${explicacion}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"
+        style="margin-bottom: 16px; background-color: ${cardBg}; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); border-left: 5px solid ${borderColor};">
+        <tr>
+          <td style="padding: 16px 18px;">
+            <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td align="left" style="color: #94a3b8; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;">
+                  Pregunta ${qNum} de ${questions.length}
+                </td>
+                <td align="right">
+                  ${statusBadge}
+                </td>
+              </tr>
+            </table>
+
+            <h4 style="margin: 10px 0 8px 0; color: #ffffff; font-size: 14px; line-height: 20px; font-weight: 700;">
+              ${q.pregunta}
+            </h4>
+
+            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 4px;">
+              <span style="color: #94a3b8; font-size: 12px;">Tu respuesta:</span>
+              ${hasAnswered ? `
+                <span style="color: ${isCorrect ? '#34d399' : '#f87171'}; font-weight: 700; margin-left: 5px;">
+                  ${userOptionText || `Opción ${userResp.respuesta_seleccionada}`}
+                </span>
+              ` : `
+                <span style="color: #94a3b8; font-style: italic; margin-left: 5px;">
+                  No llegaste a responder
+                </span>
+              `}
+            </div>
+
+            ${correctBlock}
+            ${explicacionBlock}
+          </td>
+        </tr>
+      </table>
+    `;
+  }).join('');
+
+  return `
+    <div style="margin: 28px 0 24px 0;">
+      <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
+        <tr>
+          <td>
+            <div style="color: #facc15; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px;">
+              ★ DEVOLUCIÓN PEDAGÓGICA Y BUENAS PRÁCTICAS ★
+            </div>
+            <h3 style="margin: 0; color: #ffffff; font-size: 18px; line-height: 24px; font-weight: 800;">
+              Resultados Pregunta por Pregunta
+            </h3>
+            <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 13px; line-height: 18px;">
+              A continuación podés revisar cada una de tus respuestas y la fundamentación técnica de inocuidad correspondiente:
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      ${cardsHtml}
+    </div>
+  `;
+}
+
+/**
  * Renderiza el HTML reemplazando parámetros (%PARAMETRO%) y comodines del usuario ({{comodin}})
  */
 function renderEmailHtml(user, emailTipo = 'INVITACION', paramsMap = {}, smtpCfg = null) {
@@ -147,17 +332,7 @@ function renderEmailHtml(user, emailTipo = 'INVITACION', paramsMap = {}, smtpCfg
     .replace(/\{\{tiempo_total\}\}/gi, String(user.tiempo_total ?? 184));
 
   // Bloque de feedback pedagógico
-  const feedbackHtml = user.feedback_detalle || `
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; margin-bottom: 24px; padding: 16px;">
-      <tr>
-        <td style="color: #cbd5e1; font-size: 13px; line-height: 20px;">
-          <div style="font-weight: 700; color: #38bdf8; margin-bottom: 8px;">📚 Devolución Pedagógica Oficial</div>
-          <p style="margin: 0 0 6px 0;">¡Excelente desempeño! Recordá que ante cualquier desvío de temperatura o rotura de empaque primario, el procedimiento de Calidad Don Yeyo indica aislar inmediatamente el lote y notificar a supervisión.</p>
-        </td>
-      </tr>
-    </table>
-  `;
-
+  const feedbackHtml = user.feedback_detalle || '';
   template = template.replace(/\{\{feedback_detalle\}\}/gi, feedbackHtml);
 
   return template;
@@ -307,10 +482,48 @@ export async function handler(event, context) {
           email: 'jriquelme@donyeyo.com.ar',
           token_hash: 'token_muestra_live_preview',
           puntaje: 1420,
-          correctas: 15,
+          correctas: 13,
           total_preguntas: 15,
           tiempo_total: 165
         };
+
+        if (emailTipo === 'RESULTADOS' && !sampleUser.feedback_detalle) {
+          const sysConfig = await db.getConfig();
+          const activePhase = sysConfig.activePhase || 1;
+          const questions = await db.getQuestionsAdmin(activePhase);
+
+          // Simular respuestas variadas para la vista previa
+          const sampleResponses = questions.map((q, idx) => {
+            const isCorrect = idx !== 3 && idx !== 8;
+            const options = Array.isArray(q.opciones) ? q.opciones : [];
+            const correctOpt = parseInt(q.respuesta_correcta, 10) || 1;
+            let userOpt = correctOpt;
+            if (!isCorrect) {
+              userOpt = correctOpt === 1 ? 2 : 1;
+            }
+
+            // Justificación modelo en la muestra si la pregunta aún no la tiene en base
+            if (!q.explicacion) {
+              if (idx === 0) {
+                q.explicacion = 'Las normas BPM prohíben anillos, pulseras y relojes para evitar la acumulación de suciedad microbiológica y prevenir cuerpos extraños en la línea productiva.';
+              } else if (idx === 3) {
+                q.explicacion = 'El lavado de manos debe realizarse con jabón antibacterial frotando palma, dorso y entre dedos durante al menos 20 segundos antes de manipular alimentos.';
+              }
+            }
+
+            return {
+              pregunta_id: q.id,
+              respuesta_seleccionada: userOpt,
+              es_correcta: isCorrect,
+              puntos_obtenidos: isCorrect ? (q.puntos || 100) : 0,
+              tiempo_tardado: 8
+            };
+          });
+
+          sampleUser.correctas = sampleResponses.filter(r => r.es_correcta).length;
+          sampleUser.total_preguntas = questions.length;
+          sampleUser.feedback_detalle = buildFeedbackDetalleHtml(questions, sampleResponses);
+        }
 
         const html = renderEmailHtml(sampleUser, emailTipo, paramsMap, smtpCfg);
 
@@ -396,10 +609,46 @@ export async function handler(event, context) {
           email: targetEmail,
           token_hash: 'demo_token_hash_para_pruebas',
           puntaje: 1350,
-          correctas: 14,
+          correctas: 13,
           total_preguntas: 15,
           tiempo_total: 172
         };
+
+        if (emailTipo === 'RESULTADOS') {
+          const sysConfig = await db.getConfig();
+          const activePhase = sysConfig.activePhase || 1;
+          const questions = await db.getQuestionsAdmin(activePhase);
+
+          const sampleResponses = questions.map((q, idx) => {
+            const isCorrect = idx !== 2 && idx !== 7;
+            const options = Array.isArray(q.opciones) ? q.opciones : [];
+            const correctOpt = parseInt(q.respuesta_correcta, 10) || 1;
+            let userOpt = correctOpt;
+            if (!isCorrect) {
+              userOpt = correctOpt === 1 ? 2 : 1;
+            }
+
+            if (!q.explicacion) {
+              if (idx === 0) {
+                q.explicacion = 'Las normas BPM prohíben anillos, pulseras y relojes para evitar la acumulación de suciedad microbiológica y prevenir cuerpos extraños.';
+              } else if (idx === 2) {
+                q.explicacion = 'Ante un desvío o rotura de empaque primario, se debe aislar inmediatamente el lote y notificar a supervisión.';
+              }
+            }
+
+            return {
+              pregunta_id: q.id,
+              respuesta_seleccionada: userOpt,
+              es_correcta: isCorrect,
+              puntos_obtenidos: isCorrect ? (q.puntos || 100) : 0,
+              tiempo_tardado: 9
+            };
+          });
+
+          demoUser.correctas = sampleResponses.filter(r => r.es_correcta).length;
+          demoUser.total_preguntas = questions.length;
+          demoUser.feedback_detalle = buildFeedbackDetalleHtml(questions, sampleResponses);
+        }
 
         const html = renderEmailHtml(demoUser, emailTipo, paramsMap, smtpCfg);
 
@@ -442,18 +691,24 @@ export async function handler(event, context) {
           return { statusCode: 400, headers, body: JSON.stringify({ error: `El participante ${user.nombre} ${user.apellido} no tiene un email válido registrado.` }) };
         }
 
-        // Si es resultados, obtener su puntaje y respuestas reales
+        // Si es resultados, obtener su puntaje, preguntas y respuestas reales con detalle pedagógico
         if (emailTipo === 'RESULTADOS') {
+          const sysConfig = await db.getConfig();
+          const activePhase = sysConfig.activePhase || 1;
+          const questions = await db.getQuestionsAdmin(activePhase);
+
           const { data: userResponses } = await supabase
             .from('responses')
-            .select('es_correcta, puntos_obtenidos, tiempo_tardado')
-            .eq('legajo', legajo);
+            .select('pregunta_id, respuesta_seleccionada, es_correcta, puntos_obtenidos, tiempo_tardado')
+            .eq('legajo', legajo)
+            .eq('fase', activePhase);
 
           const rList = userResponses || [];
           user.correctas = rList.filter(r => r.es_correcta).length;
-          user.total_preguntas = Math.max(rList.length, 15);
+          user.total_preguntas = Math.max(questions.length, rList.length, 15);
           user.puntaje = rList.reduce((acc, r) => acc + (r.puntos_obtenidos || 0), 0);
           user.tiempo_total = rList.reduce((acc, r) => acc + (r.tiempo_tardado || 0), 0);
+          user.feedback_detalle = buildFeedbackDetalleHtml(questions, rList);
         }
 
         const transporter = createTransporter(smtpCfg);
@@ -505,25 +760,35 @@ export async function handler(event, context) {
           };
         }
 
+        let questions = [];
+        let activePhase = 1;
+        if (emailTipo === 'RESULTADOS') {
+          const sysConfig = await db.getConfig();
+          activePhase = sysConfig.activePhase || 1;
+          questions = await db.getQuestionsAdmin(activePhase);
+        }
+
         const transporter = createTransporter(smtpCfg);
         let sentCount = 0;
         let errors = [];
 
         for (const user of targets) {
           try {
-            // Si es resultados, intentar calcular aciertos si están en base
+            // Si es resultados, calcular aciertos, puntaje y construir feedback pedagógico
             if (emailTipo === 'RESULTADOS') {
               const supabase = db.getClient();
               const { data: userResponses } = await supabase
                 .from('responses')
-                .select('es_correcta, puntos_obtenidos, tiempo_tardado')
-                .eq('legajo', user.legajo);
+                .select('pregunta_id, respuesta_seleccionada, es_correcta, puntos_obtenidos, tiempo_tardado')
+                .eq('legajo', user.legajo)
+                .eq('fase', activePhase);
 
               const rList = userResponses || [];
               user.correctas = rList.filter(r => r.es_correcta).length;
-              user.total_preguntas = Math.max(rList.length, 15);
+              user.total_preguntas = Math.max(questions.length, rList.length, 15);
               user.puntaje = rList.reduce((acc, r) => acc + (r.puntos_obtenidos || 0), 0);
               user.tiempo_total = rList.reduce((acc, r) => acc + (r.tiempo_tardado || 0), 0);
+              user.feedback_detalle = buildFeedbackDetalleHtml(questions, rList);
             }
 
             const html = renderEmailHtml(user, emailTipo, paramsMap, smtpCfg);

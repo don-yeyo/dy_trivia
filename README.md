@@ -94,7 +94,12 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - **Sección Exclusiva e Independiente:** Módulo integral de control de comunicaciones Don Yeyo en el Panel Administrativo.
    - **Dos Plantillas Oficiales Responsive con URLs Absolutas:**
      - `mailing/invitacion.html`: Plantilla para convocar a participar con enlaces criptográficos individuales (`{{link_trivia}}`).
-     - `mailing/resultados.html`: Plantilla para la devolución de resultados con botón destacado a la tabla y podio oficial (`{{link_podio}}`), aciertos, puntaje y bloque pedagógico.
+     - `mailing/resultados.html`: Plantilla para la devolución de resultados con botón destacado a la tabla y podio oficial (`{{link_podio}}`), aciertos, puntaje y bloque pedagógico interactivo (`{{feedback_detalle}}`).
+    - **Bloque Pedagógico Pregunta por Pregunta en Email de Resultados:**
+      - Muestra el estado individual de cada consigna de la fase: `✅ CORRECTA`, `❌ INCORRECTA` o `⏳ SIN RESPONDER`.
+      - Presenta la opción elegida por el participante y resalta la opción correcta de la pregunta en caso de error o consigna omitida.
+      - Incluye la **justificación técnica de Calidad e Inocuidad Alimentaria** establecida para la pregunta, permitiendo un aprendizaje reflexivo post-trivia.
+      - Se genera dinámicamente tanto en el Live Preview, correos de prueba, envíos individuales por participante y despachos masivos por lote.
    - **Persistencia de Parámetros en Base de Datos (`mailing_parametros`):**
      - Almacena en Supabase de forma tipada (`id`, `email_tipo`, `nombre_parametro`, `valor`, `descripcion`) los comodines `%TITULO_EMAIL%`, `%SUBTITULO%`, `%MENSAJE_PRINCIPAL%`, `%CALL_TO_ACTION_TEXTO%`, `%MENSAJE_SECUNDARIO%`, `%EMPRESA_NOMBRE%`, `%CONTACTO_SOPORTE%`, `%URL_LOGO%` y `%URL_FONDO%`.
    - **Editor en Vivo y Live Preview en Tiempo Real:**
