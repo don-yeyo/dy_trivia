@@ -1157,5 +1157,143 @@ export class SupabaseAdapter extends DatabaseAdapter {
       return { success: false, error: err.message };
     }
   }
+
+  /**
+   * Obtiene los parámetros de mailing configurados para un tipo ('INVITACION' | 'RESULTADOS' | null para todos).
+   * Si la tabla no tiene datos, auto-inicializa con los valores estándar Don Yeyo.
+   */
+  async getMailingParams(emailTipo = null) {
+    const supabase = this.getClient();
+
+    const DEFAULT_MAILING_PARAMS = {
+      INVITACION: {
+        TITULO_EMAIL: '¡ACÁ EMPIEZA EL DESAFÍO DE INOCUIDAD!',
+        SUBTITULO: 'Llegó el momento de demostrar todo lo que sabés. Cada respuesta correcta suma puntos, pero recordá que el tiempo también es un factor clave y puede marcar la diferencia al momento de clasificar.',
+        MENSAJE_PRINCIPAL: '<p>🏆 <strong>Completá la trivia, acumulá puntos y asegurá tu lugar en la Fase 2.</strong></p>\n<p>⏱️ <strong>No lo olvides:</strong> el reloj comienza a correr desde el momento en que iniciás la trivia. Cuanto más rápido y preciso seas en tus respuestas, mayores serán tus posibilidades de avanzar.</p>\n<p>¿Aceptás el desafío?</p>\n<p>👉 Ingresá al siguiente enlace y poné a prueba tus conocimientos.</p><p><strong>¡MUCHA SUERTE!</strong></p>',
+        MENSAJE_SECUNDARIO: '⚠️ <strong>Muy importante:</strong> si abandonás la trivia y volvés a ingresar, continuarás desde la siguiente pregunta disponible y no podrás regresar a las anteriores para responderlas.',
+        CALL_TO_ACTION_TEXTO: 'INGRESAR A LA TRIVIA AHORA',
+        EMPRESA_NOMBRE: 'Don Yeyo S.A. • Departamento de Calidad e Inocuidad',
+        CONTACTO_SOPORTE: 'Para consultas o inconvenientes de acceso, comunicate con el área de RR.HH. o Calidad.',
+        ANIO_ACTUAL: String(new Date().getFullYear()),
+        URL_LOGO: 'https://dy-inocuidad.netlify.app/logo-donyeyo.svg',
+        URL_FONDO: 'https://dy-inocuidad.netlify.app/mailing/fondo-rayos.png'
+      },
+      RESULTADOS: {
+        TITULO_EMAIL: '¡RESULTADOS DEL DESAFÍO DE INOCUIDAD 2026!',
+        SUBTITULO: 'La etapa ha finalizado. Mirá cómo te fue, revisá tus respuestas y conocé el podio oficial.',
+        MENSAJE_PRINCIPAL: '<p>🎉 <strong>¡Muchas gracias por haber participado con tu compromiso diario hacia la inocuidad alimentaria!</strong></p>\n<p>Cada respuesta representa tu conocimiento en las Buenas Prácticas de Manufactura (BPM) y los estándares de calidad que hacen grande a Don Yeyo.</p>\n<p>🏆 <strong>Ya podés consultar la tabla general de clasificación y el Podio oficial de ganadores.</strong></p>',
+        MENSAJE_SECUNDARIO: 'ℹ️ <strong>Importante:</strong> Los clasificados a las instancias finales serán contactados por el Departamento de Calidad y Recursos Humanos.',
+        CALL_TO_ACTION_TEXTO: 'VER PODIO Y CLASIFICADOS',
+        EMPRESA_NOMBRE: 'Don Yeyo S.A. • Departamento de Calidad e Inocuidad',
+        CONTACTO_SOPORTE: 'Por dudas sobre tu puntaje o clasificación, comunicate con el área de Calidad.',
+        ANIO_ACTUAL: String(new Date().getFullYear()),
+        URL_LOGO: 'https://dy-inocuidad.netlify.app/logo-donyeyo.svg',
+        URL_FONDO: 'https://dy-inocuidad.netlify.app/mailing/fondo-rayos.png'
+      }
+    };
+
+    try {
+      let query = supabase.from('mailing_parametros').select('*');
+      if (emailTipo) {
+        query = query.eq('email_tipo', emailTipo.toUpperCase());
+      }
+
+      const { data, error } = await query;
+
+      if (!error && data && data.length > 0) {
+        return data;
+      }
+
+      // Si no hay datos o la tabla no está creada, intentamos inicializar con los defaults
+      const rowsToInsert = [];
+      const tipos = emailTipo ? [emailTipo.toUpperCase()] : ['INVITACION', 'RESULTADOS'];
+
+      for (const t of tipos) {
+        const pMap = DEFAULT_MAILING_PARAMS[t] || {};
+        for (const [k, v] of Object.entries(pMap)) {
+          rowsToInsert.push({
+            email_tipo: t,
+            nombre_parametro: k,
+            valor: v,
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+
+      // Intentar auto-seed silencioso
+      try {
+        await supabase.from('mailing_parametros').upsert(rowsToInsert, {
+          onConflict: 'email_tipo, nombre_parametro'
+        });
+      } catch (seedErr) {
+        // Fallback silencioso si la tabla no existe en Postgres aún
+      }
+
+      return rowsToInsert;
+    } catch (err) {
+      console.warn('[SupabaseAdapter] Advertencia consultando mailing_parametros:', err.message);
+      // Devolver defaults formateados como registros de base de datos
+      const fallbackRows = [];
+      const tipos = emailTipo ? [emailTipo.toUpperCase()] : ['INVITACION', 'RESULTADOS'];
+      for (const t of tipos) {
+        const pMap = DEFAULT_MAILING_PARAMS[t] || {};
+        for (const [k, v] of Object.entries(pMap)) {
+          fallbackRows.push({
+            id: null,
+            email_tipo: t,
+            nombre_parametro: k,
+            valor: v
+          });
+        }
+      }
+      return fallbackRows;
+    }
+  }
+
+  /**
+   * Guarda o actualiza un conjunto de parámetros de mailing para un tipo específico.
+   * @param {string} emailTipo 'INVITACION' | 'RESULTADOS'
+   * @param {Object} paramsMap Objeto con { [nombre_parametro]: valor }
+   */
+  async saveMailingParams(emailTipo, paramsMap) {
+    const supabase = this.getClient();
+    const cleanTipo = String(emailTipo || 'INVITACION').trim().toUpperCase();
+
+    if (!paramsMap || typeof paramsMap !== 'object') {
+      return { success: false, error: 'Objeto de parámetros inválido' };
+    }
+
+    try {
+      const rows = Object.entries(paramsMap).map(([nombre_parametro, valor]) => ({
+        email_tipo: cleanTipo,
+        nombre_parametro: String(nombre_parametro).trim().toUpperCase(),
+        valor: String(valor ?? ''),
+        updated_at: new Date().toISOString()
+      }));
+
+      const { data, error } = await supabase
+        .from('mailing_parametros')
+        .upsert(rows, { onConflict: 'email_tipo, nombre_parametro' })
+        .select();
+
+      if (error) {
+        console.error('[SupabaseAdapter] Error guardando mailing_parametros:', error.message);
+        // Fallback: guardar en config como JSON por si la tabla aún no se corrió con schema.sql
+        await supabase.from('config').upsert({
+          clave: `MAILING_PARAMS_${cleanTipo}`,
+          valor: JSON.stringify(paramsMap),
+          descripcion: `Parámetros de mailing para ${cleanTipo}`,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'clave' });
+
+        return { success: true, fallback: true, warning: error.message };
+      }
+
+      return { success: true, data };
+    } catch (err) {
+      console.error('[SupabaseAdapter] Excepción en saveMailingParams:', err);
+      return { success: false, error: err.message };
+    }
+  }
 }
 

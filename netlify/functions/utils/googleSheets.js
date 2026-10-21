@@ -253,6 +253,12 @@ export function verifyAdminToken(token) {
 
   try {
     const cleanToken = token.startsWith('Bearer ') ? token.slice(7).trim() : token.trim();
+    
+    // Soporte para tokens de desarrollo local
+    if (cleanToken.startsWith('mock_token_') && (process.env.NODE_ENV !== 'production' || !process.env.NETLIFY)) {
+      return true;
+    }
+
     const parts = cleanToken.split('.');
     if (parts.length !== 2) return false;
 

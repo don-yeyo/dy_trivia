@@ -81,11 +81,52 @@ INSERT INTO public.config (clave, valor, descripcion) VALUES
   ('OCULTAR_RESUMEN_TIEMPO', 'FALSE', 'Oculta tiempo en resumen')
 ON CONFLICT (clave) DO NOTHING;
 
--- 6. POLÍTICAS DE ROW LEVEL SECURITY (RLS)
+-- 6. TABLA: PARÁMETROS DINÁMICOS DE MAILING (INVITACIÓN Y RESULTADOS)
+CREATE TABLE IF NOT EXISTS public.mailing_parametros (
+  id BIGSERIAL PRIMARY KEY,
+  email_tipo VARCHAR(50) NOT NULL, -- 'INVITACION' | 'RESULTADOS'
+  nombre_parametro VARCHAR(100) NOT NULL,
+  valor TEXT NOT NULL DEFAULT '',
+  descripcion TEXT,
+  updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  CONSTRAINT uq_mailing_tipo_parametro UNIQUE (email_tipo, nombre_parametro)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mailing_tipo ON public.mailing_parametros (email_tipo);
+
+-- Poblado de parámetros iniciales de Invitación y Resultados
+INSERT INTO public.mailing_parametros (email_tipo, nombre_parametro, valor, descripcion) VALUES
+  -- Invitación
+  ('INVITACION', 'TITULO_EMAIL', '¡ACÁ EMPIEZA EL DESAFÍO DE INOCUIDAD!', 'Título principal del encabezado'),
+  ('INVITACION', 'SUBTITULO', 'Llegó el momento de demostrar todo lo que sabés. Cada respuesta correcta suma puntos, pero recordá que el tiempo también es un factor clave y puede marcar la diferencia al momento de clasificar.', 'Bajada o subtítulo del correo'),
+  ('INVITACION', 'MENSAJE_PRINCIPAL', '<p>🏆 <strong>Completá la trivia, acumulá puntos y asegurá tu lugar en la Fase 2.</strong></p><p>⏱️ <strong>No lo olvides:</strong> el reloj comienza a correr desde el momento en que iniciás la trivia. Cuanto más rápido y preciso seas en tus respuestas, mayores serán tus posibilidades de avanzar.</p><p>¿Aceptás el desafío?</p><p>👉 Ingresá al siguiente enlace y poné a prueba tus conocimientos.</p><p><strong>¡MUCHA SUERTE!</strong></p>', 'Cuerpo HTML principal'),
+  ('INVITACION', 'MENSAJE_SECUNDARIO', '⚠️ <strong>Muy importante:</strong> si abandonás la trivia y volvés a ingresar, continuarás desde la siguiente pregunta disponible y no podrás regresar a las anteriores para responderlas.', 'Alerta o aclaración secundaria en recuadro'),
+  ('INVITACION', 'CALL_TO_ACTION_TEXTO', 'INGRESAR A LA TRIVIA AHORA', 'Texto del botón principal'),
+  ('INVITACION', 'EMPRESA_NOMBRE', 'Don Yeyo S.A. • Departamento de Calidad e Inocuidad', 'Firma institucional en el pie'),
+  ('INVITACION', 'CONTACTO_SOPORTE', 'Para consultas o inconvenientes de acceso, comunicate con el área de RR.HH. o Calidad.', 'Texto de soporte o contacto'),
+  ('INVITACION', 'ANIO_ACTUAL', '2026', 'Año vigente para el pie'),
+  ('INVITACION', 'URL_LOGO', 'https://dy-inocuidad.netlify.app/logo-donyeyo.svg', 'URL absoluta al logotipo oficial'),
+  ('INVITACION', 'URL_FONDO', 'https://dy-inocuidad.netlify.app/mailing/fondo-rayos.png', 'URL absoluta al fondo de rayos'),
+
+  -- Resultados
+  ('RESULTADOS', 'TITULO_EMAIL', '¡RESULTADOS DEL DESAFÍO DE INOCUIDAD 2026!', 'Título principal para la devolución'),
+  ('RESULTADOS', 'SUBTITULO', 'La etapa ha finalizado. Mirá cómo te fue, revisá tus respuestas y conocé el podio oficial.', 'Bajada o subtítulo de resultados'),
+  ('RESULTADOS', 'MENSAJE_PRINCIPAL', '<p>🎉 <strong>¡Muchas gracias por haber participado con tu compromiso diario hacia la inocuidad alimentaria!</strong></p><p>Cada respuesta representa tu conocimiento en las Buenas Prácticas de Manufactura (BPM) y los estándares de calidad que hacen grande a Don Yeyo.</p><p>🏆 <strong>Ya podés consultar la tabla general de clasificación y el Podio oficial de ganadores.</strong></p>', 'Cuerpo HTML principal'),
+  ('RESULTADOS', 'MENSAJE_SECUNDARIO', 'ℹ️ <strong>Importante:</strong> Los clasificados a las instancias finales serán contactados por el Departamento de Calidad y Recursos Humanos.', 'Alerta o aclaración secundaria'),
+  ('RESULTADOS', 'CALL_TO_ACTION_TEXTO', 'VER PODIO Y CLASIFICADOS', 'Texto del botón principal al podio'),
+  ('RESULTADOS', 'EMPRESA_NOMBRE', 'Don Yeyo S.A. • Departamento de Calidad e Inocuidad', 'Firma institucional en el pie'),
+  ('RESULTADOS', 'CONTACTO_SOPORTE', 'Por dudas sobre tu puntaje o clasificación, comunicate con el área de Calidad.', 'Texto de soporte o contacto'),
+  ('RESULTADOS', 'ANIO_ACTUAL', '2026', 'Año vigente para el pie'),
+  ('RESULTADOS', 'URL_LOGO', 'https://dy-inocuidad.netlify.app/logo-donyeyo.svg', 'URL absoluta al logotipo oficial'),
+  ('RESULTADOS', 'URL_FONDO', 'https://dy-inocuidad.netlify.app/mailing/fondo-rayos.png', 'URL absoluta al fondo de rayos')
+ON CONFLICT (email_tipo, nombre_parametro) DO NOTHING;
+
+-- 7. POLÍTICAS DE ROW LEVEL SECURITY (RLS)
 ALTER TABLE public.config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mailing_parametros ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Service Role full access config" ON public.config
   FOR ALL USING (auth.role() = 'service_role' OR current_user = 'postgres');
@@ -98,3 +139,7 @@ CREATE POLICY "Service Role full access questions" ON public.questions
 
 CREATE POLICY "Service Role full access responses" ON public.responses
   FOR ALL USING (auth.role() = 'service_role' OR current_user = 'postgres');
+
+CREATE POLICY "Service Role full access mailing_parametros" ON public.mailing_parametros
+  FOR ALL USING (auth.role() = 'service_role' OR current_user = 'postgres');
+

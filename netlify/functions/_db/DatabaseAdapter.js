@@ -255,5 +255,24 @@ export class DatabaseAdapter {
   async deleteQuestion(fase, id) {
     throw new Error(`${this.name}.deleteQuestion() no implementado`);
   }
+
+  /**
+   * Obtiene los parámetros de mailing configurados (por tipo o todos).
+   * @param {string|null} [emailTipo=null] 'INVITACION' | 'RESULTADOS' | null
+   * @returns {Promise<Array<Object>>}
+   */
+  async getMailingParams(emailTipo = null) {
+    throw new Error(`${this.name}.getMailingParams() no implementado`);
+  }
+
+  /**
+   * Guarda o actualiza un conjunto de parámetros de mailing.
+   * @param {string} emailTipo 'INVITACION' | 'RESULTADOS'
+   * @param {Object} paramsMap Objeto clave-valor con los parámetros
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async saveMailingParams(emailTipo, paramsMap) {
+    throw new Error(`${this.name}.saveMailingParams() no implementado`);
+  }
 }
 

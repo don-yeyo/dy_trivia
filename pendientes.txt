@@ -18,6 +18,7 @@
 - [x] Visualización sutil de versión dinámica de la trivia tomada desde package.json (v1.0.0) debajo del nombre
 - [x] Modales centrados con scroll interno (.custom-modal-scrollbar), z-[100] por encima del header y bloqueo de scroll de fondo
 - [x] Botón de 'Copiar Link' sobrio solo icono con tooltip y feedback al portapapeles sin fondo amarillo
-- [ ] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una (disparo masivo de resultados)
+- [x] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una (disparo masivo de resultados)
+- [x] Parametrización dinámica de mailing en Supabase (`mailing_parametros`) con plantillas modelo `invitacion.html` y `resultados.html` (con enlace al podio), editor en vivo y Live Preview en tiempo real
 - [ ] Detectar si no hay conexión o falla algo contra la API de Supabase
 - [ ] Config: mostrar o no mostrar área del participante

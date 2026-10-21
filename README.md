@@ -90,14 +90,18 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - **Opciones Dinámicas de Respuesta:** Soporte para agregar o quitar opciones (A, B, C, D...), con selector visual para marcar la respuesta correcta.
    - **Explicación Pedagógica:** Campo dedicado para registrar el fundamento de la respuesta correcta según los estándares de inocuidad alimentaria de Don Yeyo S.A., preparado para retroalimentación formativa y mailing post-trivia.
 
-12. **Centro de Gestión de Mailing y Comunicaciones Masivas (AdminMailingView)**:
-   - **Sección Exclusiva e Independiente:** Reemplaza el botón flotante antiguo en la barra de herramientas de Participantes con un módulo integral de control de comunicaciones.
-   - **Selector de Campañas de Email:**
-     - **Campaña 1 (Activa):** *Invitación a Jugar* &mdash; Despacho masivo o por lotes con el enlace único criptográfico por colaborador, conteo de preguntas y mensaje motivacional.
-     - **Campaña 2 (Preparada):** *Resultados y Feedback Pedagógico* &mdash; Diseñada para el cierre de fase, desglosando por participante aciertos, errores, puntaje y la justificación/explicación técnica de cada respuesta según la normativa de la planta.
-   - **Métricas KPI de Cobertura en Vivo:** Padrón total de emails válidos, cantidad y porcentaje de correos enviados, pendientes de despacho y estado de salud del servidor SMTP.
-   - **Despacho Flexible:** Opciones para despachar solo a colaboradores pendientes, forzar reenvío a la totalidad del padrón o realizar envíos de prueba individual indicando cualquier dirección de correo.
-   - **Live Preview Interactivo (Desktop & Mobile):** Previsualización en tiempo real del diseño HTML oficial corporativo de Don Yeyo con alternador responsivo para verificar el renderizado en teléfonos y clientes de correo de escritorio.
+12. **Centro de Gestión de Mailing, Parametrización Dinámica y Live Preview**:
+   - **Sección Exclusiva e Independiente:** Módulo integral de control de comunicaciones Don Yeyo en el Panel Administrativo.
+   - **Dos Plantillas Oficiales Responsive con URLs Absolutas:**
+     - `mailing/invitacion.html`: Plantilla para convocar a participar con enlaces criptográficos individuales (`{{link_trivia}}`).
+     - `mailing/resultados.html`: Plantilla para la devolución de resultados con botón destacado a la tabla y podio oficial (`{{link_podio}}`), aciertos, puntaje y bloque pedagógico.
+   - **Persistencia de Parámetros en Base de Datos (`mailing_parametros`):**
+     - Almacena en Supabase de forma tipada (`id`, `email_tipo`, `nombre_parametro`, `valor`, `descripcion`) los comodines `%TITULO_EMAIL%`, `%SUBTITULO%`, `%MENSAJE_PRINCIPAL%`, `%CALL_TO_ACTION_TEXTO%`, `%MENSAJE_SECUNDARIO%`, `%EMPRESA_NOMBRE%`, `%CONTACTO_SOPORTE%`, `%URL_LOGO%` y `%URL_FONDO%`.
+   - **Editor en Vivo y Live Preview en Tiempo Real:**
+     - Permite al administrador ajustar cualquier parámetro y observar en un `iframe` responsivo (con selector Escritorio / Móvil o inspector de código HTML) el correo final renderizado exactamente como lo recibirá el usuario a medida que escribe.
+   - **Métricas KPI y Despacho:**
+     - Envíos de prueba instantáneos a cualquier casilla con los parámetros tipeados.
+     - Despacho masivo por lotes configurables con opción de forzar reenvío a todo el padrón.
 
 ---
 
