@@ -4,6 +4,7 @@
 // Don Yeyo S.A. | Trivia Inocuidad 2026 | Referencia dy_shigma
 // ==============================================================================
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   HelpCircle,
   Plus,
@@ -515,8 +516,8 @@ export default function AdminQuestionsView({ initialPhase = 1 }) {
       {/* =====================================================================
           MODAL DE CREAR / EDITAR PREGUNTA
           ===================================================================== */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-fade-in">
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-fade-in">
           <div className="w-full max-w-2xl bg-slate-900 border border-white/15 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             {/* Header fijo del Modal */}
             <div className="shrink-0 p-5 sm:p-6 border-b border-white/10 flex items-center justify-between">
@@ -729,14 +730,15 @@ export default function AdminQuestionsView({ initialPhase = 1 }) {
             </div>
           </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* =====================================================================
-          MODAL DE CONFIRMACIÓN DE ELIMINACIÓN
+          MODAL DE CONFIRMACIÓN DE ELIMINACIÓN (PORTAL ROOT)
           ===================================================================== */}
-      {deletingQuestion && (
-        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-fade-in">
+      {deletingQuestion && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-hidden animate-fade-in">
           <div className="w-full max-w-md bg-slate-900 border border-rose-500/30 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-4 text-center">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30 mx-auto flex items-center justify-center">
               <Trash2 size={28} />
@@ -767,7 +769,8 @@ export default function AdminQuestionsView({ initialPhase = 1 }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

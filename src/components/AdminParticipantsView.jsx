@@ -3,6 +3,7 @@
 // Don Yeyo S.A. | Semana de la Inocuidad 2026
 // ==============================================================================
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Users,
   UserPlus,
@@ -911,12 +912,12 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                               onClick={() => handleCopyLink(p)}
                               className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${isCopied
                                 ? 'bg-emerald-500 text-white shadow-md'
-                                : 'bg-yellow-400 hover:bg-yellow-300 text-slate-950'
+                                : 'hover:text-white hover:bg-white/10'
                                 }`}
                               title="Copiar enlace de acceso directo único"
                             >
                               {isCopied ? <Check size={14} /> : <Copy size={14} />}
-                              <span>{isCopied ? '¡Copiado!' : 'Copiar Link'}</span>
+
                             </button>
 
                             {/* Abrir en nueva pestaña */}
@@ -1091,10 +1092,10 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
       </div>
 
       {/* =========================================================================
-          MODAL 1: CREAR / EDITAR PARTICIPANTE
+          MODAL 1: CREAR / EDITAR PARTICIPANTE (PORTAL ROOT)
           ========================================================================= */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
+      {isEditModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
           <div className="w-full max-w-lg bg-slate-900 border border-white/20 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden relative">
             {/* Header fijo */}
             <div className="shrink-0 p-5 sm:p-6 border-b border-white/10 flex items-center justify-between">
@@ -1244,14 +1245,15 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* =========================================================================
-          MODAL 2: RESETEAR TRIVIA PARA UN USUARIO
+          MODAL 2: RESETEAR TRIVIA PARA UN USUARIO (PORTAL ROOT)
           ========================================================================= */}
-      {resetModalParticipant && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
+      {resetModalParticipant && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
           <div className="glass-panel w-full max-w-md p-6 rounded-3xl border border-amber-500/30 shadow-2xl relative">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-11 h-11 rounded-2xl bg-amber-500/20 text-amber-300 flex items-center justify-center border border-amber-500/40">
@@ -1333,14 +1335,15 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* =========================================================================
-          MODAL 3: ELIMINAR PARTICIPANTE
+          MODAL 3: ELIMINAR PARTICIPANTE (PORTAL ROOT)
           ========================================================================= */}
-      {deleteModalParticipant && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
+      {deleteModalParticipant && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
           <div className="glass-panel w-full max-w-md p-6 rounded-3xl border border-red-500/40 shadow-2xl relative">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-11 h-11 rounded-2xl bg-red-600/25 text-red-400 flex items-center justify-center border border-red-500/40">
@@ -1379,38 +1382,44 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* =========================================================================
-          MODAL 4: PANEL INTEGRAL DE MAILING Y REENVÍO (SUPABASE)
+          MODAL 4: PANEL INTEGRAL DE MAILING Y REENVÍO (SUPABASE) (PORTAL ROOT)
           ========================================================================= */}
-      {isMailingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-          <div className="glass-panel w-full max-w-2xl p-6 sm:p-7 rounded-3xl border border-purple-500/40 shadow-2xl relative my-8">
-            {/* Botón cerrar */}
-            <button
-              onClick={() => {
-                if (!isMailingRunning) setIsMailingModalOpen(false);
-              }}
-              disabled={isMailingRunning}
-              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-40"
-            >
-              <X size={20} />
-            </button>
+      {isMailingModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
+          <div className="glass-panel w-full max-w-2xl bg-slate-900 border border-purple-500/40 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden relative">
+            {/* Header fijo */}
+            <div className="shrink-0 p-5 sm:p-6 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-purple-600/30 border border-purple-400/40 shrink-0">
+                  <Mail size={22} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">Centro de Despacho de Mailing</h3>
+                  <p className="text-xs text-purple-200">
+                    Envíos y reenvíos automáticos con plantilla oficial Don Yeyo e hipervínculos únicos de acceso
+                  </p>
+                </div>
+              </div>
 
-            {/* Cabecera */}
-            <div className="flex items-center gap-3.5 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-purple-600/30 border border-purple-400/40 shrink-0">
-                <Mail size={24} />
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-white">Centro de Despacho de Mailing</h3>
-                <p className="text-xs text-purple-200">
-                  Envíos y reenvíos automáticos con plantilla oficial Don Yeyo e hipervínculos únicos de acceso
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isMailingRunning) setIsMailingModalOpen(false);
+                }}
+                disabled={isMailingRunning}
+                className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-40"
+              >
+                <X size={20} />
+              </button>
             </div>
+
+            {/* Cuerpo con scroll interno */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 custom-modal-scrollbar text-xs">
 
             {/* Resumen de Métricas de Mailing */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -1552,9 +1561,10 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Pie de modal */}
-            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-end">
+            {/* Pie de modal fijo */}
+            <div className="shrink-0 p-4 sm:p-5 border-t border-white/10 bg-slate-950/90 flex items-center justify-end">
               <button
                 type="button"
                 onClick={() => setIsMailingModalOpen(false)}
@@ -1565,7 +1575,8 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

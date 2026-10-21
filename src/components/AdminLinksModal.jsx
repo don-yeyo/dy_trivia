@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchUsersList } from '../services/authService';
 import { buildUserAccessUrl } from '../utils/tokenGenerator';
 import { X, ExternalLink, Copy, Check, KeyRound } from 'lucide-react';
@@ -9,8 +10,14 @@ export default function AdminLinksModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (isOpen) {
+      document.body.style.overflow = 'hidden';
       fetchUsersList().then(setUsers);
+    } else {
+      document.body.style.overflow = '';
     }
+    return () => {
+      document.body.style.overflow = '';
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -21,9 +28,9 @@ export default function AdminLinksModal({ isOpen, onClose }) {
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div id="card-admin-modal" className="glass-panel w-full max-w-2xl max-h-[85vh] flex flex-col p-6 rounded-3xl border border-white/20 shadow-2xl">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-hidden animate-fade-in">
+      <div id="card-admin-modal" className="glass-panel w-full max-w-2xl max-h-[85vh] flex flex-col p-6 rounded-3xl border border-white/20 shadow-2xl bg-slate-900 relative">
         <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
           <div className="flex items-center gap-2">
             <KeyRound size={22} className="text-yellow-400" />
@@ -89,6 +96,7 @@ export default function AdminLinksModal({ isOpen, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

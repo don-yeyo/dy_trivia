@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Papa from 'papaparse';
 import {
   Upload,
@@ -171,8 +172,8 @@ export default function ImportParticipantsModal({ isOpen, onClose, onSuccess }) 
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fade-in overflow-hidden">
       <div className="casual-card w-full max-w-4xl p-6 sm:p-8 rounded-3xl border-2 border-slate-200 shadow-2xl relative my-auto max-h-[90vh] flex flex-col overflow-hidden bg-white text-slate-900">
         {/* Cabecera del Modal */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 shrink-0">
@@ -339,6 +340,7 @@ export default function ImportParticipantsModal({ isOpen, onClose, onSuccess }) 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
