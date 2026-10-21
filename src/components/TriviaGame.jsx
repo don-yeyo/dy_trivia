@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import OptionButton from './OptionButton';
 import { sounds } from '../services/soundEffects';
+import { loadTriviaQuestions } from '../services/triviaService';
 import { Zap, RefreshCw } from 'lucide-react';
 
 export default function TriviaGame({
@@ -21,21 +22,35 @@ export default function TriviaGame({
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const [timeLeft, setTimeLeft] = useState(timePerQuestion > 0 ? timePerQuestion : 45);
 
+  // Pregunta activa actual (soporta modo individual Zero-Trust y modo array legado)
+  const [activeQuestion, setActiveQuestion] = useState(() => {
+    return (questions && questions.length > 0) ? questions[0] : null;
+  });
+
   const timerRef = useRef(null);
   const isTransitioningRef = useRef(false);
   const questionStartTimeRef = useRef(Date.now());
   const isAnswerLockedRef = useRef(false);
+  const activeQuestionRef = useRef(activeQuestion);
 
-  const currentQuestion = questions && questions.length > 0 && currentIndex < questions.length 
-    ? questions[currentIndex] 
-    : null;
+  // Mantener activeQuestionRef siempre sincronizado para evitar cierres obsoletos en callbacks
+  useEffect(() => {
+    activeQuestionRef.current = activeQuestion;
+  }, [activeQuestion]);
+
+  // Si llegan las preguntas por primera vez
+  useEffect(() => {
+    if (!activeQuestion && questions && questions.length > 0) {
+      setActiveQuestion(questions[0]);
+    }
+  }, [questions, activeQuestion]);
 
   // Geometría de la dona SVG
   const radius = 34;
   const circumference = 2 * Math.PI * radius; // ~213.63
 
-  // Transición suave de salida hacia la siguiente pregunta
-  const transitionToNext = useCallback(() => {
+  // Transición suave hacia la siguiente pregunta
+  const transitionToNext = useCallback((nextQuestion) => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -49,17 +64,65 @@ export default function TriviaGame({
     setIsAnimatingOut(true);
 
     setTimeout(() => {
-      if (currentIndex + 1 < questions.length) {
+      if (nextQuestion) {
+        setActiveQuestion(nextQuestion);
+        setCurrentIndex(prev => prev + 1);
         setSelectedOptionId(null);
         setIsAnswerLocked(false);
+        isAnswerLockedRef.current = false;
         isTransitioningRef.current = false;
-        setCurrentIndex(prev => prev + 1);
+        setTimeLeft(timePerQuestion > 0 ? timePerQuestion : 45);
+        questionStartTimeRef.current = Date.now();
         setIsAnimatingOut(false);
       } else {
         onFinishGame();
       }
     }, 350);
-  }, [currentIndex, questions.length, onFinishGame]);
+  }, [timePerQuestion, onFinishGame]);
+
+  // Manejo inteligente del avance de pregunta garantizando Zero-Trust
+  const handleAdvanceQuestion = useCallback(async (submitResult) => {
+    // 1. Si el servidor confirma explícitamente que la fase o trivia ha concluido
+    if (submitResult?.isFinished) {
+      onFinishGame();
+      return;
+    }
+
+    // 2. Si el servidor entregó la siguiente pregunta en el payload (Zero-Latency)
+    if (submitResult?.nextQuestion) {
+      transitionToNext(submitResult.nextQuestion);
+      return;
+    }
+
+    // 3. Fallback: Si estamos en modo array completo (modo local / admin) y hay más preguntas en `questions`
+    const nextIdx = currentIndex + 1;
+    if (questions && nextIdx < questions.length && questions[nextIdx]) {
+      transitionToNext(questions[nextIdx]);
+      return;
+    }
+
+    // 4. Si aún no alcanzamos el total de preguntas pero el servidor no adjuntó nextQuestion
+    // (ej: retardo de red móvil o paquete truncado), consultar proactivamente la siguiente pregunta al backend
+    const totalQ = totalQuestionsCount || 10;
+    const currentStep = (initialQuestionIndex || 0) + currentIndex + 1;
+    if (currentStep < totalQ && userToken) {
+      try {
+        const rescueData = await loadTriviaQuestions(activePhase, false, userToken);
+        if (rescueData?.question && !rescueData.isPhaseCompleted) {
+          transitionToNext({
+            ...rescueData.question,
+            questionToken: rescueData.questionToken
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('Error en intento de rescate de pregunta siguiente:', err);
+      }
+    }
+
+    // 5. No hay más preguntas: finalizar juego
+    onFinishGame();
+  }, [currentIndex, questions, totalQuestionsCount, initialQuestionIndex, userToken, activePhase, onFinishGame, transitionToNext]);
 
   // Manejo de tiempo agotado
   const handleTimeExpired = useCallback(async () => {
@@ -69,37 +132,29 @@ export default function TriviaGame({
     setIsAnswerLocked(true);
     sounds.playSelect();
 
+    const q = activeQuestionRef.current;
     let submitResult = null;
-    if (currentQuestion) {
+    if (q) {
       submitResult = await onAnswerSubmit({
-        questionId: currentQuestion.id,
-        questionText: currentQuestion.question,
+        questionId: q.id,
+        questionText: q.question,
         selectedOptionId: null,
-        questionToken: currentQuestion.questionToken,
+        questionToken: q.questionToken,
         isCorrect: false,
         pointsEarned: 0,
         timeSpent: timePerQuestion
       });
     }
 
-    // Breve pausa para notar el tiempo cumplido antes de la salida
+    // Breve pausa para notar el tiempo cumplido antes de avanzar
     setTimeout(() => {
-      if (submitResult?.isFinished) {
-        onFinishGame();
-      } else {
-        transitionToNext();
-      }
+      handleAdvanceQuestion(submitResult);
     }, 300);
-  }, [currentQuestion, timePerQuestion, onAnswerSubmit, transitionToNext, onFinishGame]);
+  }, [timePerQuestion, onAnswerSubmit, handleAdvanceQuestion]);
 
   // Iniciar temporizador por pregunta y registrar listeners antitrampa
   useEffect(() => {
-    if (!questions || questions.length === 0) return;
-
-    if (currentIndex >= questions.length) {
-      onFinishGame();
-      return;
-    }
+    if (!activeQuestion) return;
 
     // Resetear estados al cambiar de pregunta
     setTimeLeft(timePerQuestion > 0 ? timePerQuestion : 45);
@@ -111,13 +166,13 @@ export default function TriviaGame({
     questionStartTimeRef.current = Date.now();
 
     // 🛡️ Mecanismo Antitrampa 1: Registrar inmediatamente en servidor que la pregunta fue abierta
-    if (currentQuestion && onQuestionStart) {
-      onQuestionStart(currentQuestion.id);
+    if (onQuestionStart && activeQuestion.id) {
+      onQuestionStart(activeQuestion.id);
     }
 
     // 🛡️ Mecanismo Antitrampa 2: Advertir si intenta recargar o salir
     const handleBeforeUnload = (e) => {
-      if (!isAnswerLockedRef.current && currentQuestion) {
+      if (!isAnswerLockedRef.current && activeQuestionRef.current) {
         e.preventDefault();
         e.returnValue = 'Si sales o recargas la pantalla, perderás esta pregunta con 0 puntos.';
         return e.returnValue;
@@ -126,13 +181,14 @@ export default function TriviaGame({
 
     // 🛡️ Mecanismo Antitrampa 3: Si se concreta la recarga o abandono, asentar pérdida definitiva
     const handlePageHide = () => {
-      if (!isAnswerLockedRef.current && currentQuestion && userLegajo) {
+      const q = activeQuestionRef.current;
+      if (!isAnswerLockedRef.current && q && userLegajo) {
         const payload = JSON.stringify({
           legajo: String(userLegajo),
           userToken: userToken || '',
-          questionToken: currentQuestion.questionToken || '',
+          questionToken: q.questionToken || '',
           phase: parseInt(activePhase, 10),
-          questionId: currentQuestion.id,
+          questionId: q.id,
           selectedOptionId: null,
           timeSpent: timePerQuestion,
           isAborted: true
@@ -174,11 +230,12 @@ export default function TriviaGame({
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [currentIndex, questions, timePerQuestion, handleTimeExpired, onFinishGame, currentQuestion, onQuestionStart, userLegajo, activePhase, userToken]);
+  }, [activeQuestion?.id, timePerQuestion, handleTimeExpired, onQuestionStart, userLegajo, activePhase, userToken]);
 
   // Manejo de selección de opción con feedback visual y transición fluida
   const handleOptionSelect = async (optionId) => {
-    if (isAnswerLocked || isTransitioningRef.current || !currentQuestion) return;
+    const q = activeQuestionRef.current;
+    if (isAnswerLocked || isTransitioningRef.current || !q) return;
     isTransitioningRef.current = true;
     isAnswerLockedRef.current = true;
 
@@ -196,24 +253,20 @@ export default function TriviaGame({
 
     // Enviar respuesta al backend seguro con questionToken HMAC
     const submitResult = await onAnswerSubmit({
-      questionId: currentQuestion.id,
-      questionText: currentQuestion.question,
+      questionId: q.id,
+      questionText: q.question,
       selectedOptionId: optionId,
-      questionToken: currentQuestion.questionToken,
+      questionToken: q.questionToken,
       timeSpent
     });
 
     // Pausa visual agradable (~380ms) para que el usuario aprecie su selección antes de transicionar
     setTimeout(() => {
-      if (submitResult?.isFinished) {
-        onFinishGame();
-      } else {
-        transitionToNext();
-      }
+      handleAdvanceQuestion(submitResult);
     }, 380);
   };
 
-  if (!questions || questions.length === 0 || !currentQuestion) {
+  if (!activeQuestion) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-white">
         <RefreshCw size={24} className="animate-spin text-red-400 mb-3" />
@@ -223,7 +276,7 @@ export default function TriviaGame({
   }
 
   // Cálculos para arcos de dona SVG
-  const totalQuestions = totalQuestionsCount || questions.length || 10;
+  const totalQuestions = totalQuestionsCount || 10;
   const currentStep = (initialQuestionIndex || 0) + currentIndex + 1;
   const progressRatio = Math.min(1, currentStep / totalQuestions);
   const progressDashoffset = circumference - (progressRatio * circumference);
@@ -307,18 +360,18 @@ export default function TriviaGame({
           <span>Pregunta {currentStep} de {totalQuestions}</span>
         </div>
         <h2 className="text-xl sm:text-2xl font-black text-slate-950 leading-snug tracking-tight">
-          {currentQuestion.question}
+          {activeQuestion.question}
         </h2>
       </div>
 
       {/* Opciones de Respuesta */}
       <div id="contenedor-opciones" className="space-y-3 sm:space-y-4 mb-4">
-        {currentQuestion.options.map((option, idx) => {
+        {activeQuestion.options && activeQuestion.options.map((option, idx) => {
           const isSelected = selectedOptionId === option.id;
 
           return (
             <OptionButton
-              key={`q${currentQuestion.id}-opt${option.id}-${currentStep}-${idx}`}
+              key={`q${activeQuestion.id}-opt${option.id}-${currentStep}-${idx}`}
               index={idx}
               option={option}
               isSelected={isSelected}

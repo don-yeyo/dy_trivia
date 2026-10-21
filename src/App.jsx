@@ -258,6 +258,12 @@ export default function App() {
 
       return serverResult;
     }
+
+    return {
+      success: true,
+      isFinished: false,
+      nextQuestion: null
+    };
   }, [currentUser?.legajo, appConfig.activePhase, currentUserToken]);
 
   // 🛡️ Mecanismo Antitrampa: Asentar en el servidor el inicio de la pregunta
@@ -401,7 +407,7 @@ export default function App() {
               <SplashIntro
                 user={currentUser}
                 totalQuestions={totalPhaseQuestionsCount || questions.length}
-                pendingQuestionsCount={questions.length}
+                pendingQuestionsCount={Math.max(1, (totalPhaseQuestionsCount || questions.length) - (answersLog ? answersLog.length : 0))}
                 isResuming={answersLog && answersLog.length > 0}
                 onStartGame={handleTriggerCountdown}
               />
