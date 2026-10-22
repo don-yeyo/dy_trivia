@@ -19,6 +19,8 @@ export default function TriviaGame({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState(null);
   const [isAnswerLocked, setIsAnswerLocked] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCooldownActive, setIsCooldownActive] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
   const [timeLeft, setTimeLeft] = useState(timePerQuestion > 0 ? timePerQuestion : 45);
 
@@ -29,9 +31,15 @@ export default function TriviaGame({
 
   const timerRef = useRef(null);
   const isTransitioningRef = useRef(false);
-  const questionStartTimeRef = useRef(Date.now());
+  const isSubmittingRef = useRef(false);
+  const isCooldownRef = useRef(false);
   const isAnswerLockedRef = useRef(false);
+  const questionStartTimeRef = useRef(Date.now());
   const activeQuestionRef = useRef(activeQuestion);
+
+  // 🛡️ Fijar el offset de inicio una sola vez por montaje para evitar que el contador
+  // de preguntas se duplique o salte de a 2 cuando el padre actualiza answersLog
+  const initialOffsetRef = useRef(initialQuestionIndex || 0);
 
   // Mantener activeQuestionRef siempre sincronizado para evitar cierres obsoletos en callbacks
   useEffect(() => {
@@ -69,12 +77,25 @@ export default function TriviaGame({
         setCurrentIndex(prev => prev + 1);
         setSelectedOptionId(null);
         setIsAnswerLocked(false);
+        setIsSubmitting(false);
+        isSubmittingRef.current = false;
         isAnswerLockedRef.current = false;
         isTransitioningRef.current = false;
         setTimeLeft(timePerQuestion > 0 ? timePerQuestion : 45);
         questionStartTimeRef.current = Date.now();
         setIsAnimatingOut(false);
+
+        // 🛡️ Período de gracia (Cooldown) de 450ms al montar la nueva pregunta.
+        // Previene que clicks repetidos o toques residuales en buffer se apliquen a la nueva pregunta.
+        isCooldownRef.current = true;
+        setIsCooldownActive(true);
+        setTimeout(() => {
+          isCooldownRef.current = false;
+          setIsCooldownActive(false);
+        }, 450);
       } else {
+        setIsSubmitting(false);
+        isSubmittingRef.current = false;
         onFinishGame();
       }
     }, 350);
@@ -104,7 +125,7 @@ export default function TriviaGame({
     // 4. Si aún no alcanzamos el total de preguntas pero el servidor no adjuntó nextQuestion
     // (ej: retardo de red móvil o paquete truncado), consultar proactivamente la siguiente pregunta al backend
     const totalQ = totalQuestionsCount || 10;
-    const currentStep = (initialQuestionIndex || 0) + currentIndex + 1;
+    const currentStep = (initialOffsetRef.current || 0) + currentIndex + 1;
     if (currentStep < totalQ && userToken) {
       try {
         const rescueData = await loadTriviaQuestions(activePhase, false, userToken);
@@ -122,28 +143,34 @@ export default function TriviaGame({
 
     // 5. No hay más preguntas: finalizar juego
     onFinishGame();
-  }, [currentIndex, questions, totalQuestionsCount, initialQuestionIndex, userToken, activePhase, onFinishGame, transitionToNext]);
+  }, [currentIndex, questions, totalQuestionsCount, userToken, activePhase, onFinishGame, transitionToNext]);
 
   // Manejo de tiempo agotado
   const handleTimeExpired = useCallback(async () => {
-    if (isTransitioningRef.current) return;
+    if (isTransitioningRef.current || isSubmittingRef.current) return;
     isTransitioningRef.current = true;
+    isSubmittingRef.current = true;
     isAnswerLockedRef.current = true;
     setIsAnswerLocked(true);
+    setIsSubmitting(true);
     sounds.playSelect();
 
     const q = activeQuestionRef.current;
     let submitResult = null;
     if (q) {
-      submitResult = await onAnswerSubmit({
-        questionId: q.id,
-        questionText: q.question,
-        selectedOptionId: null,
-        questionToken: q.questionToken,
-        isCorrect: false,
-        pointsEarned: 0,
-        timeSpent: timePerQuestion
-      });
+      try {
+        submitResult = await onAnswerSubmit({
+          questionId: q.id,
+          questionText: q.question,
+          selectedOptionId: null,
+          questionToken: q.questionToken,
+          isCorrect: false,
+          pointsEarned: 0,
+          timeSpent: timePerQuestion
+        });
+      } catch (err) {
+        console.error('Error enviando tiempo expirado:', err);
+      }
     }
 
     // Breve pausa para notar el tiempo cumplido antes de avanzar
@@ -160,6 +187,8 @@ export default function TriviaGame({
     setTimeLeft(timePerQuestion > 0 ? timePerQuestion : 45);
     setIsAnswerLocked(false);
     isAnswerLockedRef.current = false;
+    setIsSubmitting(false);
+    isSubmittingRef.current = false;
     setSelectedOptionId(null);
     setIsAnimatingOut(false);
     isTransitioningRef.current = false;
@@ -232,38 +261,59 @@ export default function TriviaGame({
     };
   }, [activeQuestion?.id, timePerQuestion, handleTimeExpired, onQuestionStart, userLegajo, activePhase, userToken]);
 
-  // Manejo de selección de opción con feedback visual y transición fluida
+  // Manejo de selección de opción con feedback visual inmediato y protección anti-clics
   const handleOptionSelect = async (optionId) => {
     const q = activeQuestionRef.current;
-    if (isAnswerLocked || isTransitioningRef.current || !q) return;
+    // 🛡️ Blindaje total: descartar si ya está procesando, transicionando, bloqueado o en período de gracia
+    if (
+      isSubmittingRef.current ||
+      isAnswerLockedRef.current ||
+      isTransitioningRef.current ||
+      isCooldownRef.current ||
+      !q
+    ) {
+      return;
+    }
+
+    // Bloqueo síncrono ultra estricto de eventos en memoria antes de cualquier re-render
+    isSubmittingRef.current = true;
     isTransitioningRef.current = true;
     isAnswerLockedRef.current = true;
 
+    // Frenar temporizador inmediatamente para que no siga corriendo mientras el servidor responde
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
 
-    // Bloquear y mostrar inmediatamente la opción seleccionada con iluminación
+    // Feedback visual inmediato en la UI
+    setIsSubmitting(true);
     setIsAnswerLocked(true);
     setSelectedOptionId(optionId);
     sounds.playSelect();
 
     const timeSpent = Math.max(1, Math.round((Date.now() - questionStartTimeRef.current) / 1000));
 
-    // Enviar respuesta al backend seguro con questionToken HMAC
-    const submitResult = await onAnswerSubmit({
-      questionId: q.id,
-      questionText: q.question,
-      selectedOptionId: optionId,
-      questionToken: q.questionToken,
-      timeSpent
-    });
+    try {
+      // Enviar respuesta al backend seguro con questionToken HMAC
+      const submitResult = await onAnswerSubmit({
+        questionId: q.id,
+        questionText: q.question,
+        selectedOptionId: optionId,
+        questionToken: q.questionToken,
+        timeSpent
+      });
 
-    // Pausa visual agradable (~380ms) para que el usuario aprecie su selección antes de transicionar
-    setTimeout(() => {
-      handleAdvanceQuestion(submitResult);
-    }, 380);
+      // Pausa visual breve (~320ms) para que el usuario aprecie su selección antes de transicionar
+      setTimeout(() => {
+        handleAdvanceQuestion(submitResult);
+      }, 320);
+    } catch (err) {
+      console.error('Error al enviar respuesta al servidor:', err);
+      setTimeout(() => {
+        handleAdvanceQuestion({ success: false });
+      }, 320);
+    }
   };
 
   if (!activeQuestion) {
@@ -275,9 +325,9 @@ export default function TriviaGame({
     );
   }
 
-  // Cálculos para arcos de dona SVG
+  // Cálculos para arcos de dona SVG con protección contra saltos
   const totalQuestions = totalQuestionsCount || 10;
-  const currentStep = (initialQuestionIndex || 0) + currentIndex + 1;
+  const currentStep = Math.min(totalQuestions, (initialOffsetRef.current || 0) + currentIndex + 1);
   const progressRatio = Math.min(1, currentStep / totalQuestions);
   const progressDashoffset = circumference - (progressRatio * circumference);
 
@@ -353,19 +403,35 @@ export default function TriviaGame({
         )}
       </div>
 
-      {/* Tarjeta de la Pregunta de Alto Contraste */}
-      <div id="card-pregunta" className="casual-card text-left">
-        <div className="flex items-center gap-2 text-sm sm:text-base font-black text-red-600 uppercase tracking-wider mb-3">
-          <Zap size={18} className="text-red-600 fill-red-600" />
-          <span>Pregunta {currentStep} de {totalQuestions}</span>
+      {/* Tarjeta de la Pregunta de Alto Contraste con Indicador de Estado de Conexión */}
+      <div id="card-pregunta" className="casual-card text-left relative">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 text-sm sm:text-base font-black text-red-600 uppercase tracking-wider">
+            <Zap size={18} className="text-red-600 fill-red-600" />
+            <span>Pregunta {currentStep} de {totalQuestions}</span>
+          </div>
+
+          {/* Feedback visual directo si la respuesta se está procesando por latencia */}
+          {isSubmitting && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold animate-pulse shadow-sm">
+              <RefreshCw size={13} className="animate-spin text-blue-600" />
+              <span>Guardando respuesta...</span>
+            </div>
+          )}
         </div>
+
         <h2 className="text-xl sm:text-2xl font-black text-slate-950 leading-snug tracking-tight">
           {activeQuestion.question}
         </h2>
       </div>
 
-      {/* Opciones de Respuesta */}
-      <div id="contenedor-opciones" className="space-y-3 sm:space-y-4 mb-4">
+      {/* Opciones de Respuesta con escudo protector de eventos contra toques fantasmas */}
+      <div
+        id="contenedor-opciones"
+        className={`space-y-3 sm:space-y-4 mb-4 relative ${
+          (isAnswerLocked || isSubmitting || isCooldownActive) ? 'pointer-events-none select-none' : ''
+        }`}
+      >
         {activeQuestion.options && activeQuestion.options.map((option, idx) => {
           const isSelected = selectedOptionId === option.id;
 
@@ -375,7 +441,8 @@ export default function TriviaGame({
               index={idx}
               option={option}
               isSelected={isSelected}
-              isDisabled={isAnswerLocked}
+              isDisabled={isAnswerLocked || isSubmitting || isCooldownActive}
+              isSubmitting={isSubmitting && isSelected}
               onClick={handleOptionSelect}
             />
           );
