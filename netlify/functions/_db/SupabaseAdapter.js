@@ -357,7 +357,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
     while (true) {
       const { data: page = [], error: pErr } = await supabase
         .from('participants')
-        .select('id, legajo, nombre, apellido, sector, grupo')
+        .select('id, legajo, nombre, apellido, sector')
         .order('apellido', { ascending: true })
         .range(pFrom, pFrom + PAGE_SIZE - 1);
 
@@ -369,6 +369,19 @@ export class SupabaseAdapter extends DatabaseAdapter {
       if (page.length < PAGE_SIZE) break;
       pFrom += PAGE_SIZE;
     }
+
+    // 1.1 Obtener mapa de grupos desde config (persistencia resiliente sin requerir columna en participants)
+    let gruposMap = {};
+    try {
+      const { data: cfgGrupo } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'PARTICIPANTES_GRUPOS')
+        .maybeSingle();
+      if (cfgGrupo && cfgGrupo.valor) {
+        try { gruposMap = JSON.parse(cfgGrupo.valor); } catch (e) { gruposMap = {}; }
+      }
+    } catch (e) {}
 
     // 2. Obtener todas las respuestas de la fase (paginación segura para superar el límite de 1000 filas de PostgREST)
     let responses = [];
@@ -470,7 +483,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
         nombre: String(u.nombre || '').trim(),
         apellido: String(u.apellido || '').trim(),
         sector: String(u.sector || '').trim(),
-        grupo: String(u.grupo || '').trim(),
+        grupo: u.grupo ? String(u.grupo).trim() : (gruposMap[legajo] || ''),
         score: finalScore,
         rawPoints: res.rawPoints || 0,
         totalTime: res.totalTime,
