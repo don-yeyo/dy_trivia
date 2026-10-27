@@ -209,6 +209,64 @@ export class DatabaseAdapter {
   }
 
   /**
+   * Marca o desmarca masivamente el estado de email para una lista de legajos.
+   * @param {Array<string>} legajos
+   * @param {boolean} emailSent
+   * @param {'INVITACION'|'RESULTADOS'} [tipo='INVITACION']
+   * @returns {Promise<{success: boolean, updatedCount?: number, error?: string}>}
+   */
+  async toggleEmailSentBatch(legajos, emailSent, tipo = 'INVITACION') {
+    throw new Error(`${this.name}.toggleEmailSentBatch() no implementado`);
+  }
+
+  /**
+   * Cambia el estado de activo (true/false) de un participante.
+   * @param {string} legajo
+   * @param {boolean} activo
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async setActiveStatus(legajo, activo) {
+    throw new Error(`${this.name}.setActiveStatus() no implementado`);
+  }
+
+  /**
+   * Cambia masivamente el estado de activo (true/false) de múltiples participantes.
+   * @param {Array<string>} legajos
+   * @param {boolean} activo
+   * @returns {Promise<{success: boolean, updatedCount?: number, error?: string}>}
+   */
+  async setActiveStatusBatch(legajos, activo) {
+    throw new Error(`${this.name}.setActiveStatusBatch() no implementado`);
+  }
+
+  /**
+   * Blanquea el token_hash de un participante dejándolo sin enlace de acceso.
+   * @param {string} legajo
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async clearParticipantHash(legajo) {
+    throw new Error(`${this.name}.clearParticipantHash() no implementado`);
+  }
+
+  /**
+   * Blanquea masivamente el token_hash de múltiples participantes.
+   * @param {Array<string>} legajos
+   * @returns {Promise<{success: boolean, updatedCount?: number, error?: string}>}
+   */
+  async clearParticipantHashBatch(legajos) {
+    throw new Error(`${this.name}.clearParticipantHashBatch() no implementado`);
+  }
+
+  /**
+   * Regenera el token_hash de una lista seleccionada de legajos.
+   * @param {Array<string>} legajos
+   * @returns {Promise<{success: boolean, updatedCount?: number, error?: string}>}
+   */
+  async generateParticipantHashBatch(legajos) {
+    throw new Error(`${this.name}.generateParticipantHashBatch() no implementado`);
+  }
+
+  /**
    * Resetea el progreso y respuestas de un participante en la fase especificada (o en todas).
    * @param {string} legajo
    * @param {number|null} [phase=null]
@@ -216,6 +274,55 @@ export class DatabaseAdapter {
    */
   async resetParticipantTrivia(legajo, phase = null) {
     throw new Error(`${this.name}.resetParticipantTrivia() no implementado`);
+  }
+
+  /**
+   * Resetea masivamente el progreso y respuestas de una lista de participantes en la fase especificada (o en todas).
+   * @param {Array<string>} legajos
+   * @param {number|null} [phase=null]
+   * @returns {Promise<{success: boolean, updatedCount?: number, error?: string}>}
+   */
+  async resetParticipantTriviaBatch(legajos, phase = null) {
+    throw new Error(`${this.name}.resetParticipantTriviaBatch() no implementado`);
+  }
+
+  /**
+   * Obtiene la lista de grupos creados y la cantidad de miembros asignados.
+   * @returns {Promise<Array<{nombre: string, descripcion?: string, color?: string, count: number}>>}
+   */
+  async getGroups() {
+    throw new Error(`${this.name}.getGroups() no implementado`);
+  }
+
+  /**
+   * Crea un nuevo grupo de participantes.
+   * @param {Object} groupData
+   * @param {string} groupData.nombre
+   * @param {string} [groupData.descripcion]
+   * @param {string} [groupData.color]
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async createGroup(groupData) {
+    throw new Error(`${this.name}.createGroup() no implementado`);
+  }
+
+  /**
+   * Elimina un grupo y desvincula a sus participantes.
+   * @param {string} nombre
+   * @returns {Promise<{success: boolean, error?: string}>}
+   */
+  async deleteGroup(nombre) {
+    throw new Error(`${this.name}.deleteGroup() no implementado`);
+  }
+
+  /**
+   * Asigna o desasigna un grupo masivamente a una lista de participantes.
+   * @param {Array<string>} legajos
+   * @param {string|null} grupoNombre Nombre del grupo (o '' / null para quitar del grupo)
+   * @returns {Promise<{success: boolean, updatedCount?: number, error?: string}>}
+   */
+  async assignGroupBatch(legajos, grupoNombre) {
+    throw new Error(`${this.name}.assignGroupBatch() no implementado`);
   }
 
   /**

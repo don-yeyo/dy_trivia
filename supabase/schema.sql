@@ -18,20 +18,38 @@ CREATE TABLE IF NOT EXISTS public.config (
 CREATE TABLE IF NOT EXISTS public.participants (
   id BIGSERIAL PRIMARY KEY,
   legajo VARCHAR(50) NOT NULL UNIQUE,
-  token_hash VARCHAR(64) NOT NULL UNIQUE,
+  token_hash VARCHAR(64) UNIQUE,
   apellido VARCHAR(100) NOT NULL DEFAULT '',
   nombre VARCHAR(100) NOT NULL DEFAULT '',
   documento VARCHAR(50) DEFAULT '',
   sector VARCHAR(100) DEFAULT '',
+  grupo VARCHAR(100) DEFAULT '',
   telefono VARCHAR(50) DEFAULT '',
   email VARCHAR(150) DEFAULT '',
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Migraciones idempotentes para tablas existentes
+ALTER TABLE public.participants ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE public.participants ADD COLUMN IF NOT EXISTS grupo VARCHAR(100) DEFAULT '';
+ALTER TABLE public.participants ALTER COLUMN token_hash DROP NOT NULL;
+
 -- Índices B-Tree para validación y búsqueda de token en < 5ms
 CREATE INDEX IF NOT EXISTS idx_participants_hash ON public.participants (token_hash);
 CREATE INDEX IF NOT EXISTS idx_participants_legajo ON public.participants (legajo);
+CREATE INDEX IF NOT EXISTS idx_participants_activo ON public.participants (activo);
+CREATE INDEX IF NOT EXISTS idx_participants_grupo ON public.participants (grupo);
+
+-- TABLA: GRUPOS DE PARTICIPANTES (OPCIONAL/CATÁLOGO)
+CREATE TABLE IF NOT EXISTS public.groups (
+  id BIGSERIAL PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL UNIQUE,
+  descripcion TEXT DEFAULT '',
+  color VARCHAR(30) DEFAULT '#3b82f6',
+  created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
 
 -- 3. TABLA: PREGUNTAS
 CREATE TABLE IF NOT EXISTS public.questions (
@@ -112,6 +130,7 @@ INSERT INTO public.mailing_parametros (email_tipo, nombre_parametro, valor, desc
   ('RESULTADOS', 'TITULO_EMAIL', '¡RESULTADOS DEL DESAFÍO DE INOCUIDAD 2026!', 'Título principal para la devolución'),
   ('RESULTADOS', 'SUBTITULO', 'La etapa ha finalizado. Mirá cómo te fue, revisá tus respuestas y conocé el podio oficial.', 'Bajada o subtítulo de resultados'),
   ('RESULTADOS', 'MENSAJE_PRINCIPAL', '<p>🎉 <strong>¡Muchas gracias por haber participado con tu compromiso diario hacia la inocuidad alimentaria!</strong></p><p>Cada respuesta representa tu conocimiento en las Buenas Prácticas de Manufactura (BPM) y los estándares de calidad que hacen grande a Don Yeyo.</p><p>🏆 <strong>Ya podés consultar la tabla general de clasificación y el Podio oficial de ganadores.</strong></p>', 'Cuerpo HTML principal'),
+  ('RESULTADOS', 'MENSAJE_PRINCIPAL_ALTERNATIVO', '<p>Aunque no hayas tenido la oportunidad de completar esta fase de la trivia, <strong>tu compromiso diario con la calidad y la inocuidad alimentaria sigue siendo fundamental para Don Yeyo</strong>.</p><p>💡 Te compartimos a continuación el cuestionario con todas las preguntas correctas y sus fundamentos técnicos para que puedas capacitarte y repasar las Buenas Prácticas de Manufactura (BPM).</p><p>🏆 <strong>¡También podés consultar el Podio oficial de ganadores y la tabla de posiciones!</strong></p>', 'Mensaje para participantes que no jugaron la fase'),
   ('RESULTADOS', 'MENSAJE_SECUNDARIO', 'ℹ️ <strong>Importante:</strong> Los clasificados a las instancias finales serán contactados por el Departamento de Calidad y Recursos Humanos.', 'Alerta o aclaración secundaria'),
   ('RESULTADOS', 'CALL_TO_ACTION_TEXTO', 'VER PODIO Y CLASIFICADOS', 'Texto del botón principal al podio'),
   ('RESULTADOS', 'EMPRESA_NOMBRE', 'Don Yeyo S.A. • Departamento de Calidad e Inocuidad', 'Firma institucional en el pie'),

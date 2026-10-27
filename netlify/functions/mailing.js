@@ -128,28 +128,31 @@ function getOptionText(options, optVal) {
  * Genera el bloque HTML con el detalle de resultados pedagógicos pregunta por pregunta
  * @param {Array} questions - Lista de preguntas de la fase
  * @param {Array} userResponses - Respuestas registradas del participante
+ * @param {boolean} isNonParticipant - Si es true, adapta el formato a modo capacitación sin respuestas del usuario
  * @returns {string} Bloque HTML seguro para correos (estilos inline)
  */
-function buildFeedbackDetalleHtml(questions = [], userResponses = []) {
+function buildFeedbackDetalleHtml(questions = [], userResponses = [], isNonParticipant = false) {
   if (!questions || questions.length === 0) {
     return '';
   }
 
   // Mapa de respuestas por pregunta_id
   const respMap = new Map();
-  (userResponses || []).forEach(r => {
-    const qId = parseInt(r.pregunta_id, 10);
-    if (!isNaN(qId)) {
-      respMap.set(qId, r);
-    }
-  });
+  if (!isNonParticipant) {
+    (userResponses || []).forEach(r => {
+      const qId = parseInt(r.pregunta_id, 10);
+      if (!isNaN(qId)) {
+        respMap.set(qId, r);
+      }
+    });
+  }
 
   const cardsHtml = questions.map((q, idx) => {
     const qNum = idx + 1;
     const qId = parseInt(q.id, 10);
-    const userResp = respMap.get(qId);
+    const userResp = isNonParticipant ? null : respMap.get(qId);
 
-    const hasAnswered = userResp !== undefined && userResp.respuesta_seleccionada !== null && userResp.respuesta_seleccionada !== undefined;
+    const hasAnswered = userResp !== null && userResp !== undefined && userResp.respuesta_seleccionada !== null && userResp.respuesta_seleccionada !== undefined;
     const isCorrect = hasAnswered && Boolean(userResp.es_correcta);
     const options = Array.isArray(q.opciones) ? q.opciones : [];
 
@@ -162,7 +165,15 @@ function buildFeedbackDetalleHtml(questions = [], userResponses = []) {
     let borderColor = '#64748b';
     let cardBg = '#0d2244';
 
-    if (!hasAnswered) {
+    if (isNonParticipant) {
+      borderColor = '#0284c7';
+      cardBg = '#0a1e3b';
+      statusBadge = `
+        <span style="display: inline-block; background-color: rgba(14, 165, 233, 0.2); color: #38bdf8; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; padding: 4px 9px; border-radius: 6px; border: 1px solid #0284c7;">
+          📚 CONTENIDO FORMATIVO
+        </span>
+      `;
+    } else if (!hasAnswered) {
       borderColor = '#94a3b8';
       cardBg = '#13284c';
       statusBadge = `
@@ -188,9 +199,37 @@ function buildFeedbackDetalleHtml(questions = [], userResponses = []) {
       `;
     }
 
-    // Bloque de respuesta correcta (se enfatiza si el participante se equivocó o no contestó)
+    // Bloque de respuesta de usuario (solo se muestra si participó)
+    let userResponseBlock = '';
+    if (!isNonParticipant) {
+      userResponseBlock = `
+        <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 4px;">
+          <span style="color: #94a3b8; font-size: 12px;">Tu respuesta:</span>
+          ${hasAnswered ? `
+            <span style="color: ${isCorrect ? '#34d399' : '#f87171'}; font-weight: 700; margin-left: 5px;">
+              ${userOptionText || `Opción ${userResp.respuesta_seleccionada}`}
+            </span>
+          ` : `
+            <span style="color: #94a3b8; font-style: italic; margin-left: 5px;">
+              No llegaste a responder
+            </span>
+          `}
+        </div>
+      `;
+    }
+
+    // Bloque de respuesta correcta (destacado para todos, con formato pedagógico enriquecido para no participantes)
     let correctBlock = '';
-    if (!isCorrect) {
+    if (isNonParticipant) {
+      correctBlock = `
+        <div style="margin-top: 10px; padding: 10px 14px; background: rgba(16, 185, 129, 0.12); border-left: 3px solid #10b981; border-radius: 6px; font-size: 13px; color: #cbd5e1;">
+          <span style="color: #6ee7b7; font-size: 11px; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 3px; letter-spacing: 0.5px;">
+            ✓ Criterio Correcto / Estándar BPM:
+          </span>
+          <strong style="color: #ffffff; font-size: 14px;">${correctOptionText || `Opción ${q.respuesta_correcta}`}</strong>
+        </div>
+      `;
+    } else if (!isCorrect) {
       correctBlock = `
         <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.12); font-size: 13px; color: #cbd5e1;">
           <span style="color: #94a3b8; font-size: 12px;">Opción correcta:</span>
@@ -234,19 +273,7 @@ function buildFeedbackDetalleHtml(questions = [], userResponses = []) {
               ${q.pregunta}
             </h4>
 
-            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 4px;">
-              <span style="color: #94a3b8; font-size: 12px;">Tu respuesta:</span>
-              ${hasAnswered ? `
-                <span style="color: ${isCorrect ? '#34d399' : '#f87171'}; font-weight: 700; margin-left: 5px;">
-                  ${userOptionText || `Opción ${userResp.respuesta_seleccionada}`}
-                </span>
-              ` : `
-                <span style="color: #94a3b8; font-style: italic; margin-left: 5px;">
-                  No llegaste a responder
-                </span>
-              `}
-            </div>
-
+            ${userResponseBlock}
             ${correctBlock}
             ${explicacionBlock}
           </td>
@@ -254,6 +281,30 @@ function buildFeedbackDetalleHtml(questions = [], userResponses = []) {
       </table>
     `;
   }).join('');
+
+  if (isNonParticipant) {
+    return `
+      <div style="margin: 28px 0 24px 0;">
+        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
+          <tr>
+            <td>
+              <div style="color: #38bdf8; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px;">
+                ★ GUÍA DE CAPACITACIÓN Y BUENAS PRÁCTICAS ★
+              </div>
+              <h3 style="margin: 0; color: #ffffff; font-size: 18px; line-height: 24px; font-weight: 800;">
+                Cuestionario Oficial y Fundamentos Técnicos
+              </h3>
+              <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 13px; line-height: 18px;">
+                Aunque no hayas tenido la oportunidad de completar la fase, te acercamos las preguntas con sus respuestas correctas y justificaciones técnicas para capacitarte y reforzar las Buenas Prácticas de Manufactura:
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        ${cardsHtml}
+      </div>
+    `;
+  }
 
   return `
     <div style="margin: 28px 0 24px 0;">
@@ -286,11 +337,27 @@ function renderEmailHtml(user, emailTipo = 'INVITACION', paramsMap = {}, smtpCfg
   const tipo = String(emailTipo || 'INVITACION').toUpperCase();
   let template = loadTemplateFile(tipo);
 
+  const isResultados = tipo === 'RESULTADOS';
+  const haParticipado = user.ha_participado !== false;
+
+  // Si es RESULTADOS y el colaborador NO participó de la fase:
+  // Reemplazar el mensaje principal por el texto alternativo configurado
+  const effectiveParams = { ...paramsMap };
+  if (isResultados && !haParticipado && effectiveParams.MENSAJE_PRINCIPAL_ALTERNATIVO) {
+    effectiveParams.MENSAJE_PRINCIPAL = effectiveParams.MENSAJE_PRINCIPAL_ALTERNATIVO;
+  }
+
   // Reemplazar parámetros de configuración (%PARAMETRO%)
-  Object.entries(paramsMap).forEach(([k, v]) => {
+  Object.entries(effectiveParams).forEach(([k, v]) => {
     const regex = new RegExp(`%${k}%`, 'g');
     template = template.replace(regex, String(v ?? ''));
   });
+
+  // Reemplazar también %MENSAJE_PRINCIPAL_ALTERNATIVO% si fue incluido como comodín explícito
+  template = template.replace(
+    /%MENSAJE_PRINCIPAL_ALTERNATIVO%/g,
+    effectiveParams.MENSAJE_PRINCIPAL_ALTERNATIVO || effectiveParams.MENSAJE_PRINCIPAL || ''
+  );
 
   // Reemplazos de URLs de imágenes si quedaron sin sustituir
   const defaultLogo = `${cfg.appBaseUrl}/logo-donyeyo.svg`;
@@ -305,6 +372,147 @@ function renderEmailHtml(user, emailTipo = 'INVITACION', paramsMap = {}, smtpCfg
   const token = (user.token_hash || '').trim();
   const linkTrivia = token ? `${cfg.appBaseUrl}/?token=${encodeURIComponent(token)}` : cfg.appBaseUrl;
   const linkPodio = `${cfg.appBaseUrl}/?view=clasificacion`;
+  const totalPreguntas = user.total_preguntas ?? 15;
+  const rankingPuesto = user.ranking_puesto ?? (haParticipado ? '-' : null);
+  const cupoClasificados = user.cupo_clasificados ?? 30;
+  const esClasificado = Boolean(user.es_clasificado);
+
+  // Generar bloque de tarjeta resumen (Puntaje Real vs Modalidad Capacitación)
+  let tarjetaResumenHtml = '';
+  if (isResultados) {
+    if (haParticipado) {
+      tarjetaResumenHtml = `
+        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"
+          style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; margin-bottom: 24px; padding: 18px 20px;">
+          <tr>
+            <td align="center" style="padding: 10px; border-right: 1px solid rgba(255,255,255,0.1);">
+              <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700;">Puntaje Final</div>
+              <div style="color: #facc15; font-size: 26px; font-weight: 900; margin-top: 4px;">${user.puntaje ?? 0}</div>
+              <div style="color: #cbd5e1; font-size: 11px;">puntos</div>
+            </td>
+            <td align="center" style="padding: 10px; border-right: 1px solid rgba(255,255,255,0.1);">
+              <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700;">Aciertos</div>
+              <div style="color: #34d399; font-size: 26px; font-weight: 900; margin-top: 4px;">${user.correctas ?? 0} / ${totalPreguntas}</div>
+              <div style="color: #cbd5e1; font-size: 11px;">correctas</div>
+            </td>
+            <td align="center" style="padding: 10px;">
+              <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700;">Tiempo Total</div>
+              <div style="color: #38bdf8; font-size: 22px; font-weight: 900; margin-top: 6px;">${user.tiempo_total ?? 0}</div>
+              <div style="color: #cbd5e1; font-size: 11px;">segundos</div>
+            </td>
+          </tr>
+        </table>
+      `;
+    } else {
+      tarjetaResumenHtml = `
+        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"
+          style="background: linear-gradient(135deg, rgba(14, 116, 144, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; margin-bottom: 24px; padding: 18px 20px;">
+          <tr>
+            <td align="center" style="padding: 10px;">
+              <div style="color: #38bdf8; font-size: 11px; text-transform: uppercase; font-weight: 800; letter-spacing: 1.2px;">★ MODALIDAD CAPACITACIÓN ★</div>
+              <div style="color: #facc15; font-size: 20px; font-weight: 900; margin-top: 4px;">Guía de Aprendizaje y Buenas Prácticas</div>
+              <div style="color: #cbd5e1; font-size: 13px; margin-top: 6px; line-height: 18px;">
+                Contenido técnico formativo &bull; <strong style="color: #ffffff;">${totalPreguntas} preguntas clave</strong> de Inocuidad y Calidad Don Yeyo
+              </div>
+            </td>
+          </tr>
+        </table>
+      `;
+    }
+  }
+
+  // Generar bloque de Estado de Clasificación Oficial (Solo para quienes participaron)
+  let estadoClasificacionHtml = '';
+  if (isResultados && haParticipado) {
+    const puestoTextoClasif = (rankingPuesto && rankingPuesto !== '-' && String(rankingPuesto).trim() !== '')
+      ? `el <strong style="color: #facc15; font-size: 14px;">Puesto #${rankingPuesto}</strong>`
+      : 'un lugar destacado';
+
+    const puestoTextoNoClasif = (rankingPuesto && rankingPuesto !== '-' && String(rankingPuesto).trim() !== '')
+      ? `en el <strong style="color: #fde047;">Puesto #${rankingPuesto}</strong>`
+      : 'en el ranking general';
+
+    if (esClasificado) {
+      estadoClasificacionHtml = `
+        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"
+          style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(6, 78, 59, 0.4) 100%); border: 1.5px solid #10b981; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.2);">
+          <tr>
+            <td style="padding: 18px 20px;">
+              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td valign="middle" width="50" style="padding-right: 14px;">
+                    <div style="width: 46px; height: 46px; line-height: 46px; text-align: center; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; font-size: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+                      🏆
+                    </div>
+                  </td>
+                  <td valign="middle">
+                    <div style="display: inline-block; background-color: #10b981; color: #ffffff; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; padding: 3px 8px; border-radius: 4px; margin-bottom: 4px;">
+                      ¡ESTADO OFICIAL: CLASIFICADO/A!
+                    </div>
+                    <div style="color: #ffffff; font-size: 17px; font-weight: 800; line-height: 22px;">
+                      ¡Felicitaciones! Accediste a la siguiente instancia
+                    </div>
+                    <div style="color: #d1fae5; font-size: 13px; line-height: 19px; margin-top: 5px;">
+                      Obtuviste ${puestoTextoClasif} en la tabla oficial de posiciones, logrando tu pase dentro del cupo oficial del <strong style="color: #ffffff;">Top ${cupoClasificados}</strong> de la planta.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      `;
+    } else {
+      estadoClasificacionHtml = `
+        <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"
+          style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 12px; margin-bottom: 24px;">
+          <tr>
+            <td style="padding: 18px 20px;">
+              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td valign="middle" width="50" style="padding-right: 14px;">
+                    <div style="width: 46px; height: 46px; line-height: 46px; text-align: center; background-color: #334155; border: 1px solid #64748b; border-radius: 50%; font-size: 22px;">
+                      ⭐
+                    </div>
+                  </td>
+                  <td valign="middle">
+                    <div style="display: inline-block; background-color: #475569; color: #e2e8f0; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; padding: 3px 8px; border-radius: 4px; margin-bottom: 4px;">
+                      ESTADO: PARTICIPACIÓN DESTACADA
+                    </div>
+                    <div style="color: #ffffff; font-size: 16px; font-weight: 700; line-height: 22px;">
+                      No alcanzaste el corte de clasificación (Top ${cupoClasificados})
+                    </div>
+                    <div style="color: #cbd5e1; font-size: 13px; line-height: 19px; margin-top: 5px;">
+                      Finalizaste ${puestoTextoNoClasif} del ranking general. ¡Agradecemos y valoramos profundamente tu dedicación y compromiso diario con las Buenas Prácticas de Manufactura en Don Yeyo!
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      `;
+    }
+  }
+
+  // Reemplazar comodín {{tarjeta_resumen}} si está presente
+  template = template.replace(/\{\{tarjeta_resumen\}\}/gi, tarjetaResumenHtml);
+
+  // Si la plantilla física tenía la tabla estática de puntaje y el usuario no participó, sustituirla
+  if (isResultados && !haParticipado && tarjetaResumenHtml) {
+    template = template.replace(
+      /<table role="presentation"[\s\S]*?Puntaje Final[\s\S]*?<\/table>/i,
+      tarjetaResumenHtml
+    );
+  }
+
+  // Reemplazar comodín {{estado_clasificacion}}
+  if (template.includes('{{estado_clasificacion}}')) {
+    template = template.replace(/\{\{estado_clasificacion\}\}/gi, estadoClasificacionHtml);
+  } else if (isResultados && haParticipado && estadoClasificacionHtml) {
+    // Si la plantilla física no incluye el comodín explícito, anexar después de la tarjeta de resumen
+    template = template.replace(tarjetaResumenHtml, `${tarjetaResumenHtml}\n${estadoClasificacionHtml}`);
+  }
 
   template = template
     .replace(/\{\{nombre\}\}/gi, user.nombre || 'Colaborador')
@@ -314,10 +522,13 @@ function renderEmailHtml(user, emailTipo = 'INVITACION', paramsMap = {}, smtpCfg
     .replace(/\{\{email\}\}/gi, user.email || '')
     .replace(/\{\{link_trivia\}\}/gi, linkTrivia)
     .replace(/\{\{link_podio\}\}/gi, linkPodio)
-    .replace(/\{\{puntaje_obtenido\}\}/gi, String(user.puntaje ?? 1250))
-    .replace(/\{\{respuestas_correctas\}\}/gi, String(user.correctas ?? 14))
-    .replace(/\{\{total_preguntas\}\}/gi, String(user.total_preguntas ?? 15))
-    .replace(/\{\{tiempo_total\}\}/gi, String(user.tiempo_total ?? 184));
+    .replace(/\{\{puntaje_obtenido\}\}/gi, String(user.puntaje ?? (haParticipado ? 1250 : 0)))
+    .replace(/\{\{respuestas_correctas\}\}/gi, String(user.correctas ?? (haParticipado ? 14 : 0)))
+    .replace(/\{\{total_preguntas\}\}/gi, String(totalPreguntas))
+    .replace(/\{\{tiempo_total\}\}/gi, String(user.tiempo_total ?? (haParticipado ? 184 : 0)))
+    .replace(/\{\{puesto_ranking\}\}/gi, String(rankingPuesto ?? '-'))
+    .replace(/\{\{cupo_clasificados\}\}/gi, String(cupoClasificados))
+    .replace(/\{\{es_clasificado\}\}/gi, esClasificado ? 'SÍ' : 'NO');
 
   // Bloque de feedback pedagógico
   const feedbackHtml = user.feedback_detalle || '';
@@ -360,11 +571,27 @@ export async function handler(event, context) {
   if (event.httpMethod === 'GET') {
     try {
       const emailTipo = (event.queryStringParameters?.tipo || 'INVITACION').toUpperCase();
-      const participants = await db.getParticipantsAdmin();
+      const sysConfig = await db.getConfig();
+      const activePhase = sysConfig.activePhase || 1;
+
+      const allParticipants = await db.getParticipantsAdmin();
+      // 🛡️ REGLA: Las estadísticas y envíos de emails siempre aplican sobre participantes ACTIVOS únicamente
+      const participants = allParticipants.filter(p => p.activo !== false);
       const withEmail = participants.filter(p => p.email && p.email.includes('@'));
       const isSent = (p) => emailTipo === 'RESULTADOS' ? Boolean(p.email_resultado_enviado) : Boolean(p.email_enviado);
       const sentCount = withEmail.filter(isSent).length;
       const pendingCount = withEmail.length - sentCount;
+
+      // Métricas desglosadas por participación en la fase activa (para resultados)
+      const hasPlayedActivePhase = (p) => Boolean(p.phasesPlayed && p.phasesPlayed.includes(activePhase));
+      const playedWithEmail = withEmail.filter(hasPlayedActivePhase);
+      const nonPlayedWithEmail = withEmail.filter(p => !hasPlayedActivePhase(p));
+
+      const playedSentCount = playedWithEmail.filter(isSent).length;
+      const playedPendingCount = playedWithEmail.length - playedSentCount;
+
+      const nonPlayedSentCount = nonPlayedWithEmail.filter(isSent).length;
+      const nonPlayedPendingCount = nonPlayedWithEmail.length - nonPlayedSentCount;
 
       // Obtener parámetros de Supabase
       const paramsList = await db.getMailingParams(emailTipo);
@@ -379,10 +606,18 @@ export async function handler(event, context) {
         body: JSON.stringify({
           success: true,
           emailTipo,
+          activePhase,
           totalParticipants: participants.length,
           totalWithEmail: withEmail.length,
           sentCount,
           pendingCount,
+          // Métricas analíticas de participación
+          playedCount: playedWithEmail.length,
+          playedSentCount,
+          playedPendingCount,
+          nonPlayedCount: nonPlayedWithEmail.length,
+          nonPlayedSentCount,
+          nonPlayedPendingCount,
           smtpUser: smtpCfg.smtpUser ? `${smtpCfg.smtpUser.split('@')[0]}@...` : 'No configurado',
           smtpHost: smtpCfg.smtpHost,
           appBaseUrl: smtpCfg.appBaseUrl,
@@ -462,6 +697,18 @@ export async function handler(event, context) {
           });
         }
 
+        const previewType = body.previewParticipantType || (body.sampleUser?.ha_participado === false ? 'not_played' : 'played_qualified');
+        const isNonParticipant = previewType === 'not_played' || body.sampleUser?.ha_participado === false;
+        const isNotQualified = previewType === 'played_not_qualified';
+
+        let topLimit = 30;
+        let activePhase = 1;
+        if (emailTipo === 'RESULTADOS') {
+          const sysConfig = await db.getConfig();
+          activePhase = sysConfig.activePhase || 1;
+          topLimit = parseInt(sysConfig.CLASIFICACION_TOP_COUNT || sysConfig.classificationTopCount || 30, 10);
+        }
+
         const sampleUser = body.sampleUser || {
           legajo: '1042',
           nombre: 'Juan Román',
@@ -469,48 +716,57 @@ export async function handler(event, context) {
           sector: 'Producción y Elaboración',
           email: 'jriquelme@donyeyo.com.ar',
           token_hash: 'token_muestra_live_preview',
-          puntaje: 1420,
-          correctas: 13,
+          puntaje: isNonParticipant ? 0 : (isNotQualified ? 980 : 1420),
+          correctas: isNonParticipant ? 0 : (isNotQualified ? 10 : 13),
           total_preguntas: 15,
-          tiempo_total: 165
+          tiempo_total: isNonParticipant ? 0 : (isNotQualified ? 210 : 165),
+          ha_participado: !isNonParticipant,
+          cupo_clasificados: topLimit,
+          ranking_puesto: isNonParticipant ? null : (isNotQualified ? (topLimit + 8) : 4),
+          es_clasificado: !isNonParticipant && !isNotQualified
         };
 
         if (emailTipo === 'RESULTADOS' && !sampleUser.feedback_detalle) {
-          const sysConfig = await db.getConfig();
-          const activePhase = sysConfig.activePhase || 1;
           const questions = await db.getQuestionsAdmin(activePhase);
 
-          // Simular respuestas variadas para la vista previa
-          const sampleResponses = questions.map((q, idx) => {
-            const isCorrect = idx !== 3 && idx !== 8;
-            const options = Array.isArray(q.opciones) ? q.opciones : [];
-            const correctOpt = parseInt(q.respuesta_correcta, 10) || 1;
-            let userOpt = correctOpt;
-            if (!isCorrect) {
-              userOpt = correctOpt === 1 ? 2 : 1;
-            }
-
-            // Justificación modelo en la muestra si la pregunta aún no la tiene en base
-            if (!q.explicacion) {
-              if (idx === 0) {
-                q.explicacion = 'Las normas BPM prohíben anillos, pulseras y relojes para evitar la acumulación de suciedad microbiológica y prevenir cuerpos extraños en la línea productiva.';
-              } else if (idx === 3) {
-                q.explicacion = 'El lavado de manos debe realizarse con jabón antibacterial frotando palma, dorso y entre dedos durante al menos 20 segundos antes de manipular alimentos.';
+          if (isNonParticipant) {
+            sampleUser.ha_participado = false;
+            sampleUser.total_preguntas = questions.length;
+            sampleUser.feedback_detalle = buildFeedbackDetalleHtml(questions, [], true);
+          } else {
+            // Simular respuestas variadas para la vista previa
+            const sampleResponses = questions.map((q, idx) => {
+              const isCorrect = isNotQualified ? (idx < 10) : (idx !== 3 && idx !== 8);
+              const options = Array.isArray(q.opciones) ? q.opciones : [];
+              const correctOpt = parseInt(q.respuesta_correcta, 10) || 1;
+              let userOpt = correctOpt;
+              if (!isCorrect) {
+                userOpt = correctOpt === 1 ? 2 : 1;
               }
-            }
 
-            return {
-              pregunta_id: q.id,
-              respuesta_seleccionada: userOpt,
-              es_correcta: isCorrect,
-              puntos_obtenidos: isCorrect ? (q.puntos || 100) : 0,
-              tiempo_tardado: 8
-            };
-          });
+              // Justificación modelo en la muestra si la pregunta aún no la tiene en base
+              if (!q.explicacion) {
+                if (idx === 0) {
+                  q.explicacion = 'Las normas BPM prohíben anillos, pulseras y relojes para evitar la acumulación de suciedad microbiológica y prevenir cuerpos extraños en la línea productiva.';
+                } else if (idx === 3) {
+                  q.explicacion = 'El lavado de manos debe realizarse con jabón antibacterial frotando palma, dorso y entre dedos durante al menos 20 segundos antes de manipular alimentos.';
+                }
+              }
 
-          sampleUser.correctas = sampleResponses.filter(r => r.es_correcta).length;
-          sampleUser.total_preguntas = questions.length;
-          sampleUser.feedback_detalle = buildFeedbackDetalleHtml(questions, sampleResponses);
+              return {
+                pregunta_id: q.id,
+                respuesta_seleccionada: userOpt,
+                es_correcta: isCorrect,
+                puntos_obtenidos: isCorrect ? (q.puntos || 100) : 0,
+                tiempo_tardado: 8
+              };
+            });
+
+            sampleUser.ha_participado = true;
+            sampleUser.correctas = sampleResponses.filter(r => r.es_correcta).length;
+            sampleUser.total_preguntas = questions.length;
+            sampleUser.feedback_detalle = buildFeedbackDetalleHtml(questions, sampleResponses, false);
+          }
         }
 
         const html = renderEmailHtml(sampleUser, emailTipo, paramsMap, smtpCfg);
@@ -588,6 +844,18 @@ export async function handler(event, context) {
           return { statusCode: 400, headers, body: JSON.stringify({ error: 'Dirección de correo de prueba inválida' }) };
         }
 
+        const previewType = body.previewParticipantType || (body.isNonParticipant ? 'not_played' : 'played_qualified');
+        const isTestNonParticipant = previewType === 'not_played' || Boolean(body.isNonParticipant);
+        const isTestNotQualified = previewType === 'played_not_qualified';
+
+        let topLimit = 30;
+        let activePhase = 1;
+        if (emailTipo === 'RESULTADOS') {
+          const sysConfig = await db.getConfig();
+          activePhase = sysConfig.activePhase || 1;
+          topLimit = parseInt(sysConfig.CLASIFICACION_TOP_COUNT || sysConfig.classificationTopCount || 30, 10);
+        }
+
         const transporter = createTransporter(smtpCfg);
         const demoUser = {
           legajo: '9999',
@@ -596,46 +864,55 @@ export async function handler(event, context) {
           sector: 'Calidad e Inocuidad',
           email: targetEmail,
           token_hash: 'demo_token_hash_para_pruebas',
-          puntaje: 1350,
-          correctas: 13,
+          puntaje: isTestNonParticipant ? 0 : (isTestNotQualified ? 980 : 1350),
+          correctas: isTestNonParticipant ? 0 : (isTestNotQualified ? 10 : 13),
           total_preguntas: 15,
-          tiempo_total: 172
+          tiempo_total: isTestNonParticipant ? 0 : (isTestNotQualified ? 215 : 172),
+          ha_participado: !isTestNonParticipant,
+          cupo_clasificados: topLimit,
+          ranking_puesto: isTestNonParticipant ? null : (isTestNotQualified ? (topLimit + 5) : 3),
+          es_clasificado: !isTestNonParticipant && !isTestNotQualified
         };
 
         if (emailTipo === 'RESULTADOS') {
-          const sysConfig = await db.getConfig();
-          const activePhase = sysConfig.activePhase || 1;
           const questions = await db.getQuestionsAdmin(activePhase);
 
-          const sampleResponses = questions.map((q, idx) => {
-            const isCorrect = idx !== 2 && idx !== 7;
-            const options = Array.isArray(q.opciones) ? q.opciones : [];
-            const correctOpt = parseInt(q.respuesta_correcta, 10) || 1;
-            let userOpt = correctOpt;
-            if (!isCorrect) {
-              userOpt = correctOpt === 1 ? 2 : 1;
-            }
-
-            if (!q.explicacion) {
-              if (idx === 0) {
-                q.explicacion = 'Las normas BPM prohíben anillos, pulseras y relojes para evitar la acumulación de suciedad microbiológica y prevenir cuerpos extraños.';
-              } else if (idx === 2) {
-                q.explicacion = 'Ante un desvío o rotura de empaque primario, se debe aislar inmediatamente el lote y notificar a supervisión.';
+          if (isTestNonParticipant) {
+            demoUser.ha_participado = false;
+            demoUser.total_preguntas = questions.length;
+            demoUser.feedback_detalle = buildFeedbackDetalleHtml(questions, [], true);
+          } else {
+            const sampleResponses = questions.map((q, idx) => {
+              const isCorrect = isTestNotQualified ? (idx < 10) : (idx !== 2 && idx !== 7);
+              const options = Array.isArray(q.opciones) ? q.opciones : [];
+              const correctOpt = parseInt(q.respuesta_correcta, 10) || 1;
+              let userOpt = correctOpt;
+              if (!isCorrect) {
+                userOpt = correctOpt === 1 ? 2 : 1;
               }
-            }
 
-            return {
-              pregunta_id: q.id,
-              respuesta_seleccionada: userOpt,
-              es_correcta: isCorrect,
-              puntos_obtenidos: isCorrect ? (q.puntos || 100) : 0,
-              tiempo_tardado: 9
-            };
-          });
+              if (!q.explicacion) {
+                if (idx === 0) {
+                  q.explicacion = 'Las normas BPM prohíben anillos, pulseras y relojes para evitar la acumulación de suciedad microbiológica y prevenir cuerpos extraños.';
+                } else if (idx === 2) {
+                  q.explicacion = 'Ante un desvío o rotura de empaque primario, se debe aislar inmediatamente el lote y notificar a supervisión.';
+                }
+              }
 
-          demoUser.correctas = sampleResponses.filter(r => r.es_correcta).length;
-          demoUser.total_preguntas = questions.length;
-          demoUser.feedback_detalle = buildFeedbackDetalleHtml(questions, sampleResponses);
+              return {
+                pregunta_id: q.id,
+                respuesta_seleccionada: userOpt,
+                es_correcta: isCorrect,
+                puntos_obtenidos: isCorrect ? (q.puntos || 100) : 0,
+                tiempo_tardado: 9
+              };
+            });
+
+            demoUser.ha_participado = true;
+            demoUser.correctas = sampleResponses.filter(r => r.es_correcta).length;
+            demoUser.total_preguntas = questions.length;
+            demoUser.feedback_detalle = buildFeedbackDetalleHtml(questions, sampleResponses, false);
+          }
         }
 
         const html = renderEmailHtml(demoUser, emailTipo, paramsMap, smtpCfg);
@@ -643,7 +920,7 @@ export async function handler(event, context) {
         await transporter.sendMail({
           from: `"Don Yeyo S.A." <${smtpCfg.smtpFrom}>`,
           to: targetEmail,
-          subject: `[PRUEBA ${emailTipo}] ${emailSubject}`,
+          subject: `[PRUEBA ${emailTipo}${isTestNonParticipant ? ' - CAPACITACIÓN' : (isTestNotQualified ? ' - NO CLASIFICADO' : ' - CLASIFICADO')}] ${emailSubject}`,
           html
         });
 
@@ -652,7 +929,7 @@ export async function handler(event, context) {
           headers,
           body: JSON.stringify({
             success: true,
-            message: `Correo de prueba (${emailTipo}) enviado exitosamente a ${targetEmail}`
+            message: `Correo de prueba (${emailTipo}${isTestNonParticipant ? ' - Modo Capacitación' : (isTestNotQualified ? ' - No Clasificado' : ' - Clasificado')}) enviado exitosamente a ${targetEmail}`
           })
         };
       }
@@ -675,14 +952,37 @@ export async function handler(event, context) {
           return { statusCode: 404, headers, body: JSON.stringify({ error: 'Participante no encontrado en Supabase' }) };
         }
 
+        // 🛡️ REGLA: El envío de emails de cualquier tipo siempre debe ser sobre los activados únicamente
+        let isInactive = user.activo === false;
+        if (!isInactive) {
+          try {
+            const { data: disCfg } = await supabase.from('config').select('valor').eq('clave', 'PARTICIPANTES_DESACTIVADOS').maybeSingle();
+            if (disCfg && disCfg.valor) {
+              const disMap = JSON.parse(disCfg.valor);
+              if (disMap[String(user.legajo).trim()]) isInactive = true;
+            }
+          } catch (e) {}
+        }
+
+        if (isInactive) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              error: `El participante ${user.nombre} ${user.apellido} (Legajo: ${user.legajo}) se encuentra DESACTIVADO. El envío de correos solo está permitido para participantes activos.`
+            })
+          };
+        }
+
         if (!user.email || !user.email.includes('@')) {
           return { statusCode: 400, headers, body: JSON.stringify({ error: `El participante ${user.nombre} ${user.apellido} no tiene un email válido registrado.` }) };
         }
 
-        // Si es resultados, obtener su puntaje, preguntas y respuestas reales con detalle pedagógico
+        // Si es resultados, obtener su puntaje, preguntas, respuestas y posición oficial de clasificación
         if (emailTipo === 'RESULTADOS') {
           const sysConfig = await db.getConfig();
           const activePhase = sysConfig.activePhase || 1;
+          const topLimit = parseInt(sysConfig.CLASIFICACION_TOP_COUNT || sysConfig.classificationTopCount || 30, 10);
           const questions = await db.getQuestionsAdmin(activePhase);
 
           const { data: userResponses } = await supabase
@@ -692,11 +992,48 @@ export async function handler(event, context) {
             .eq('fase', activePhase);
 
           const rList = userResponses || [];
-          user.correctas = rList.filter(r => r.es_correcta).length;
-          user.total_preguntas = Math.max(questions.length, rList.length, 15);
-          user.puntaje = rList.reduce((acc, r) => acc + (r.puntos_obtenidos || 0), 0);
-          user.tiempo_total = rList.reduce((acc, r) => acc + (r.tiempo_tardado || 0), 0);
-          user.feedback_detalle = buildFeedbackDetalleHtml(questions, rList);
+          const hasPlayedPhase = rList.length > 0;
+
+          // Obtener clasificación oficial de la fase para determinar puesto y estado
+          let userRank = null;
+          let isQualified = false;
+          try {
+            const classifData = await db.getClassification(activePhase, topLimit, true, false);
+            const list = classifData?.allParticipants || classifData?.ranked || [];
+            const userLeg = String(user.legajo || '').trim();
+            const userLegNum = parseInt(userLeg, 10);
+            const found = list.find(r => {
+              const rLeg = String(r.legajo || '').trim();
+              return rLeg === userLeg || (!isNaN(userLegNum) && parseInt(rLeg, 10) === userLegNum);
+            });
+            if (found) {
+              userRank = found.rank;
+              isQualified = Boolean(found.isQualified);
+            }
+          } catch (cErr) {
+            console.warn('[Mailing] Error calculando clasificación para SEND_SINGLE:', cErr.message);
+          }
+
+          user.cupo_clasificados = topLimit;
+          if (hasPlayedPhase) {
+            user.ha_participado = true;
+            user.correctas = rList.filter(r => r.es_correcta).length;
+            user.total_preguntas = Math.max(questions.length, rList.length, 15);
+            user.puntaje = rList.reduce((acc, r) => acc + (r.puntos_obtenidos || 0), 0);
+            user.tiempo_total = rList.reduce((acc, r) => acc + (r.tiempo_tardado || 0), 0);
+            user.feedback_detalle = buildFeedbackDetalleHtml(questions, rList, false);
+            user.ranking_puesto = userRank || '-';
+            user.es_clasificado = isQualified;
+          } else {
+            user.ha_participado = false;
+            user.correctas = 0;
+            user.total_preguntas = questions.length;
+            user.puntaje = 0;
+            user.tiempo_total = 0;
+            user.feedback_detalle = buildFeedbackDetalleHtml(questions, [], true);
+            user.ranking_puesto = null;
+            user.es_clasificado = false;
+          }
         }
 
         const transporter = createTransporter(smtpCfg);
@@ -717,7 +1054,7 @@ export async function handler(event, context) {
           headers,
           body: JSON.stringify({
             success: true,
-            message: `Email (${emailTipo}) enviado exitosamente a ${user.nombre} ${user.apellido} (${user.email})`,
+            message: `Email (${emailTipo}${user.ha_participado === false ? ' - Capacitación' : (user.es_clasificado ? ' - Clasificado' : ' - No Clasificado')}) enviado exitosamente a ${user.nombre} ${user.apellido} (${user.email})`,
             email: user.email
           })
         };
@@ -727,11 +1064,72 @@ export async function handler(event, context) {
       if (action === 'SEND_BATCH') {
         const limit = parseInt(body.limit, 10) || 50;
         const resendAll = Boolean(body.resendAll);
+        const includeNonParticipants = Boolean(body.includeNonParticipants);
+
+        let questions = [];
+        let activePhase = 1;
+        let topLimit = 30;
+        let rankedMap = new Map();
+
+        if (emailTipo === 'RESULTADOS') {
+          const sysConfig = await db.getConfig();
+          activePhase = sysConfig.activePhase || 1;
+          topLimit = parseInt(sysConfig.CLASIFICACION_TOP_COUNT || sysConfig.classificationTopCount || 30, 10);
+          questions = await db.getQuestionsAdmin(activePhase);
+
+          try {
+            const classifData = await db.getClassification(activePhase, topLimit, true, false);
+            const list = classifData?.allParticipants || classifData?.ranked || [];
+            list.forEach(r => {
+              const legStr = String(r.legajo || '').trim();
+              const legNum = parseInt(legStr, 10);
+              const info = {
+                rank: r.rank,
+                isQualified: Boolean(r.isQualified)
+              };
+              rankedMap.set(legStr, info);
+              if (!isNaN(legNum)) {
+                rankedMap.set(String(legNum), info);
+              }
+            });
+          } catch (cErr) {
+            console.warn('[Mailing] Error calculando clasificación para SEND_BATCH:', cErr.message);
+          }
+        }
 
         const participants = await db.getParticipantsAdmin();
         const isSent = (p) => emailTipo === 'RESULTADOS' ? Boolean(p.email_resultado_enviado) : Boolean(p.email_enviado);
+        const hasPlayedActivePhase = (p) => Boolean(p.phasesPlayed && p.phasesPlayed.includes(activePhase));
+        const legajosFilter = Array.isArray(body.legajos) && body.legajos.length > 0
+          ? body.legajos.map(l => String(l).trim())
+          : null;
+
+        let inactiveSkippedCount = 0;
+
         const targets = participants.filter(p => {
+          const legStr = String(p.legajo || '').trim();
+
+          // Filtro por selección explícita
+          if (legajosFilter && !legajosFilter.includes(legStr)) return false;
+
+          // 🛡️ REGLA: El envío de emails de cualquier tipo siempre debe ser sobre los activados únicamente
+          if (p.activo === false) {
+            if (legajosFilter && legajosFilter.includes(legStr)) {
+              inactiveSkippedCount++;
+            }
+            return false;
+          }
+
           if (!p.email || !p.email.includes('@')) return false;
+
+          // Si vino lista de legajos explícita, procesar a todos los activos seleccionados con email
+          if (legajosFilter) return true;
+
+          // Si es Resultados y NO se desea incluir a quienes no jugaron, excluir a los que no jugaron la fase activa
+          if (emailTipo === 'RESULTADOS' && !includeNonParticipants && !hasPlayedActivePhase(p)) {
+            return false;
+          }
+
           if (resendAll) return true;
           return !isSent(p);
         }).slice(0, limit);
@@ -743,17 +1141,12 @@ export async function handler(event, context) {
             body: JSON.stringify({
               success: true,
               sentCount: 0,
-              message: 'No hay participantes pendientes con correo electrónico para enviar.'
+              inactiveSkippedCount,
+              message: inactiveSkippedCount > 0
+                ? `No se enviaron correos porque los participantes seleccionados (${inactiveSkippedCount}) se encuentran desactivados.`
+                : 'No hay participantes pendientes con correo electrónico para enviar según los filtros seleccionados.'
             })
           };
-        }
-
-        let questions = [];
-        let activePhase = 1;
-        if (emailTipo === 'RESULTADOS') {
-          const sysConfig = await db.getConfig();
-          activePhase = sysConfig.activePhase || 1;
-          questions = await db.getQuestionsAdmin(activePhase);
         }
 
         const transporter = createTransporter(smtpCfg);
@@ -762,7 +1155,7 @@ export async function handler(event, context) {
 
         for (const user of targets) {
           try {
-            // Si es resultados, calcular aciertos, puntaje y construir feedback pedagógico
+            // Si es resultados, calcular aciertos, puntaje, clasificación y construir feedback pedagógico
             if (emailTipo === 'RESULTADOS') {
               const supabase = db.getClient();
               const { data: userResponses } = await supabase
@@ -772,11 +1165,32 @@ export async function handler(event, context) {
                 .eq('fase', activePhase);
 
               const rList = userResponses || [];
-              user.correctas = rList.filter(r => r.es_correcta).length;
-              user.total_preguntas = Math.max(questions.length, rList.length, 15);
-              user.puntaje = rList.reduce((acc, r) => acc + (r.puntos_obtenidos || 0), 0);
-              user.tiempo_total = rList.reduce((acc, r) => acc + (r.tiempo_tardado || 0), 0);
-              user.feedback_detalle = buildFeedbackDetalleHtml(questions, rList);
+              const hasPlayed = rList.length > 0;
+
+              user.cupo_clasificados = topLimit;
+              if (hasPlayed) {
+                user.ha_participado = true;
+                user.correctas = rList.filter(r => r.es_correcta).length;
+                user.total_preguntas = Math.max(questions.length, rList.length, 15);
+                user.puntaje = rList.reduce((acc, r) => acc + (r.puntos_obtenidos || 0), 0);
+                user.tiempo_total = rList.reduce((acc, r) => acc + (r.tiempo_tardado || 0), 0);
+                user.feedback_detalle = buildFeedbackDetalleHtml(questions, rList, false);
+
+                const userLegStr = String(user.legajo || '').trim();
+                const userLegNum = parseInt(userLegStr, 10);
+                const cInfo = rankedMap.get(userLegStr) || (!isNaN(userLegNum) ? rankedMap.get(String(userLegNum)) : null);
+                user.ranking_puesto = cInfo ? cInfo.rank : '-';
+                user.es_clasificado = cInfo ? Boolean(cInfo.isQualified) : false;
+              } else {
+                user.ha_participado = false;
+                user.correctas = 0;
+                user.total_preguntas = questions.length;
+                user.puntaje = 0;
+                user.tiempo_total = 0;
+                user.feedback_detalle = buildFeedbackDetalleHtml(questions, [], true);
+                user.ranking_puesto = null;
+                user.es_clasificado = false;
+              }
             }
 
             const html = renderEmailHtml(user, emailTipo, paramsMap, smtpCfg);
@@ -801,11 +1215,10 @@ export async function handler(event, context) {
           headers,
           body: JSON.stringify({
             success: true,
-            sentCount,
-            totalAttempted: targets.length,
-            errorsCount: errors.length,
-            errors,
-            message: `Se enviaron exitosamente ${sentCount} de ${targets.length} correos de ${emailTipo}.`
+            inactiveSkippedCount,
+            message: inactiveSkippedCount > 0
+              ? `Se enviaron exitosamente ${sentCount} de ${targets.length} correos de ${emailTipo}. Se ignoraron automáticamente ${inactiveSkippedCount} participante(s) por estar desactivados.`
+              : `Se enviaron exitosamente ${sentCount} de ${targets.length} correos de ${emailTipo}.`
           })
         };
       }

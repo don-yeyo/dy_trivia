@@ -185,6 +185,7 @@ function renderHtml(template, user) {
     .replace(/%TITULO_EMAIL%/g, getEnv('TITULO_EMAIL', '¡ACÁ EMPIEZA EL DESAFÍO DE INOCUIDAD!'))
     .replace(/%SUBTITULO%/g, getEnv('SUBTITULO', 'Llegó el momento de demostrar todo lo que sabés.'))
     .replace(/%MENSAJE_PRINCIPAL%/g, getEnv('MENSAJE_PRINCIPAL', ''))
+    .replace(/%MENSAJE_PRINCIPAL_ALTERNATIVO%/g, getEnv('MENSAJE_PRINCIPAL_ALTERNATIVO', ''))
     .replace(/%MENSAJE_SECUNDARIO%/g, getEnv('MENSAJE_SECUNDARIO', ''))
     .replace(/%CALL_TO_ACTION_TEXTO%/g, getEnv('CALL_TO_ACTION_TEXTO', 'INGRESAR A LA TRIVIA AHORA'))
     .replace(/%CALL_TO_ACTION_URL%/g, linkTrivia)
@@ -248,22 +249,31 @@ async function fetchSupabaseParticipants() {
     from += pageSize;
   }
 
-  // Leer mapa de emails enviados
+  // Leer mapa de emails enviados e inactivos
   let emailSentMap = {};
-  const { data: cfgData } = await supabase
+  let inactivosMap = {};
+  const { data: configs } = await supabase
     .from('config')
-    .select('valor')
-    .eq('clave', 'EMAILS_ENVIADOS')
-    .maybeSingle();
+    .select('clave, valor')
+    .in('clave', ['EMAILS_ENVIADOS', 'PARTICIPANTES_DESACTIVADOS']);
 
-  if (cfgData && cfgData.valor) {
-    try { emailSentMap = JSON.parse(cfgData.valor); } catch (e) { emailSentMap = {}; }
+  if (configs) {
+    configs.forEach(c => {
+      if (c.clave === 'EMAILS_ENVIADOS' && c.valor) {
+        try { emailSentMap = JSON.parse(c.valor); } catch (e) {}
+      }
+      if (c.clave === 'PARTICIPANTES_DESACTIVADOS' && c.valor) {
+        try { inactivosMap = JSON.parse(c.valor); } catch (e) {}
+      }
+    });
   }
 
   return all.map(p => {
     const leg = String(p.legajo || '').trim();
+    const isInactive = Boolean(inactivosMap[leg]) || p.activo === false;
     return {
       ...p,
+      activo: !isInactive,
       email_enviado: Boolean(emailSentMap[leg])
     };
   });
@@ -357,8 +367,15 @@ async function main() {
       console.error(`❌ No se encontró ningún participante con legajo "${targetLegajo}" en Supabase.`);
       process.exit(1);
     }
+    if (targets[0].activo === false) {
+      console.error(`❌ ATENCIÓN: El participante con legajo "${targetLegajo}" (${targets[0].nombre} ${targets[0].apellido}) está INACTIVO.`);
+      console.error(`🛡️ REGLA: El envío de emails está restringido únicamente a colaboradores ACTIVOS.`);
+      process.exit(1);
+    }
   } else {
     targets = participants.filter(p => {
+      // 🛡️ REGLA: El envío de emails de cualquier tipo siempre debe ser sobre los activados únicamente
+      if (p.activo === false) return false;
       if (!p.email || !p.email.includes('@')) return false;
       if (isResendAll) return true;
       return !p.email_enviado;

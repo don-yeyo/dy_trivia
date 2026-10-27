@@ -79,7 +79,7 @@ export async function saveMailingParams(emailTipo = 'INVITACION', params = {}, t
 /**
  * Renderiza el HTML completo en tiempo real combinando los parámetros y usuario muestra
  */
-export async function renderMailingPreview(emailTipo = 'INVITACION', params = {}, sampleUser = null, token = '') {
+export async function renderMailingPreview(emailTipo = 'INVITACION', params = {}, sampleUser = null, token = '', previewParticipantType = 'played') {
   try {
     const res = await fetch('/api/mailing', {
       method: 'POST',
@@ -88,7 +88,8 @@ export async function renderMailingPreview(emailTipo = 'INVITACION', params = {}
         action: 'RENDER_PREVIEW',
         emailTipo,
         params,
-        sampleUser
+        sampleUser,
+        previewParticipantType
       })
     });
     const data = await res.json().catch(() => ({}));
@@ -129,8 +130,11 @@ export async function sendSingleParticipantEmail(legajo, emailTipo = 'INVITACION
 /**
  * Envía un correo de prueba a una dirección de email específica
  */
-export async function sendTestEmail(testEmail, emailTipo = 'INVITACION', params = null, token = '') {
+export async function sendTestEmail(testEmail, emailTipo = 'INVITACION', params = null, token = '', participantType = 'played_qualified') {
   try {
+    const isNonPart = participantType === true || participantType === 'not_played';
+    const previewType = typeof participantType === 'string' ? participantType : (isNonPart ? 'not_played' : 'played_qualified');
+
     const res = await fetch('/api/mailing', {
       method: 'POST',
       headers: getAuthHeader(token),
@@ -138,7 +142,9 @@ export async function sendTestEmail(testEmail, emailTipo = 'INVITACION', params 
         action: 'SEND_TEST',
         testEmail: String(testEmail).trim(),
         emailTipo,
-        params
+        params,
+        previewParticipantType: previewType,
+        isNonParticipant: isNonPart
       })
     });
     const data = await res.json().catch(() => ({}));
@@ -152,20 +158,25 @@ export async function sendTestEmail(testEmail, emailTipo = 'INVITACION', params 
 }
 
 /**
- * Envía correos masivos por lotes (con opción de forzar reenvío a todos)
+ * Envía correos masivos por lotes (con opción de forzar reenvío a todos y de incluir no participantes)
  */
-export async function sendBatchMailing({ limit = 50, resendAll = false, emailTipo = 'INVITACION', params = null }, token = '') {
+export async function sendBatchMailing({ limit = 50, resendAll = false, includeNonParticipants = false, emailTipo = 'INVITACION', params = null, legajos = null }, token = '') {
   try {
+    const payload = {
+      action: 'SEND_BATCH',
+      limit: parseInt(limit, 10) || 50,
+      resendAll: Boolean(resendAll),
+      includeNonParticipants: Boolean(includeNonParticipants),
+      emailTipo,
+      params
+    };
+    if (Array.isArray(legajos) && legajos.length > 0) {
+      payload.legajos = legajos.map(String);
+    }
     const res = await fetch('/api/mailing', {
       method: 'POST',
       headers: getAuthHeader(token),
-      body: JSON.stringify({
-        action: 'SEND_BATCH',
-        limit: parseInt(limit, 10) || 50,
-        resendAll: Boolean(resendAll),
-        emailTipo,
-        params
-      })
+      body: JSON.stringify(payload)
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.success) {

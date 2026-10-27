@@ -69,13 +69,37 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - **Feature Flag `DB_ENGINE`:** Permite alternar sin tocar código entre `sheets` (Google Sheets API v4 + Webhooks) y `supabase` (PostgreSQL de alta velocidad).
    - **Herramienta de migración idempotente (`npm run db:migrate`):** Lee datos de Google Sheets y los vuelca masivamente en Supabase mediante `UPSERT` en lotes sin riesgo de duplicados.
 
-9. **Panel de Gestión Integral de Participantes (Admin CRUD & Enlaces)**:
-   - **Gestión completa CRUD:** Alta de nuevos colaboradores, edición de datos (nombre, apellido, sector, email) y eliminación con limpieza de registros.
-   - **Generación y regeneración de enlaces únicos (Hashes):** Generación automática individual o masiva ("Generar Hashes Faltantes") aplicando la fórmula oficial `SHA256(SEED_PHRASE + legajo + APELLIDO + NOMBRE)`.
+9. **Panel de Gestión Integral de Participantes (Admin CRUD, Enlaces, Grilla Avanzada y Acciones Masivas)**:
+   - **Gestión completa CRUD y Estado Activo/Inactivo:**
+     - Alta de nuevos colaboradores, edición de datos (nombre, apellido, sector, email) y eliminación con limpieza de registros.
+     - **Nuevo campo Estado Participante (Activo / Inactivo):** Permite habilitar o inhabilitar colaboradores con un botón interactivo toggle directo desde la grilla o desde el modal de edición.
+     - **🛡️ Regla de Negocio Crítica para Envíos de Correo:** Los envíos de correo de cualquier tipo (invitación o reporte de resultados), ya sean individuales, masivos o por selección de lote, **ignoran estricta y automáticamente a los colaboradores desactivados** (`activo === false` o listados en `PARTICIPANTES_DESACTIVADOS`), garantizando que solo el personal habilitado reciba comunicaciones.
+   - **Nuevas Columnas de Clasificación y Puntaje:**
+     - **Columna Puntaje:** Muestra el puntaje consolidado de la fase en tiempo real (`{score} pts`) con diseño gaming o guion (`—`) si no jugó.
+     - **Columna Clasificado:** Badge visual que indica de forma inequívoca el estado de pase a la siguiente ronda: `🏆 Clasificado #Puesto` (dorado con posición en ranking si alcanzó el corte de cupos oficial) o `No clasificado` (gris) o `Sin jugar`.
+   - **Ordenamiento Dinámico Bidireccional por Cualquier Columna:**
+     - Permite ordenar la grilla de forma ascendente o descendente haciendo clic en el encabezado de cualquiera de las columnas (`Participante`, `Sector`, `Estado Activo`, `Puntaje`, `Clasificación`, `Link / Hash`, `Emails`, `Trivia`), con flechas indicadoras visuales.
+   - **Menú de Presets de Selección Rápida:**
+     - Dropdown con 12 filtros rápidos de selección en un clic: 🏆 Clasificados, ❌ No clasificados, ✅ Activos, 🚫 Inactivos, ✉️ Email Invitación Enviado, ⏳ Email Invitación Pendiente, 🏅 Email Resultados Enviado, ⏳ Email Resultados Pendiente, 🎮 Participaron, 💤 Sin Jugar, 🔑 Con Hash, ⚡ Sin Hash, 🧹 Deseleccionar todos.
+   - **Gestión Integral de Grupos de Participantes:**
+     - Columna visual de grupo asignado con badges distintivos por color corporativo y ordenamiento dinámico.
+     - Asignación individual y masiva a grupos existentes o creación ágil de nuevos grupos en el momento con nombre, descripción y paleta cromática.
+     - Opción de desasignar / remover de grupo en lote.
+   - **Barra Contextual Integrada de Acciones Masivas en Lote:**
+     - Al seleccionar uno o más colaboradores con casillas de verificación, se activa una barra contextual superior directamente sobre la tabla sin superponer la grilla:
+       1. **Asignar a Grupo:** Asigna en lote los participantes seleccionados a un grupo existente o permite crear uno nuevo en el acto.
+       2. **Exportar Selección (.xlsx):** Genera una planilla Excel profesional Don Yeyo con toda la información de los seleccionados (legajo, nombre, sector, grupo, email, estado, enlace único, puntaje y clasificación).
+       3. **Enviar Invitación:** Despacha en lote la plantilla de invitación a los seleccionados activos.
+       4. **Enviar Resultados:** Despacha en lote la devolución y podio oficial a los seleccionados activos.
+       5. **Activar:** Marca en lote como activos a todos los seleccionados.
+       6. **Desactivar:** Marca en lote como inactivos a los seleccionados.
+       7. **Reestablecer Hash:** Regenera de forma masiva los hashes y enlaces únicos criptográficos.
+       8. **Blanquear Hash:** Deja sin acceso el token hash de los seleccionados de forma individual o masiva para invalidar accesos previos o preparar reasignación (con fallback automático para esquemas con o sin restricción NOT NULL/UNIQUE).
+       9. **Resetear Trivia:** Permite resetear masivamente las respuestas de todos los participantes seleccionados mediante un modal con preview de nómina, permitiendo elegir entre reiniciar la fase activa o todas las fases simultáneamente.
    - **Copia y prueba de enlaces:** Botón de un solo clic para copiar la URL de participación al portapapeles con confirmación visual instantánea y botón para abrir directamente en nueva pestaña.
-   - **Seguimiento de invitaciones ("Email Enviado"):** Switch interactivo en tiempo real para auditar qué colaboradores ya recibieron su link y cuáles están pendientes.
-   - **Reset de Trivia por Colaborador:** Permite habilitar a un participante a volver a responder la trivia desde cero (borrando sus respuestas en la fase activa o en todas las fases).
-   - **Métricas y Filtros en Tiempo Real:** Tarjetas KPI con totales de nómina, cobertura de hashes, % de emails enviados y tasa de participación, con búsqueda libre y filtros por sector y estado.
+   - **Seguimiento de invitaciones (`Email Enviado`):** Switch interactivo en tiempo real para auditar qué colaboradores ya recibieron su link y cuáles están pendientes.
+   - **Reset de Trivia Individual o Masivo:** Permite habilitar a un participante o a una selección múltiple a volver a responder la trivia desde cero (borrando sus respuestas en la fase activa o en todas las fases).
+   - **Métricas y Filtros en Tiempo Real:** Tarjetas KPI con totales de nómina, activos, inactivos, clasificados, cobertura de hashes, % de emails enviados y tasa de participación, con búsqueda libre y filtros combinados.
 
 10. **Panel de Administración Corporativo Don Yeyo (Guideline Profesional)**:
    - **Desacople de la Estética Gamer:** El área de administración prescinde del fondo giratorio animado (`SunburstBackground`) y adopta una interfaz corporativa limpia de sistema de gestión en tono `slate-950` inspirada en la directiva de diseño de Don Yeyo (`dy_shigma`).
@@ -100,13 +124,13 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - **Sección Exclusiva e Independiente:** Módulo integral de control de comunicaciones Don Yeyo en el Panel Administrativo.
    - **Dos Plantillas Oficiales Responsive con URLs Absolutas:**
      - `email_templates/invitacion.html`: Plantilla para convocar a participar con enlaces criptográficos individuales (`{{link_trivia}}`).
-     - `email_templates/resultados.html`: Plantilla para la devolución de resultados con botón destacado a la tabla y podio oficial (`{{link_podio}}`), aciertos, puntaje y bloque pedagógico interactivo (`{{feedback_detalle}}`).
-    - **Bloque Pedagógico Pregunta por Pregunta en Email de Resultados:**
-      - Muestra el estado individual de cada consigna de la fase: `✅ CORRECTA`, `❌ INCORRECTA` o `⏳ SIN RESPONDER`.
-      - Presenta la opción elegida por el participante y resalta la opción correcta de la pregunta en caso de error o consigna omitida.
-      - Incluye la **justificación técnica de Calidad e Inocuidad Alimentaria** establecida para la pregunta, permitiendo un aprendizaje reflexivo post-trivia.
-      - Se genera dinámicamente tanto en el Live Preview, correos de prueba, envíos individuales por participante y despachos masivos por lote.
-   - **Persistencia de Parámetros en Base de Datos (`mailing_parametros`):**
+     - `email_templates/resultados.html`: Plantilla para la devolución de resultados con botón destacado a la tabla y podio oficial (`{{link_podio}}`), aciertos, puntaje o modalidad formativa adaptativa (`{{tarjeta_resumen}}`) y bloque pedagógico interactivo (`{{feedback_detalle}}`).
+    - **Resoluciones y Devolución Adaptativa (Participantes vs No Participantes):**
+      - **Para quienes jugaron la fase:** Muestra el resumen de puntaje, aciertos, tiempo total y el estado de cada consigna (`✅ CORRECTA`, `❌ INCORRECTA` o `⏳ SIN RESPONDER`), indicando la opción respondida, la opción correcta y la justificación técnica de inocuidad. Integra automáticamente el cálculo oficial de la fase para determinar el puesto numérico real (`{{puesto_ranking}}`) y el estado de clasificación (`¡ESTADO OFICIAL: CLASIFICADO/A!` para quienes alcanzaron el corte Top N, o `ESTADO: PARTICIPACIÓN DESTACADA` con indicación de posición general).
+      - **Para quienes NO jugaron la fase (Modo Capacitación):** Adapta automáticamente la plantilla sustituyendo `%MENSAJE_PRINCIPAL%` por `%MENSAJE_PRINCIPAL_ALTERNATIVO%`, reemplaza la tarjeta de puntaje por una tarjeta de "Modalidad Capacitación - Guía Pedagógica de Buenas Prácticas", y presenta cada pregunta con el distintivo `📚 CONTENIDO FORMATIVO`, suprimiendo la línea de "Tu respuesta" y destacando el criterio correcto junto a la justificación técnica de inocuidad alimentaria Don Yeyo.
+    - **Filtro de Despacho en Resultados:** Permite al administrador especificar si desea incluir o no a aquellos colaboradores que no participaron de la fase activa (`includeNonParticipants`), con métricas analíticas desglosadas en tiempo real.
+    - **Simulación en Live Preview:** Selector interactivo para visualizar cómo llegará el correo tanto para quien jugó la fase como para quien recibe la capacitación.
+    - **Persistencia de Parámetros en Base de Datos (`mailing_parametros`):**
      - Almacena en Supabase de forma tipada (`id`, `email_tipo`, `nombre_parametro`, `valor`, `descripcion`) los comodines `%TITULO_EMAIL%`, `%SUBTITULO%`, `%MENSAJE_PRINCIPAL%`, `%CALL_TO_ACTION_TEXTO%`, `%MENSAJE_SECUNDARIO%`, `%EMPRESA_NOMBRE%`, `%CONTACTO_SOPORTE%`, `%URL_LOGO%` y `%URL_FONDO%`.
    - **Editor en Vivo y Live Preview en Tiempo Real:**
      - Permite al administrador ajustar cualquier parámetro y observar en un `iframe` responsivo (con selector Escritorio / Móvil o inspector de código HTML) el correo final renderizado exactamente como lo recibirá el usuario a medida que escribe.
@@ -864,12 +888,23 @@ Los parámetros de cada plantilla de correo (`INVITACION` y `RESULTADOS`) se con
 | :--- | :--- | :--- |
 | `%TITULO_EMAIL%` | `TITULO_EMAIL` | Título del correo en el encabezado. |
 | `%SUBTITULO%` | `SUBTITULO` | Subtítulo descriptivo de la campaña o feedback. |
-| `%MENSAJE_PRINCIPAL%` | `MENSAJE_PRINCIPAL` | Cuerpo principal del mensaje (soporta texto y HTML enriquecido). |
+| `%MENSAJE_PRINCIPAL%` | `MENSAJE_PRINCIPAL` | Cuerpo principal del mensaje para participantes que jugaron la fase. |
+| `%MENSAJE_PRINCIPAL_ALTERNATIVO%` | `MENSAJE_PRINCIPAL_ALTERNATIVO` | Mensaje alternativo para colaboradores que no participaron de la fase (enfoque de capacitación). |
 | `%MENSAJE_SECUNDARIO%` | `MENSAJE_SECUNDARIO` | Consejos, advertencias o recordatorios destacados en panel resaltado. |
 | `%CALL_TO_ACTION_TEXTO%` | `CALL_TO_ACTION_TEXTO` | Texto del botón principal (ej: "INGRESAR AL DESAFÍO AHORA" o "VER TABLA DE POSICIONES"). |
 | `%EMPRESA_NOMBRE%` | `EMPRESA_NOMBRE` | Nombre de la empresa o departamento organizador. |
 | `%CONTACTO_SOPORTE%` | `CONTACTO_SOPORTE` | Datos de contacto y canal de soporte. |
 | `%ANIO_ACTUAL%` | `ANIO_ACTUAL` | Año en curso (ej: 2026). |
+
+#### Comodines de Clasificación y Rendimiento (Plantilla `RESULTADOS`):
+| Comodín | Origen / Cálculo | Descripción |
+| :--- | :--- | :--- |
+| `{{estado_clasificacion}}` | Ranking oficial y cupo | Bloque visual responsivo: verde esmeralda con trofeo 🏆 si el participante clasifica a la siguiente instancia (dentro del Top configurado), o gris/azul con estrella ⭐ de reconocimiento y agradecimiento institucional si no clasificó. En caso de no haber participado, no se muestra. |
+| `{{puesto_ranking}}` | Posición en ranking | Posición numérica del participante en el ranking oficial de la fase (ej. 4, 28, 35). |
+| `{{cupo_clasificados}}` | `CLASIFICACION_TOP_COUNT` | Cantidad oficial de clasificados a la siguiente fase (ej. 30). |
+| `{{es_clasificado}}` | Condición de corte | SÍ o NO según si el puesto está dentro del cupo clasificatorio oficial. |
+| `{{tarjeta_resumen}}` | Rendimiento o Capacitación | Tarjeta con Puntaje, Aciertos y Tiempo si participó, o tarjeta de 'Modalidad Capacitación' si no participó. |
+| `{{feedback_detalle}}` | Preguntas y Justificaciones | Desglose pregunta por pregunta con las respuestas del participante y sus justificaciones técnicas BPM. |
 
 *(Cualquier comodín adicional puede ser agregado dinámicamente y previsualizado en tiempo real en el Live Preview del Admin).*
 
@@ -937,6 +972,25 @@ Ejecuta el envío a todos los participantes con email que aún no tengan la marc
 ```bash
 npm run mailing:send
 ```
+
+---
+
+## 👥 Gestión de Grupos de Participantes
+
+El panel de administración incluye un sistema completo de agrupamiento para organizar la nómina de colaboradores (por ejemplo, por turnos, equipos de trabajo, áreas o brigadas de inocuidad):
+
+1. **Creación y Catálogo de Grupos:**
+   - Permite crear grupos personalizados asignándoles un nombre único y descripción.
+   - Los grupos se persisten tanto en la tabla `public.groups` como en la configuración centralizada, garantizando retrocompatibilidad con Supabase y Google Sheets.
+2. **Asignación de Participantes:**
+   - **Asignación Masiva:** Seleccionando uno o varios participantes con los checkboxes o presets de selección rápida, el botón **"Asignar a Grupo"** (disponible tanto en la barra superior integrada como en la barra flotante inferior) abre un modal interactivo para elegir un grupo existente, crear uno nuevo al vuelo o desasignar.
+   - **Asignación Individual:** En la columna **Grupo** de la grilla, cada celda cuenta con un badge interactivo que permite reasignar o desasignar al colaborador con un solo clic.
+   - **Formulario de Alta/Edición:** El modal de nuevo participante y edición cuenta con un campo con autocompletado (`datalist`) para definir el grupo.
+3. **Columna "Grupo" en la Grilla y Ordenamiento Dinámico:**
+   - La tabla de participantes incorpora la columna **Grupo**.
+   - Al hacer clic en el encabezado de la columna **Grupo**, la lista se ordena alfabéticamente en orden ascendente o descendente (agrupando primero los colaboradores asignados).
+4. **Filtrado por Grupo:**
+   - En la barra de filtros secundarios se incluye un menú desplegable de **Grupos** que permite visualizar a todos, a los colaboradores *Sin Grupo* o filtrar exclusivamente por cualquier grupo específico del catálogo con conteo en tiempo real.
 
 ---
 

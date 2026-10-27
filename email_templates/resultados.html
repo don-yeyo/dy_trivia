@@ -155,27 +155,11 @@
                 %MENSAJE_PRINCIPAL%
               </div>
 
-              <!-- Tarjeta Resumen de Puntaje del Participante -->
-              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"
-                style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; margin-bottom: 24px; padding: 18px 20px;">
-                <tr>
-                  <td align="center" style="padding: 10px; border-right: 1px solid rgba(255,255,255,0.1);">
-                    <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700;">Puntaje Final</div>
-                    <div style="color: #facc15; font-size: 26px; font-weight: 900; margin-top: 4px;">{{puntaje_obtenido}}</div>
-                    <div style="color: #cbd5e1; font-size: 11px;">puntos</div>
-                  </td>
-                  <td align="center" style="padding: 10px; border-right: 1px solid rgba(255,255,255,0.1);">
-                    <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700;">Aciertos</div>
-                    <div style="color: #34d399; font-size: 26px; font-weight: 900; margin-top: 4px;">{{respuestas_correctas}} / {{total_preguntas}}</div>
-                    <div style="color: #cbd5e1; font-size: 11px;">correctas</div>
-                  </td>
-                  <td align="center" style="padding: 10px;">
-                    <div style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700;">Tiempo Total</div>
-                    <div style="color: #38bdf8; font-size: 22px; font-weight: 900; margin-top: 6px;">{{tiempo_total}}</div>
-                    <div style="color: #cbd5e1; font-size: 11px;">segundos</div>
-                  </td>
-                </tr>
-              </table>
+              <!-- Tarjeta Resumen Adaptativa (Puntaje o Modalidad Capacitación) -->
+              {{tarjeta_resumen}}
+
+              <!-- Estado Oficial de Clasificación (Solo para quienes participaron) -->
+              {{estado_clasificacion}}
 
               <!-- Botón Destacado: Ver Podio y Clasificados -->
               <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"

@@ -1,6 +1,8 @@
 
 # Tareas del Proyecto Trivia Don Yeyo 2026
-
+- [x] Para el envío del mailing de resultados, permitir especificar si incluir o no a los que no participaron de la fase, agregar una variable de texto de cuál sería el texto para %MENSAJE_PRINCIPAL_ALTERNATIVO% que se envía a aquellos que no participaron. Además resoluciones adaptadas para los que no participaron (modo capacitación formativa con respuestas correctas y justificaciones técnicas de inocuidad).
+- [x] En el mailing de resultados, incluir si el participante que jugó se encuentra clasificado o no (con cálculo oficial según CLASIFICACION_TOP_COUNT, badge/banner {{estado_clasificacion}}, comodines {{puesto_ranking}} / {{cupo_clasificados}} y selector de simulación y prueba). 
+- [ ] Agregar una exportación desde la grilla de participantes, que esporte todos los inscriptos, pero ordenados por puntos, incluyendo a los que no participaron
 - [x] Gestión de participantes CRUD, generación de hash, marca de email enviado, reset de trivia para el usuario, copiar link de participación
 - [x] Corregir flag y visualización de Estado Trivia en grilla de participantes (Completado 15/15, Parcial 1-14 rtas, Sin jugar 0)
 - [x] Marca masiva de email enviado a todos los participantes en Supabase
@@ -22,5 +24,5 @@
 - [x] Grilla de participantes: email integrado bajo el nombre (ahorro de columna), iconografía encendida/apagada con tooltip para Invitación y Resultados, acciones de reenvío individual y corrección de métricas reales de mailing (474 inscriptos/cobertura)
 - [x] Mailing con respuestas correctas e incorrectas y las explicaciones de cada una (disparo masivo de resultados)
 - [ ] Detectar si no hay conexión o falla algo contra la API de Supabase
-- [ ] Config: mostrar o no mostrar área del participante
+- [ ] Config: mostrar o no mostrar área/sector del participante
 

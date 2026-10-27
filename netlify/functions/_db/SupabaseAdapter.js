@@ -152,6 +152,9 @@ export class SupabaseAdapter extends DatabaseAdapter {
   async getUserByHash(token, allowSessionReset = false) {
     if (!token) return null;
     const cleanToken = String(token).trim().toLowerCase();
+    if (cleanToken.startsWith('no_hash_') || cleanToken.startsWith('empty_')) {
+      return null;
+    }
 
     // Token demo en modo desarrollo
     if ((cleanToken === 'demo' || cleanToken === 'demo_token_inocuidad_2026') && allowSessionReset) {
@@ -354,7 +357,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
     while (true) {
       const { data: page = [], error: pErr } = await supabase
         .from('participants')
-        .select('id, legajo, nombre, apellido, sector')
+        .select('id, legajo, nombre, apellido, sector, grupo')
         .order('apellido', { ascending: true })
         .range(pFrom, pFrom + PAGE_SIZE - 1);
 
@@ -467,6 +470,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
         nombre: String(u.nombre || '').trim(),
         apellido: String(u.apellido || '').trim(),
         sector: String(u.sector || '').trim(),
+        grupo: String(u.grupo || '').trim(),
         score: finalScore,
         rawPoints: res.rawPoints || 0,
         totalTime: res.totalTime,
@@ -521,7 +525,8 @@ export class SupabaseAdapter extends DatabaseAdapter {
       podio: ranked.filter(r => r.rank <= 3 && r.hasPlayed),
       clasificados: ranked.filter(r => r.rank > 3 && r.rank <= topCount && r.hasPlayed),
       noClasificados: ranked.filter(r => r.rank > topCount || !r.hasPlayed),
-      allParticipants: ranked
+      allParticipants: ranked,
+      ranked: ranked
     };
   }
 
@@ -566,9 +571,10 @@ export class SupabaseAdapter extends DatabaseAdapter {
   }
 
   /**
-   * Obtiene la nómina completa de participantes con su estado de juego y email enviado
+   * Obtiene la nómina completa de participantes con su estado de juego, email enviado, activo, puntaje y clasificación
+   * @param {number|null} [targetPhase=null] Fase de evaluación (por defecto la activa)
    */
-  async getParticipantsAdmin() {
+  async getParticipantsAdmin(targetPhase = null) {
     const supabase = this.getClient();
 
     // 1. Obtener participantes paginados
@@ -591,14 +597,26 @@ export class SupabaseAdapter extends DatabaseAdapter {
       pFrom += PAGE_SIZE;
     }
 
-    // 2. Obtener mapas de emails de invitación y de resultados desde config
+    // 2. Obtener configuraciones del sistema (emails, inactivos, grupos, fase activa, cupo de clasificación)
     let emailSentMap = {};
     let emailResultSentMap = {};
+    let inactivosMap = {};
+    let gruposMap = {};
+    let activePhase = targetPhase ? parseInt(targetPhase, 10) : 1;
+    let topCount = 30;
+
     try {
       const { data: configs } = await supabase
         .from('config')
         .select('clave, valor')
-        .in('clave', ['EMAILS_ENVIADOS', 'EMAILS_RESULTADOS_ENVIADOS']);
+        .in('clave', [
+          'EMAILS_ENVIADOS',
+          'EMAILS_RESULTADOS_ENVIADOS',
+          'PARTICIPANTES_DESACTIVADOS',
+          'PARTICIPANTES_GRUPOS',
+          'FASE_ACTIVA',
+          'CLASIFICACION_TOP_COUNT'
+        ]);
 
       if (configs) {
         configs.forEach(c => {
@@ -608,11 +626,24 @@ export class SupabaseAdapter extends DatabaseAdapter {
           if (c.clave === 'EMAILS_RESULTADOS_ENVIADOS' && c.valor) {
             try { emailResultSentMap = JSON.parse(c.valor); } catch (e) {}
           }
+          if (c.clave === 'PARTICIPANTES_DESACTIVADOS' && c.valor) {
+            try { inactivosMap = JSON.parse(c.valor); } catch (e) {}
+          }
+          if (c.clave === 'PARTICIPANTES_GRUPOS' && c.valor) {
+            try { gruposMap = JSON.parse(c.valor); } catch (e) {}
+          }
+          if (c.clave === 'FASE_ACTIVA' && !targetPhase && c.valor) {
+            const p = parseInt(c.valor, 10);
+            if (!isNaN(p) && p > 0) activePhase = p;
+          }
+          if (c.clave === 'CLASIFICACION_TOP_COUNT' && c.valor) {
+            const tc = parseInt(c.valor, 10);
+            if (!isNaN(tc) && tc > 0) topCount = tc;
+          }
         });
       }
     } catch (e) {
-      emailSentMap = {};
-      emailResultSentMap = {};
+      console.warn('[SupabaseAdapter] Error leyendo configs auxiliares:', e.message);
     }
 
     // 3. Obtener resumen de respuestas por participante
@@ -621,7 +652,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
     while (true) {
       const { data: page = [], error: rErr } = await supabase
         .from('responses')
-        .select('legajo, fase, es_correcta, puntos_obtenidos, tiempo_tardado')
+        .select('legajo, fase, es_correcta, puntos_obtenidos, tiempo_tardado, fecha_hora_respuesta')
         .range(rFrom, rFrom + PAGE_SIZE - 1);
 
       if (rErr) break;
@@ -631,8 +662,13 @@ export class SupabaseAdapter extends DatabaseAdapter {
     }
 
     const statsByLegajo = new Map();
+    const statsPhaseByLegajo = new Map();
+
     responses.forEach(r => {
       const leg = String(r.legajo || '').trim();
+      const rFase = parseInt(r.fase, 10) || 1;
+
+      // Stats globales
       if (!statsByLegajo.has(leg)) {
         statsByLegajo.set(leg, {
           answersCount: 0,
@@ -647,13 +683,74 @@ export class SupabaseAdapter extends DatabaseAdapter {
       if (r.es_correcta) st.correctCount++;
       st.rawPoints += (parseInt(r.puntos_obtenidos, 10) || 0);
       st.totalTime += (parseInt(r.tiempo_tardado, 10) || 0);
-      if (r.fase) st.phasesPlayed.add(parseInt(r.fase, 10));
+      if (r.fase) st.phasesPlayed.add(rFase);
+
+      // Stats específicas de la fase evaluada para ranking y puntaje
+      if (rFase === activePhase) {
+        if (!statsPhaseByLegajo.has(leg)) {
+          statsPhaseByLegajo.set(leg, {
+            answersCount: 0,
+            correctCount: 0,
+            rawPoints: 0,
+            totalTime: 0,
+            fechaHora: ''
+          });
+        }
+        const stP = statsPhaseByLegajo.get(leg);
+        stP.answersCount++;
+        if (r.es_correcta) stP.correctCount++;
+        stP.rawPoints += (parseInt(r.puntos_obtenidos, 10) || 0);
+        stP.totalTime += (parseInt(r.tiempo_tardado, 10) || 0);
+        if (r.fecha_hora_respuesta && (!stP.fechaHora || r.fecha_hora_respuesta > stP.fechaHora)) {
+          stP.fechaHora = r.fecha_hora_respuesta;
+        }
+      }
     });
 
-    // 4. Mapear y combinar
+    // 4. Calcular ranking gamer de la fase activa para clasificados
+    const playedRanking = [];
+    participants.forEach(p => {
+      const leg = String(p.legajo || '').trim();
+      const stP = statsPhaseByLegajo.get(leg);
+      if (stP && stP.answersCount > 0) {
+        const finalScore = calculateScore(stP.rawPoints || 0, stP.totalTime || 0);
+        playedRanking.push({
+          legajo: leg,
+          score: finalScore,
+          totalTime: stP.totalTime || 0,
+          correctCount: stP.correctCount || 0,
+          fechaHora: stP.fechaHora || '',
+          apellido: p.apellido || '',
+          nombre: p.nombre || ''
+        });
+      }
+    });
+
+    // Ordenamiento gamer: Puntaje DESC, Tiempo ASC, Aciertos DESC, Fecha ASC
+    playedRanking.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.totalTime !== b.totalTime) return a.totalTime - b.totalTime;
+      if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
+      return String(a.fechaHora).localeCompare(String(b.fechaHora));
+    });
+
+    const rankMap = new Map();
+    playedRanking.forEach((item, index) => {
+      const rank = index + 1;
+      rankMap.set(item.legajo, {
+        rank,
+        isQualified: rank <= topCount,
+        score: item.score
+      });
+    });
+
+    // 5. Mapear y combinar con columnas enriquecidas
     return participants.map(p => {
       const leg = String(p.legajo || '').trim();
       const st = statsByLegajo.get(leg);
+      const stP = statsPhaseByLegajo.get(leg);
+      const rankInfo = rankMap.get(leg);
+
       const isEmailSent = p.email_enviado !== undefined && p.email_enviado !== null
         ? Boolean(p.email_enviado)
         : Boolean(emailSentMap[leg]);
@@ -662,23 +759,38 @@ export class SupabaseAdapter extends DatabaseAdapter {
         ? Boolean(p.email_resultado_enviado)
         : Boolean(emailResultSentMap[leg]);
 
+      // Estado activo/inactivo (soporta columna de BD y mapa persistente en config)
+      const isInactive = Boolean(inactivosMap[leg]) || p.activo === false;
+      const isActivo = !isInactive;
+
+      // Puntaje calculado
+      const score = rankInfo
+        ? rankInfo.score
+        : (stP ? calculateScore(stP.rawPoints || 0, stP.totalTime || 0) : (st ? calculateScore(st.rawPoints || 0, st.totalTime || 0) : 0));
+
       return {
         id: p.id,
         legajo: leg,
-        token_hash: p.token_hash || '',
+        token_hash: (p.token_hash && !String(p.token_hash).startsWith('NO_HASH_')) ? p.token_hash : '',
         apellido: p.apellido || '',
         nombre: p.nombre || '',
         documento: p.documento || '',
         sector: p.sector || '',
+        grupo: p.grupo !== undefined && p.grupo !== null && String(p.grupo).trim() !== '' ? String(p.grupo).trim() : (gruposMap[leg] || ''),
         telefono: p.telefono || '',
         email: p.email || '',
+        activo: isActivo,
         email_enviado: isEmailSent,
         email_resultado_enviado: isResultSent,
         hasPlayed: st ? st.answersCount > 0 : false,
+        hasPlayedActivePhase: stP ? stP.answersCount > 0 : false,
         answersCount: st ? st.answersCount : 0,
         correctCount: st ? st.correctCount : 0,
         totalTime: st ? st.totalTime : 0,
         phasesPlayed: st ? Array.from(st.phasesPlayed) : [],
+        score,
+        isQualified: rankInfo ? rankInfo.isQualified : false,
+        rank: rankInfo ? rankInfo.rank : null,
         created_at: p.created_at,
         updated_at: p.updated_at
       };
@@ -710,10 +822,15 @@ export class SupabaseAdapter extends DatabaseAdapter {
       nombre,
       documento: String(data.documento || '').trim(),
       sector: String(data.sector || '').trim(),
+      grupo: String(data.grupo || '').trim(),
       telefono: String(data.telefono || '').trim(),
       email: String(data.email || '').trim(),
       updated_at: new Date().toISOString()
     };
+
+    if (data.activo !== undefined) {
+      payload.activo = Boolean(data.activo);
+    }
 
     const { data: created, error } = await supabase
       .from('participants')
@@ -722,8 +839,24 @@ export class SupabaseAdapter extends DatabaseAdapter {
       .single();
 
     if (error) {
-      console.error('[SupabaseAdapter] Error creando participante:', error.message);
-      return { success: false, error: error.message };
+      // Si falla porque las columnas grupo o activo no existen aún, reintentar sin ellas
+      let retryPayload = { ...payload };
+      if (String(error.message || '').includes('grupo')) delete retryPayload.grupo;
+      if (String(error.message || '').includes('activo')) delete retryPayload.activo;
+
+      const retry = await supabase.from('participants').insert([retryPayload]).select('*').single();
+      if (retry.error) {
+        console.error('[SupabaseAdapter] Error creando participante:', retry.error.message);
+        return { success: false, error: retry.error.message };
+      }
+    }
+
+    if (data.grupo !== undefined && data.grupo !== '') {
+      await this.assignGroupBatch([legajo], data.grupo);
+    }
+
+    if (data.activo !== undefined) {
+      await this.setActiveStatus(legajo, data.activo);
     }
 
     if (data.email_enviado !== undefined) {
@@ -751,10 +884,14 @@ export class SupabaseAdapter extends DatabaseAdapter {
     if (data.apellido !== undefined) updatePayload.apellido = String(data.apellido).trim();
     if (data.documento !== undefined) updatePayload.documento = String(data.documento).trim();
     if (data.sector !== undefined) updatePayload.sector = String(data.sector).trim();
+    if (data.grupo !== undefined) updatePayload.grupo = String(data.grupo).trim();
     if (data.telefono !== undefined) updatePayload.telefono = String(data.telefono).trim();
     if (data.email !== undefined) updatePayload.email = String(data.email).trim();
-    if (data.token_hash !== undefined && data.token_hash !== '') {
-      updatePayload.token_hash = String(data.token_hash).trim();
+    if (data.token_hash !== undefined) {
+      updatePayload.token_hash = data.token_hash ? String(data.token_hash).trim() : null;
+    }
+    if (data.activo !== undefined) {
+      updatePayload.activo = Boolean(data.activo);
     }
 
     const { error } = await supabase
@@ -763,8 +900,31 @@ export class SupabaseAdapter extends DatabaseAdapter {
       .eq('legajo', cleanLegajo);
 
     if (error) {
-      console.error('[SupabaseAdapter] Error actualizando participante:', error.message);
-      return { success: false, error: error.message };
+      let retryPayload = { ...updatePayload };
+      if (String(error.message || '').includes('grupo')) delete retryPayload.grupo;
+      if (String(error.message || '').includes('activo')) delete retryPayload.activo;
+      if (error.code === '23502' || error.message?.includes('not-null constraint')) {
+        retryPayload.token_hash = `NO_HASH_${cleanLegajo}`;
+      }
+
+      let retry = await supabase.from('participants').update(retryPayload).eq('legajo', cleanLegajo);
+      if (retry.error && (retry.error.code === '23502' || retry.error.message?.includes('not-null constraint'))) {
+        retryPayload.token_hash = `NO_HASH_${cleanLegajo}`;
+        retry = await supabase.from('participants').update(retryPayload).eq('legajo', cleanLegajo);
+      }
+
+      if (retry.error) {
+        console.error('[SupabaseAdapter] Error actualizando participante:', retry.error.message);
+        return { success: false, error: retry.error.message };
+      }
+    }
+
+    if (data.grupo !== undefined) {
+      await this.assignGroupBatch([cleanLegajo], data.grupo);
+    }
+
+    if (data.activo !== undefined) {
+      await this.setActiveStatus(cleanLegajo, data.activo);
     }
 
     if (data.email_enviado !== undefined) {
@@ -854,7 +1014,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
 
     let count = 0;
     for (const u of users) {
-      if (!u.token_hash || String(u.token_hash).trim() === '') {
+      if (!u.token_hash || String(u.token_hash).trim() === '' || String(u.token_hash).startsWith('NO_HASH_')) {
         const newHash = generateUserHash(u.legajo, u.apellido, u.nombre);
         await supabase
           .from('participants')
@@ -932,6 +1092,267 @@ export class SupabaseAdapter extends DatabaseAdapter {
     }
 
     return { success: true };
+  }
+
+  /**
+   * Cambia el estado de activo (true/false) de un participante
+   */
+  async setActiveStatus(legajo, activo) {
+    const supabase = this.getClient();
+    const cleanLegajo = String(legajo || '').trim();
+    if (!cleanLegajo) return { success: false, error: 'Legajo requerido' };
+    const isActive = Boolean(activo);
+
+    // 1. Intentar actualizar columna en tabla participants (si existe)
+    try {
+      await supabase
+        .from('participants')
+        .update({ activo: isActive, updated_at: new Date().toISOString() })
+        .eq('legajo', cleanLegajo);
+    } catch (e) {
+      console.warn('[SupabaseAdapter] Columna activo no encontrada en participants, usando fallback config:', e.message);
+    }
+
+    // 2. Persistir en config.PARTICIPANTES_DESACTIVADOS como fallback garantizado
+    try {
+      const { data: currentConfig } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'PARTICIPANTES_DESACTIVADOS')
+        .maybeSingle();
+
+      let inactivosMap = {};
+      if (currentConfig && currentConfig.valor) {
+        try { inactivosMap = JSON.parse(currentConfig.valor); } catch (err) { inactivosMap = {}; }
+      }
+
+      if (isActive) {
+        delete inactivosMap[cleanLegajo];
+      } else {
+        inactivosMap[cleanLegajo] = true;
+      }
+
+      await supabase.from('config').upsert({
+        clave: 'PARTICIPANTES_DESACTIVADOS',
+        valor: JSON.stringify(inactivosMap),
+        descripcion: 'Mapa JSON de legajos desactivados para excluir de envíos y juego',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'clave' });
+
+      return { success: true, activo: isActive };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Cambia masivamente el estado de activo de una lista de legajos
+   */
+  async setActiveStatusBatch(legajos = [], activo = true) {
+    const supabase = this.getClient();
+    if (!Array.isArray(legajos) || legajos.length === 0) {
+      return { success: true, updatedCount: 0 };
+    }
+    const cleanLegajos = legajos.map(l => String(l).trim()).filter(Boolean);
+    const isActive = Boolean(activo);
+
+    // 1. Intentar actualizar tabla participants
+    try {
+      await supabase
+        .from('participants')
+        .update({ activo: isActive, updated_at: new Date().toISOString() })
+        .in('legajo', cleanLegajos);
+    } catch (e) {
+      console.warn('[SupabaseAdapter] Error en update masivo activo en participants:', e.message);
+    }
+
+    // 2. Actualizar config.PARTICIPANTES_DESACTIVADOS
+    try {
+      const { data: currentConfig } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'PARTICIPANTES_DESACTIVADOS')
+        .maybeSingle();
+
+      let inactivosMap = {};
+      if (currentConfig && currentConfig.valor) {
+        try { inactivosMap = JSON.parse(currentConfig.valor); } catch (err) { inactivosMap = {}; }
+      }
+
+      cleanLegajos.forEach(leg => {
+        if (isActive) {
+          delete inactivosMap[leg];
+        } else {
+          inactivosMap[leg] = true;
+        }
+      });
+
+      await supabase.from('config').upsert({
+        clave: 'PARTICIPANTES_DESACTIVADOS',
+        valor: JSON.stringify(inactivosMap),
+        descripcion: 'Mapa JSON de legajos desactivados para excluir de envíos y juego',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'clave' });
+
+      return { success: true, updatedCount: cleanLegajos.length, activo: isActive };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Blanquea el token_hash de un participante dejándolo sin acceso
+   */
+  async clearParticipantHash(legajo) {
+    const supabase = this.getClient();
+    const cleanLegajo = String(legajo || '').trim();
+    if (!cleanLegajo) return { success: false, error: 'Legajo requerido' };
+
+    // 1. Intentar actualizar a NULL (comportamiento estándar cuando la columna no es NOT NULL)
+    let { error } = await supabase
+      .from('participants')
+      .update({ token_hash: null, updated_at: new Date().toISOString() })
+      .eq('legajo', cleanLegajo);
+
+    // 2. Si la columna en Postgres tiene NOT NULL constraint (código 23502), asignar placeholder único
+    if (error && (error.code === '23502' || error.message?.includes('not-null constraint'))) {
+      const fallbackRes = await supabase
+        .from('participants')
+        .update({ token_hash: `NO_HASH_${cleanLegajo}`, updated_at: new Date().toISOString() })
+        .eq('legajo', cleanLegajo);
+      error = fallbackRes.error;
+    }
+
+    if (error) {
+      console.error('[SupabaseAdapter] Error blanqueando hash:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  }
+
+  /**
+   * Blanquea masivamente el token_hash de una lista de legajos
+   */
+  async clearParticipantHashBatch(legajos = []) {
+    const supabase = this.getClient();
+    if (!Array.isArray(legajos) || legajos.length === 0) {
+      return { success: true, updatedCount: 0 };
+    }
+    const cleanLegajos = legajos.map(l => String(l).trim()).filter(Boolean);
+    if (cleanLegajos.length === 0) return { success: true, updatedCount: 0 };
+
+    // 1. Intentar masivo con NULL
+    let { error } = await supabase
+      .from('participants')
+      .update({ token_hash: null, updated_at: new Date().toISOString() })
+      .in('legajo', cleanLegajos);
+
+    // 2. Si la columna en Postgres tiene NOT NULL constraint (código 23502), asignar placeholder único a cada uno
+    if (error && (error.code === '23502' || error.message?.includes('not-null constraint'))) {
+      let failCount = 0;
+      await Promise.all(
+        cleanLegajos.map(async (leg) => {
+          const res = await supabase
+            .from('participants')
+            .update({ token_hash: `NO_HASH_${leg}`, updated_at: new Date().toISOString() })
+            .eq('legajo', leg);
+          if (res.error) {
+            failCount++;
+            console.error(`[SupabaseAdapter] Error en fallback de blanqueo para legajo ${leg}:`, res.error.message);
+          }
+        })
+      );
+      if (failCount === 0) {
+        return { success: true, updatedCount: cleanLegajos.length };
+      }
+    }
+
+    if (error) {
+      console.error('[SupabaseAdapter] Error blanqueando hashes masivos:', error.message);
+      return { success: false, error: error.message };
+    }
+    return { success: true, updatedCount: cleanLegajos.length };
+  }
+
+  /**
+   * Regenera el token_hash oficial de una lista seleccionada de legajos
+   */
+  async generateParticipantHashBatch(legajos = []) {
+    const supabase = this.getClient();
+    if (!Array.isArray(legajos) || legajos.length === 0) {
+      return { success: true, updatedCount: 0 };
+    }
+    const cleanLegajos = legajos.map(l => String(l).trim()).filter(Boolean);
+
+    const { data: users, error } = await supabase
+      .from('participants')
+      .select('legajo, apellido, nombre')
+      .in('legajo', cleanLegajos);
+
+    if (error || !users) {
+      return { success: false, error: error?.message || 'Error consultando participantes para regenerar hashes' };
+    }
+
+    let count = 0;
+    for (const u of users) {
+      const newHash = generateUserHash(u.legajo, u.apellido, u.nombre);
+      const { error: updErr } = await supabase
+        .from('participants')
+        .update({ token_hash: newHash, updated_at: new Date().toISOString() })
+        .eq('legajo', u.legajo);
+
+      if (!updErr) count++;
+    }
+
+    return { success: true, updatedCount: count };
+  }
+
+  /**
+   * Marca o desmarca masivamente el estado de email para una lista de legajos
+   */
+  async toggleEmailSentBatch(legajos = [], emailSent = true, tipo = 'INVITACION') {
+    const supabase = this.getClient();
+    if (!Array.isArray(legajos) || legajos.length === 0) {
+      return { success: true, updatedCount: 0 };
+    }
+    const cleanLegajos = legajos.map(l => String(l).trim()).filter(Boolean);
+    const isResult = String(tipo).toUpperCase() === 'RESULTADOS';
+    const configKey = isResult ? 'EMAILS_RESULTADOS_ENVIADOS' : 'EMAILS_ENVIADOS';
+
+    try {
+      const { data: currentConfig } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', configKey)
+        .maybeSingle();
+
+      let map = {};
+      if (currentConfig && currentConfig.valor) {
+        try { map = JSON.parse(currentConfig.valor); } catch (e) { map = {}; }
+      }
+
+      cleanLegajos.forEach(leg => {
+        if (emailSent) {
+          map[leg] = true;
+        } else {
+          delete map[leg];
+        }
+      });
+
+      await supabase.from('config').upsert({
+        clave: configKey,
+        valor: JSON.stringify(map),
+        descripcion: isResult
+          ? 'Mapa JSON de legajos a los que se les envió el email de resultados'
+          : 'Mapa JSON de legajos a los que se les envió el email de invitación',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'clave' });
+
+      return { success: true, updatedCount: cleanLegajos.length };
+    } catch (e) {
+      console.warn('[SupabaseAdapter] Advertencia en toggleEmailSentBatch:', e.message);
+      return { success: false, error: e.message };
+    }
   }
 
   // ==========================================================================
@@ -1199,6 +1620,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
         TITULO_EMAIL: '¡RESULTADOS DEL DESAFÍO DE INOCUIDAD 2026!',
         SUBTITULO: 'La etapa ha finalizado. Mirá cómo te fue, revisá tus respuestas y conocé el podio oficial.',
         MENSAJE_PRINCIPAL: '<p>🎉 <strong>¡Muchas gracias por haber participado con tu compromiso diario hacia la inocuidad alimentaria!</strong></p>\n<p>Cada respuesta representa tu conocimiento en las Buenas Prácticas de Manufactura (BPM) y los estándares de calidad que hacen grande a Don Yeyo.</p>\n<p>🏆 <strong>Ya podés consultar la tabla general de clasificación y el Podio oficial de ganadores.</strong></p>',
+        MENSAJE_PRINCIPAL_ALTERNATIVO: '<p>Aunque no hayas tenido la oportunidad de completar esta fase de la trivia, <strong>tu compromiso diario con la calidad y la inocuidad alimentaria sigue siendo fundamental para Don Yeyo</strong>.</p>\n<p>💡 Te compartimos a continuación el cuestionario con todas las preguntas correctas y sus fundamentos técnicos para que puedas capacitarte y repasar las Buenas Prácticas de Manufactura (BPM).</p>\n<p>🏆 <strong>¡También podés consultar el Podio oficial de ganadores y la tabla de posiciones!</strong></p>',
         MENSAJE_SECUNDARIO: 'ℹ️ <strong>Importante:</strong> Los clasificados a las instancias finales serán contactados por el Departamento de Calidad y Recursos Humanos.',
         CALL_TO_ACTION_TEXTO: 'VER PODIO Y CLASIFICADOS',
         EMPRESA_NOMBRE: 'Don Yeyo S.A. • Departamento de Calidad e Inocuidad',
@@ -1309,6 +1731,316 @@ export class SupabaseAdapter extends DatabaseAdapter {
       return { success: true, data };
     } catch (err) {
       console.error('[SupabaseAdapter] Excepción en saveMailingParams:', err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Obtiene la lista consolidada de grupos y el conteo de participantes en cada uno
+   */
+  async getGroups() {
+    const supabase = this.getClient();
+    const groupsMap = new Map();
+
+    // 1. Intentar consultar tabla 'groups' de Supabase
+    try {
+      const { data: dbGroups, error } = await supabase
+        .from('groups')
+        .select('*')
+        .order('nombre', { ascending: true });
+
+      if (!error && Array.isArray(dbGroups)) {
+        dbGroups.forEach(g => {
+          if (g.nombre) {
+            groupsMap.set(g.nombre.trim(), {
+              id: g.id,
+              nombre: g.nombre.trim(),
+              descripcion: g.descripcion || '',
+              color: g.color || '#3b82f6',
+              count: 0
+            });
+          }
+        });
+      }
+    } catch (e) {
+      // Ignorar si la tabla no existe aún
+    }
+
+    // 2. Consultar catálogo persistido en config (fallback resiliente)
+    try {
+      const { data: cfg } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'GRUPOS_CATALOGO')
+        .single();
+
+      if (cfg && cfg.valor) {
+        const cat = JSON.parse(cfg.valor);
+        if (Array.isArray(cat)) {
+          cat.forEach(g => {
+            const nom = String(g.nombre || '').trim();
+            if (nom && !groupsMap.has(nom)) {
+              groupsMap.set(nom, {
+                nombre: nom,
+                descripcion: g.descripcion || '',
+                color: g.color || '#3b82f6',
+                count: 0
+              });
+            }
+          });
+        }
+      }
+    } catch (e) {}
+
+    // 3. Contar participantes por grupo (desde participants y config)
+    try {
+      const { data: participants } = await supabase
+        .from('participants')
+        .select('legajo, grupo');
+
+      let cfgGruposMap = {};
+      try {
+        const { data: cfgP } = await supabase
+          .from('config')
+          .select('valor')
+          .eq('clave', 'PARTICIPANTES_GRUPOS')
+          .single();
+        if (cfgP && cfgP.valor) cfgGruposMap = JSON.parse(cfgP.valor);
+      } catch (e) {}
+
+      if (participants) {
+        participants.forEach(p => {
+          const leg = String(p.legajo || '').trim();
+          const grp = (p.grupo ? String(p.grupo).trim() : (cfgGruposMap[leg] ? String(cfgGruposMap[leg]).trim() : ''));
+          if (grp) {
+            if (!groupsMap.has(grp)) {
+              groupsMap.set(grp, {
+                nombre: grp,
+                descripcion: '',
+                color: '#3b82f6',
+                count: 0
+              });
+            }
+            groupsMap.get(grp).count++;
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('[SupabaseAdapter] Error calculando conteo de grupos:', e.message);
+    }
+
+    return Array.from(groupsMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }
+
+  /**
+   * Crea un nuevo grupo de participantes
+   */
+  async createGroup(groupData = {}) {
+    const supabase = this.getClient();
+    const nombre = String(groupData.nombre || '').trim();
+    if (!nombre) {
+      return { success: false, error: 'El nombre del grupo es obligatorio' };
+    }
+
+    const descripcion = String(groupData.descripcion || '').trim();
+    const color = String(groupData.color || '#3b82f6').trim();
+
+    // 1. Intentar insertar en tabla groups
+    try {
+      await supabase.from('groups').insert([{
+        nombre,
+        descripcion,
+        color
+      }]);
+    } catch (e) {}
+
+    // 2. Persistir en config.GRUPOS_CATALOGO (garantiza persistencia inmediata)
+    try {
+      let catalog = [];
+      const { data: cfg } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'GRUPOS_CATALOGO')
+        .single();
+
+      if (cfg && cfg.valor) {
+        try { catalog = JSON.parse(cfg.valor); } catch (e) {}
+      }
+
+      const existingIndex = catalog.findIndex(g => String(g.nombre).trim().toLowerCase() === nombre.toLowerCase());
+      if (existingIndex >= 0) {
+        catalog[existingIndex] = { nombre, descripcion, color, updated_at: new Date().toISOString() };
+      } else {
+        catalog.push({ nombre, descripcion, color, created_at: new Date().toISOString() });
+      }
+
+      await supabase.from('config').upsert({
+        clave: 'GRUPOS_CATALOGO',
+        valor: JSON.stringify(catalog),
+        descripcion: 'Catálogo oficial de grupos de participantes',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'clave' });
+    } catch (e) {
+      console.error('[SupabaseAdapter] Error guardando grupo en config:', e.message);
+    }
+
+    return { success: true, group: { nombre, descripcion, color } };
+  }
+
+  /**
+   * Elimina un grupo y desasigna a sus miembros
+   */
+  async deleteGroup(nombre) {
+    const supabase = this.getClient();
+    const cleanNombre = String(nombre || '').trim();
+    if (!cleanNombre) {
+      return { success: false, error: 'Nombre de grupo requerido' };
+    }
+
+    // 1. Eliminar de tabla groups
+    try {
+      await supabase.from('groups').delete().eq('nombre', cleanNombre);
+    } catch (e) {}
+
+    // 2. Eliminar de config.GRUPOS_CATALOGO
+    try {
+      const { data: cfg } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'GRUPOS_CATALOGO')
+        .single();
+
+      if (cfg && cfg.valor) {
+        let catalog = JSON.parse(cfg.valor);
+        catalog = catalog.filter(g => String(g.nombre).trim().toLowerCase() !== cleanNombre.toLowerCase());
+        await supabase.from('config').upsert({
+          clave: 'GRUPOS_CATALOGO',
+          valor: JSON.stringify(catalog),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'clave' });
+      }
+    } catch (e) {}
+
+    // 3. Desasignar de participants
+    try {
+      await supabase
+        .from('participants')
+        .update({ grupo: '', updated_at: new Date().toISOString() })
+        .eq('grupo', cleanNombre);
+    } catch (e) {}
+
+    // 4. Desasignar de config.PARTICIPANTES_GRUPOS
+    try {
+      const { data: cfgP } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'PARTICIPANTES_GRUPOS')
+        .single();
+
+      if (cfgP && cfgP.valor) {
+        const grpMap = JSON.parse(cfgP.valor);
+        let changed = false;
+        Object.keys(grpMap).forEach(k => {
+          if (grpMap[k] === cleanNombre) {
+            delete grpMap[k];
+            changed = true;
+          }
+        });
+        if (changed) {
+          await supabase.from('config').upsert({
+            clave: 'PARTICIPANTES_GRUPOS',
+            valor: JSON.stringify(grpMap),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'clave' });
+        }
+      }
+    } catch (e) {}
+
+    return { success: true };
+  }
+
+  /**
+   * Asigna o desasigna masivamente un grupo a una lista de legajos
+   */
+  async assignGroupBatch(legajos = [], grupoNombre = '') {
+    const supabase = this.getClient();
+    if (!Array.isArray(legajos) || legajos.length === 0) {
+      return { success: false, error: 'Lista de legajos requerida' };
+    }
+
+    const cleanLegajos = legajos.map(l => String(l).trim()).filter(Boolean);
+    const targetGrupo = grupoNombre ? String(grupoNombre).trim() : '';
+
+    // 1. Intentar actualizar tabla participants
+    try {
+      await supabase
+        .from('participants')
+        .update({ grupo: targetGrupo, updated_at: new Date().toISOString() })
+        .in('legajo', cleanLegajos);
+    } catch (e) {
+      // Ignorar si la columna grupo no existe aún en PostgreSQL
+    }
+
+    // 2. Persistir en config.PARTICIPANTES_GRUPOS
+    try {
+      let grpMap = {};
+      const { data: cfg } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'PARTICIPANTES_GRUPOS')
+        .single();
+
+      if (cfg && cfg.valor) {
+        try { grpMap = JSON.parse(cfg.valor); } catch (e) {}
+      }
+
+      cleanLegajos.forEach(l => {
+        if (targetGrupo) {
+          grpMap[l] = targetGrupo;
+        } else {
+          delete grpMap[l];
+        }
+      });
+
+      await supabase.from('config').upsert({
+        clave: 'PARTICIPANTES_GRUPOS',
+        valor: JSON.stringify(grpMap),
+        descripcion: 'Asignaciones de grupo por legajo de participante',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'clave' });
+    } catch (e) {
+      console.error('[SupabaseAdapter] Error guardando PARTICIPANTES_GRUPOS:', e.message);
+    }
+
+    // 3. Si se asignó un grupo con nombre, asegurar que exista en el catálogo
+    if (targetGrupo) {
+      await this.createGroup({ nombre: targetGrupo });
+    }
+
+    return { success: true, updatedCount: cleanLegajos.length, grupo: targetGrupo };
+  }
+
+  /**
+   * Resetea masivamente las respuestas de una lista de participantes
+   */
+  async resetParticipantTriviaBatch(legajos = [], phase = null) {
+    const supabase = this.getClient();
+    const cleanLegajos = (legajos || []).map(l => String(l).trim()).filter(Boolean);
+    if (cleanLegajos.length === 0) return { success: true, updatedCount: 0 };
+
+    try {
+      let query = supabase.from('responses').delete().in('legajo', cleanLegajos);
+      if (phase !== null && phase !== undefined) {
+        query = query.eq('fase', parseInt(phase, 10));
+      }
+      const { error } = await query;
+      if (error) {
+        console.error('[SupabaseAdapter] Error en resetParticipantTriviaBatch:', error.message);
+        return { success: false, error: error.message };
+      }
+      return { success: true, updatedCount: cleanLegajos.length };
+    } catch (err) {
+      console.error('[SupabaseAdapter] Excepción en resetParticipantTriviaBatch:', err.message);
       return { success: false, error: err.message };
     }
   }

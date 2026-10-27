@@ -29,7 +29,9 @@ import {
   Zap,
   Flame,
   Clock,
-  Layers
+  Layers,
+  Star,
+  Trophy
 } from 'lucide-react';
 import {
   fetchMailingStatus,
@@ -59,6 +61,7 @@ const DEFAULT_PARAMS = {
     TITULO_EMAIL: '¡RESULTADOS DEL DESAFÍO DE INOCUIDAD 2026!',
     SUBTITULO: 'La etapa ha finalizado. Mirá cómo te fue, revisá tus respuestas y conocé el podio oficial.',
     MENSAJE_PRINCIPAL: '<p>🎉 <strong>¡Muchas gracias por haber participado con tu compromiso diario hacia la inocuidad alimentaria!</strong></p>\n<p>Cada respuesta representa tu conocimiento en las Buenas Prácticas de Manufactura (BPM) y los estándares de calidad que hacen grande a Don Yeyo.</p>\n<p>🏆 <strong>Ya podés consultar la tabla general de clasificación y el Podio oficial de ganadores.</strong></p>',
+    MENSAJE_PRINCIPAL_ALTERNATIVO: '<p>Aunque no hayas tenido la oportunidad de completar esta fase de la trivia, <strong>tu compromiso diario con la calidad y la inocuidad alimentaria sigue siendo fundamental para Don Yeyo</strong>.</p>\n<p>💡 Te compartimos a continuación el cuestionario con todas las preguntas correctas y sus fundamentos técnicos para que puedas capacitarte y repasar las Buenas Prácticas de Manufactura (BPM).</p>\n<p>🏆 <strong>¡También podés consultar el Podio oficial de ganadores y la tabla de posiciones!</strong></p>',
     MENSAJE_SECUNDARIO: 'ℹ️ <strong>Importante:</strong> Los clasificados a las instancias finales serán contactados por el Departamento de Calidad y Recursos Humanos.',
     CALL_TO_ACTION_TEXTO: 'VER PODIO Y CLASIFICADOS',
     EMPRESA_NOMBRE: 'Don Yeyo S.A. • Departamento de Calidad e Inocuidad',
@@ -70,7 +73,7 @@ const DEFAULT_PARAMS = {
 };
 
 export default function AdminMailingView({ activePhase = 1 }) {
-  // Tipo de campaña seleccionada: 'INVITATION' | 'RESULTS'
+  // Tipo de campaña seleccionada: 'INVITACION' | 'RESULTADOS'
   const [activeTab, setActiveTab] = useState('INVITACION'); // 'INVITACION' | 'RESULTADOS'
 
   // Parámetros editables en memoria para cada tipo
@@ -87,16 +90,21 @@ export default function AdminMailingView({ activePhase = 1 }) {
   const [isRenderingPreview, setIsRenderingPreview] = useState(false);
   const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' | 'mobile'
   const [showHtmlCode, setShowHtmlCode] = useState(false);
+  // Simulación en Live Preview: 'played_qualified' | 'played_not_qualified' | 'not_played'
+  const [previewParticipantType, setPreviewParticipantType] = useState('played_qualified');
 
   // Estados de envío de prueba
   const [testEmailAddress, setTestEmailAddress] = useState('');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  const [testParticipantType, setTestParticipantType] = useState('played_qualified');
 
   // Estados de envío masivo
   const [isSendingBatch, setIsSendingBatch] = useState(false);
   const [batchLimit, setBatchLimit] = useState(50);
   const [resendAll, setResendAll] = useState(false);
+  // Flag para incluir o no a los que no participaron de la fase en Resultados
+  const [includeNonParticipants, setIncludeNonParticipants] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
 
   // Notificaciones flotantes
@@ -156,7 +164,7 @@ export default function AdminMailingView({ activePhase = 1 }) {
     loadMailingData(activeTab);
   }, [activeTab]);
 
-  // Renderizar la vista previa en tiempo real cuando cambian los parámetros
+  // Renderizar la vista previa en tiempo real cuando cambian los parámetros o el modo de simulación
   useEffect(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -166,7 +174,13 @@ export default function AdminMailingView({ activePhase = 1 }) {
       setIsRenderingPreview(true);
       try {
         const token = getStoredAdminToken();
-        const res = await renderMailingPreview(activeTab, params, null, token);
+        const res = await renderMailingPreview(
+          activeTab,
+          params,
+          null,
+          token,
+          activeTab === 'RESULTADOS' ? previewParticipantType : 'played'
+        );
         if (res && res.success && res.html) {
           setPreviewHtml(res.html);
         }
@@ -180,7 +194,7 @@ export default function AdminMailingView({ activePhase = 1 }) {
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-  }, [params, activeTab]);
+  }, [params, activeTab, previewParticipantType]);
 
   // Manejador de cambio de input de parámetro
   const handleParamChange = (key, value) => {
@@ -233,10 +247,14 @@ export default function AdminMailingView({ activePhase = 1 }) {
     setTestResult(null);
     try {
       const token = getStoredAdminToken();
-      const res = await sendTestEmail(testEmailAddress, activeTab, params, token);
+      const pType = activeTab === 'RESULTADOS' ? testParticipantType : 'played_qualified';
+      const res = await sendTestEmail(testEmailAddress, activeTab, params, token, pType);
       setTestResult(res);
       if (res.success) {
-        showNotification(`✅ Prueba enviada exitosamente a ${testEmailAddress}`);
+        const modeLabel = pType === 'not_played'
+          ? ' (Modo Capacitación)'
+          : (pType === 'played_not_qualified' ? ' (No Clasificado)' : ' (Clasificado)');
+        showNotification(`✅ Prueba enviada exitosamente a ${testEmailAddress}${activeTab === 'RESULTADOS' ? modeLabel : ''}`);
       } else {
         showNotification(`❌ Error en prueba: ${res.error}`, 'error');
       }
@@ -248,12 +266,36 @@ export default function AdminMailingView({ activePhase = 1 }) {
     }
   };
 
+  // Métricas desglosadas para el cálculo de despacho
+  const isResultados = activeTab === 'RESULTADOS';
+  const totalWithEmail = mailingStatus?.totalWithEmail || 0;
+  const sentCount = mailingStatus?.sentCount || 0;
+  const pendingCount = mailingStatus?.pendingCount || 0;
+  const sentPct = totalWithEmail > 0 ? Math.round((sentCount / totalWithEmail) * 100) : 0;
+
+  const playedCount = mailingStatus?.playedCount || 0;
+  const playedSentCount = mailingStatus?.playedSentCount || 0;
+  const playedPendingCount = mailingStatus?.playedPendingCount || 0;
+
+  const nonPlayedCount = mailingStatus?.nonPlayedCount || 0;
+  const nonPlayedSentCount = mailingStatus?.nonPlayedSentCount || 0;
+  const nonPlayedPendingCount = mailingStatus?.nonPlayedPendingCount || 0;
+
+  // Destinatarios efectivos según si se incluyen no participantes en Resultados
+  const effectivePendingCount = isResultados
+    ? (includeNonParticipants ? pendingCount : playedPendingCount)
+    : pendingCount;
+
+  const effectiveTotalCount = isResultados
+    ? (includeNonParticipants ? totalWithEmail : playedCount)
+    : totalWithEmail;
+
   // Enviar lote masivo
   const handleSendBatch = async () => {
     const isResend = resendAll;
     const confirmMsg = isResend
-      ? `¿Confirmas el REENVÍO masivo (${activeTab}) a TODOS los participantes (${mailingStatus?.totalWithEmail || 0} con email)?`
-      : `¿Confirmas el envío masivo (${activeTab}) a los ${mailingStatus?.pendingCount || 0} participantes pendientes?`;
+      ? `¿Confirmas el REENVÍO masivo (${activeTab}) a los ${effectiveTotalCount} colaboradores (${isResultados && !includeNonParticipants ? 'solo quienes jugaron la fase' : 'incluyendo no participantes'})?`
+      : `¿Confirmas el envío masivo (${activeTab}) a los ${effectivePendingCount} participantes pendientes (${isResultados && !includeNonParticipants ? 'solo quienes jugaron la fase' : 'incluyendo no participantes en modo capacitación'})?`;
 
     if (!window.confirm(confirmMsg)) return;
 
@@ -264,6 +306,7 @@ export default function AdminMailingView({ activePhase = 1 }) {
       const res = await sendBatchMailing({
         limit: batchLimit,
         resendAll: isResend,
+        includeNonParticipants: isResultados && includeNonParticipants,
         emailTipo: activeTab,
         params
       }, token);
@@ -282,11 +325,6 @@ export default function AdminMailingView({ activePhase = 1 }) {
       setIsSendingBatch(false);
     }
   };
-
-  const totalWithEmail = mailingStatus?.totalWithEmail || 0;
-  const sentCount = mailingStatus?.sentCount || 0;
-  const pendingCount = mailingStatus?.pendingCount || 0;
-  const sentPct = totalWithEmail > 0 ? Math.round((sentCount / totalWithEmail) * 100) : 0;
 
   return (
     <div className="w-full space-y-6 animate-casual-in pb-12">
@@ -458,7 +496,7 @@ export default function AdminMailingView({ activePhase = 1 }) {
                 {/* MENSAJE_PRINCIPAL */}
                 <div>
                   <label className="block text-slate-300 font-bold mb-1">
-                    %MENSAJE_PRINCIPAL% <span className="text-slate-500 font-normal">(Cuerpo HTML)</span>
+                    %MENSAJE_PRINCIPAL% <span className="text-slate-500 font-normal">{activeTab === 'RESULTADOS' ? '(Cuerpo HTML para quienes jugaron la fase)' : '(Cuerpo HTML)'}</span>
                   </label>
                   <textarea
                     rows={4}
@@ -468,6 +506,28 @@ export default function AdminMailingView({ activePhase = 1 }) {
                     className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-white placeholder-slate-500 font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
+
+                {/* MENSAJE_PRINCIPAL_ALTERNATIVO (Exclusivo Resultados para no participantes) */}
+                {activeTab === 'RESULTADOS' && (
+                  <div className="p-3.5 rounded-2xl bg-amber-950/20 border border-amber-500/30 space-y-1.5 animate-fade-in">
+                    <div className="flex items-center gap-2">
+                      <BookOpen size={15} className="text-amber-400" />
+                      <label className="block text-amber-200 font-bold text-xs uppercase tracking-wider">
+                        %MENSAJE_PRINCIPAL_ALTERNATIVO%
+                      </label>
+                    </div>
+                    <span className="text-[11px] text-amber-200/80 block leading-tight">
+                      Cuerpo HTML que recibirán aquellos colaboradores que <strong>NO participaron de la fase</strong> (enfoque de capacitación y BPM).
+                    </span>
+                    <textarea
+                      rows={4}
+                      value={params.MENSAJE_PRINCIPAL_ALTERNATIVO || ''}
+                      onChange={(e) => handleParamChange('MENSAJE_PRINCIPAL_ALTERNATIVO', e.target.value)}
+                      placeholder="Cuerpo HTML alternativo para no participantes..."
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-amber-500/40 text-white placeholder-slate-500 font-mono text-[11px] focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                )}
 
                 {/* CALL_TO_ACTION_TEXTO */}
                 <div>
@@ -591,6 +651,35 @@ export default function AdminMailingView({ activePhase = 1 }) {
                 </div>
               </div>
 
+              {/* Desglose Analítico de Participación (Exclusivo Resultados) */}
+              {isResultados && (
+                <div className="p-4 rounded-2xl bg-slate-900/90 border border-amber-500/20 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                    <span className="flex items-center gap-1.5 text-amber-300">
+                      <Award size={14} /> Participación en Fase {mailingStatus?.activePhase || activePhase}:
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="p-2.5 rounded-xl bg-slate-950 border border-white/10">
+                      <div className="text-slate-400 font-semibold">Jugaron la fase</div>
+                      <div className="text-base font-black text-emerald-400">{playedCount}</div>
+                      <div className="text-[10px] text-slate-400">
+                        {playedSentCount} enviados • <strong className="text-amber-300">{playedPendingCount} pendientes</strong>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-slate-950 border border-white/10">
+                      <div className="text-slate-400 font-semibold">No participaron</div>
+                      <div className="text-base font-black text-sky-400">{nonPlayedCount}</div>
+                      <div className="text-[10px] text-slate-400">
+                        {nonPlayedSentCount} enviados • <strong className="text-amber-300">{nonPlayedPendingCount} pendientes</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Envío de Prueba Individual */}
               <div className="p-5 rounded-3xl bg-slate-900/90 border border-white/10 space-y-3">
                 <div className="flex items-center gap-2">
@@ -621,6 +710,52 @@ export default function AdminMailingView({ activePhase = 1 }) {
                     <span>{isSendingTest ? 'Enviando...' : 'Probar'}</span>
                   </button>
                 </div>
+
+                {isResultados && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[11px] font-bold text-slate-300 block">
+                      Modalidad para el correo de prueba:
+                    </span>
+                    <div className="grid grid-cols-3 gap-1.5 bg-slate-950 p-1 rounded-xl border border-white/10 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setTestParticipantType('played_qualified')}
+                        className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          testParticipantType === 'played_qualified'
+                            ? 'bg-emerald-600 text-white shadow'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <Award size={12} />
+                        <span>Clasificado</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTestParticipantType('played_not_qualified')}
+                        className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          testParticipantType === 'played_not_qualified'
+                            ? 'bg-slate-700 text-white shadow'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <Star size={12} />
+                        <span>No Clasif.</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTestParticipantType('not_played')}
+                        className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          testParticipantType === 'not_played'
+                            ? 'bg-sky-600 text-white shadow'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <BookOpen size={12} />
+                        <span>Capacitación</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {testResult && (
                   <div className={`p-2.5 rounded-xl text-xs font-bold ${
@@ -655,6 +790,30 @@ export default function AdminMailingView({ activePhase = 1 }) {
                     className="w-full accent-purple-500"
                   />
 
+                  {/* Opción de Inclusión de No Participantes en Resultados */}
+                  {isResultados && (
+                    <div className="p-3.5 rounded-2xl bg-amber-950/20 border border-amber-500/30 space-y-1">
+                      <label className="flex items-start gap-2.5 text-slate-200 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeNonParticipants}
+                          onChange={(e) => setIncludeNonParticipants(e.target.checked)}
+                          className="mt-0.5 rounded accent-amber-500"
+                        />
+                        <div>
+                          <span className="font-bold text-xs text-amber-200 block">
+                            Incluir a quienes NO participaron de la fase
+                          </span>
+                          <span className="text-[11px] text-slate-400 block mt-0.5">
+                            {includeNonParticipants
+                              ? `✓ Se enviará a TODOS (${effectiveTotalCount} colaboradores: ${playedCount} jugaron + ${nonPlayedCount} capacitación).`
+                              : `Solo se enviará a los ${playedCount} colaboradores que completaron la fase activa.`}
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
                   <label className="flex items-center gap-2 text-slate-300 pt-1 cursor-pointer">
                     <input
                       type="checkbox"
@@ -669,14 +828,14 @@ export default function AdminMailingView({ activePhase = 1 }) {
                 <button
                   type="button"
                   onClick={handleSendBatch}
-                  disabled={isSendingBatch || (!resendAll && pendingCount === 0)}
+                  disabled={isSendingBatch || (!resendAll && effectivePendingCount === 0)}
                   className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
                 >
                   {isSendingBatch ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
                   <span>
                     {resendAll
-                      ? `Reenviar a Todos (${totalWithEmail})`
-                      : `Enviar a Pendientes (${pendingCount})`}
+                      ? `Reenviar a Seleccionados (${effectiveTotalCount})`
+                      : `Enviar a Pendientes (${effectivePendingCount})`}
                   </span>
                 </button>
 
@@ -693,7 +852,7 @@ export default function AdminMailingView({ activePhase = 1 }) {
         {/* Columna Derecha (7 Cols): Vista Previa en Vivo en Tiempo Real */}
         <div className="lg:col-span-7 space-y-3">
           {/* Barra de Controles de la Vista Previa */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-white/10 flex items-center justify-between gap-3">
+          <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-white/10 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <Eye size={18} className="text-purple-400" />
               <div>
@@ -706,7 +865,52 @@ export default function AdminMailingView({ activePhase = 1 }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Selector de Simulación de Participante (Exclusivo Resultados) */}
+              {isResultados && (
+                <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-amber-500/30 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewParticipantType('played_qualified')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      previewParticipantType === 'played_qualified' || previewParticipantType === 'played'
+                        ? 'bg-emerald-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Simular correo para participante clasificado a la final"
+                  >
+                    <Award size={12} />
+                    <span>Clasificado</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewParticipantType('played_not_qualified')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      previewParticipantType === 'played_not_qualified'
+                        ? 'bg-slate-700 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Simular correo para participante que no alcanzó el cupo clasificatorio"
+                  >
+                    <Star size={12} />
+                    <span>No Clasif.</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewParticipantType('not_played')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      previewParticipantType === 'not_played'
+                        ? 'bg-sky-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Simular correo para colaborador que no participó (Capacitación)"
+                  >
+                    <BookOpen size={12} />
+                    <span>Capacitación</span>
+                  </button>
+                </div>
+              )}
+
               {/* Botón Ver Código HTML */}
               <button
                 type="button"

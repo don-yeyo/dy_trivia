@@ -368,7 +368,8 @@ export class SheetsAdapter extends DatabaseAdapter {
       podio: ranked.filter(r => r.rank <= 3 && r.hasPlayed),
       clasificados: ranked.filter(r => r.rank > 3 && r.rank <= topCount && r.hasPlayed),
       noClasificados: ranked.filter(r => r.rank > topCount || !r.hasPlayed),
-      allParticipants: ranked
+      allParticipants: ranked,
+      ranked: ranked
     };
   }
 
@@ -404,6 +405,16 @@ export class SheetsAdapter extends DatabaseAdapter {
       });
     });
 
+    let gruposMap = {};
+    try {
+      const cfg = await this.getConfig();
+      if (cfg && cfg.PARTICIPANTES_GRUPOS) {
+        gruposMap = typeof cfg.PARTICIPANTES_GRUPOS === 'string'
+          ? JSON.parse(cfg.PARTICIPANTES_GRUPOS)
+          : (cfg.PARTICIPANTES_GRUPOS || {});
+      }
+    } catch (_) {}
+
     return (users || []).map(u => {
       const leg = String(u.legajo || '').trim();
       const res = resultsByLegajo.get(leg);
@@ -418,6 +429,8 @@ export class SheetsAdapter extends DatabaseAdapter {
         telefono: String(u.telefono || '').trim(),
         email: String(u.email || '').trim(),
         email_enviado: String(u.email_enviado || u.email_sent || '').toLowerCase() === 'true' || u.email_enviado === '1',
+        activo: u.activo !== undefined && u.activo !== null ? (String(u.activo).toLowerCase() === 'true' || u.activo === true || u.activo === 1) : true,
+        grupo: String(u.grupo || gruposMap[leg] || '').trim(),
         hasPlayed: Boolean(res),
         answersCount: res ? res.answersCount : 0,
         correctCount: res ? res.answersCount : 0,
@@ -456,7 +469,208 @@ export class SheetsAdapter extends DatabaseAdapter {
     return await this.updateParticipant(legajo, { email_enviado: emailSent ? 'TRUE' : 'FALSE' });
   }
 
+  async toggleEmailSentBatch(legajos = [], emailSent = true) {
+    for (const leg of legajos) {
+      await this.toggleEmailSent(leg, emailSent);
+    }
+    return { success: true, updatedCount: legajos.length };
+  }
+
+  async setActiveStatus(legajo, activo) {
+    return await this.updateParticipant(legajo, { activo: Boolean(activo) });
+  }
+
+  async setActiveStatusBatch(legajos = [], activo = true) {
+    for (const leg of legajos) {
+      await this.setActiveStatus(leg, activo);
+    }
+    return { success: true, updatedCount: legajos.length, activo: Boolean(activo) };
+  }
+
+  async clearParticipantHash(legajo) {
+    return await this.updateParticipant(legajo, { token_hash: '' });
+  }
+
+  async clearParticipantHashBatch(legajos = []) {
+    for (const leg of legajos) {
+      await this.clearParticipantHash(leg);
+    }
+    return { success: true, updatedCount: legajos.length };
+  }
+
+  async generateParticipantHashBatch(legajos = []) {
+    let count = 0;
+    for (const leg of legajos) {
+      const res = await this.generateParticipantHash(leg);
+      if (res.success) count++;
+    }
+    return { success: true, updatedCount: count };
+  }
+
   async resetParticipantTrivia(legajo, phase = null) {
     return await sendToAppsScript({ action: 'RESET_TRIVIA', legajo, phase });
+  }
+
+  async resetParticipantTriviaBatch(legajos = [], phase = null) {
+    let count = 0;
+    for (const leg of legajos) {
+      const res = await this.resetParticipantTrivia(leg, phase);
+      if (res && (res.success || res.status === 'success')) count++;
+    }
+    return { success: true, updatedCount: count };
+  }
+
+  async getGroups() {
+    try {
+      const cfg = await this.getConfig();
+      let gruposCatalogo = [];
+      if (cfg && cfg.GRUPOS_CATALOGO) {
+        gruposCatalogo = typeof cfg.GRUPOS_CATALOGO === 'string'
+          ? JSON.parse(cfg.GRUPOS_CATALOGO)
+          : (cfg.GRUPOS_CATALOGO || []);
+      }
+      let gruposMap = {};
+      if (cfg && cfg.PARTICIPANTES_GRUPOS) {
+        gruposMap = typeof cfg.PARTICIPANTES_GRUPOS === 'string'
+          ? JSON.parse(cfg.PARTICIPANTES_GRUPOS)
+          : (cfg.PARTICIPANTES_GRUPOS || {});
+      }
+
+      // Count members per group
+      const counts = {};
+      Object.values(gruposMap).forEach(gName => {
+        if (gName) counts[gName] = (counts[gName] || 0) + 1;
+      });
+
+      const mapByName = new Map();
+      gruposCatalogo.forEach(g => {
+        const nombre = typeof g === 'string' ? g : g.nombre;
+        mapByName.set(nombre, {
+          id: g.id || nombre,
+          nombre,
+          descripcion: g.descripcion || '',
+          color: g.color || '#3b82f6',
+          miembros_count: counts[nombre] || 0
+        });
+      });
+
+      // Include any groups present in map but not in catalog
+      Object.keys(counts).forEach(nombre => {
+        if (!mapByName.has(nombre)) {
+          mapByName.set(nombre, {
+            id: nombre,
+            nombre,
+            descripcion: '',
+            color: '#3b82f6',
+            miembros_count: counts[nombre]
+          });
+        }
+      });
+
+      return Array.from(mapByName.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    } catch (err) {
+      console.warn('[SheetsAdapter] Error getGroups:', err);
+      return [];
+    }
+  }
+
+  async createGroup(groupData = {}) {
+    const nombre = String(groupData.nombre || '').trim();
+    if (!nombre) throw new Error('El nombre del grupo es obligatorio');
+
+    const cfg = await this.getConfig();
+    let catalogo = [];
+    if (cfg && cfg.GRUPOS_CATALOGO) {
+      catalogo = typeof cfg.GRUPOS_CATALOGO === 'string'
+        ? JSON.parse(cfg.GRUPOS_CATALOGO)
+        : (cfg.GRUPOS_CATALOGO || []);
+    }
+
+    if (catalogo.some(g => (typeof g === 'string' ? g : g.nombre).toLowerCase() === nombre.toLowerCase())) {
+      throw new Error(`El grupo "${nombre}" ya existe`);
+    }
+
+    const newGroup = {
+      id: Date.now(),
+      nombre,
+      descripcion: groupData.descripcion || '',
+      color: groupData.color || '#3b82f6'
+    };
+
+    catalogo.push(newGroup);
+    await this.updateConfig({ GRUPOS_CATALOGO: JSON.stringify(catalogo) });
+    return { success: true, group: newGroup };
+  }
+
+  async deleteGroup(nombre) {
+    const cleanName = String(nombre || '').trim();
+    if (!cleanName) return { success: false, error: 'Nombre inválido' };
+
+    const cfg = await this.getConfig();
+    let catalogo = [];
+    if (cfg && cfg.GRUPOS_CATALOGO) {
+      catalogo = typeof cfg.GRUPOS_CATALOGO === 'string'
+        ? JSON.parse(cfg.GRUPOS_CATALOGO)
+        : (cfg.GRUPOS_CATALOGO || []);
+    }
+    catalogo = catalogo.filter(g => (typeof g === 'string' ? g : g.nombre).toLowerCase() !== cleanName.toLowerCase());
+
+    let gruposMap = {};
+    if (cfg && cfg.PARTICIPANTES_GRUPOS) {
+      gruposMap = typeof cfg.PARTICIPANTES_GRUPOS === 'string'
+        ? JSON.parse(cfg.PARTICIPANTES_GRUPOS)
+        : (cfg.PARTICIPANTES_GRUPOS || {});
+    }
+    Object.keys(gruposMap).forEach(leg => {
+      if (String(gruposMap[leg]).toLowerCase() === cleanName.toLowerCase()) {
+        delete gruposMap[leg];
+      }
+    });
+
+    await this.updateConfig({
+      GRUPOS_CATALOGO: JSON.stringify(catalogo),
+      PARTICIPANTES_GRUPOS: JSON.stringify(gruposMap)
+    });
+
+    return { success: true };
+  }
+
+  async assignGroupBatch(legajos = [], grupoNombre = '') {
+    const cleanGroup = String(grupoNombre || '').trim();
+    const cleanLegajos = (legajos || []).map(l => String(l).trim()).filter(Boolean);
+
+    const cfg = await this.getConfig();
+    let gruposMap = {};
+    if (cfg && cfg.PARTICIPANTES_GRUPOS) {
+      gruposMap = typeof cfg.PARTICIPANTES_GRUPOS === 'string'
+        ? JSON.parse(cfg.PARTICIPANTES_GRUPOS)
+        : (cfg.PARTICIPANTES_GRUPOS || {});
+    }
+
+    cleanLegajos.forEach(leg => {
+      if (cleanGroup) {
+        gruposMap[leg] = cleanGroup;
+      } else {
+        delete gruposMap[leg];
+      }
+    });
+
+    let catalogo = [];
+    if (cfg && cfg.GRUPOS_CATALOGO) {
+      catalogo = typeof cfg.GRUPOS_CATALOGO === 'string'
+        ? JSON.parse(cfg.GRUPOS_CATALOGO)
+        : (cfg.GRUPOS_CATALOGO || []);
+    }
+
+    if (cleanGroup && !catalogo.some(g => (typeof g === 'string' ? g : g.nombre).toLowerCase() === cleanGroup.toLowerCase())) {
+      catalogo.push({ id: Date.now(), nombre: cleanGroup, descripcion: '', color: '#3b82f6' });
+    }
+
+    await this.updateConfig({
+      PARTICIPANTES_GRUPOS: JSON.stringify(gruposMap),
+      GRUPOS_CATALOGO: JSON.stringify(catalogo)
+    });
+
+    return { success: true, updatedCount: cleanLegajos.length, grupo: cleanGroup };
   }
 }

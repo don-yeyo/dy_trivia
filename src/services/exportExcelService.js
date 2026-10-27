@@ -52,6 +52,7 @@ export function exportClassificationToExcel({
       'Apellido',
       'Nombre',
       'Sector / Área',
+      'Grupo',
       'Puntaje',
       'Aciertos',
       'Tiempo (Segundos)',
@@ -76,6 +77,7 @@ export function exportClassificationToExcel({
       p.apellido || '',
       p.nombre || '',
       p.sector || 'Planta',
+      p.grupo || '-',
       p.hasPlayed ? (p.score || 0) : '-',
       p.hasPlayed ? (p.correctCount || 0) : '-',
       p.hasPlayed ? (p.totalTime || 0) : '-',
@@ -94,6 +96,7 @@ export function exportClassificationToExcel({
     { wch: 20 }, // Apellido
     { wch: 20 }, // Nombre
     { wch: 22 }, // Sector
+    { wch: 18 }, // Grupo
     { wch: 12 }, // Puntaje
     { wch: 12 }, // Aciertos
     { wch: 18 }, // Tiempo (Seg)
@@ -115,6 +118,7 @@ export function exportClassificationToExcel({
       'Legajo',
       'Participante',
       'Sector',
+      'Grupo',
       'Puntaje',
       'Aciertos',
       'Tiempo Empleado'
@@ -127,6 +131,7 @@ export function exportClassificationToExcel({
       p.legajo || '',
       `${p.apellido || ''}, ${p.nombre || ''}`.trim(),
       p.sector || 'Planta',
+      p.grupo || '-',
       p.score || 0,
       p.correctCount || 0,
       formatTime(p.totalTime)
@@ -139,6 +144,7 @@ export function exportClassificationToExcel({
     { wch: 12 },
     { wch: 32 },
     { wch: 24 },
+    { wch: 18 }, // Grupo
     { wch: 14 },
     { wch: 14 },
     { wch: 18 }
@@ -152,7 +158,7 @@ export function exportClassificationToExcel({
     ['DON YEYO S.A. - DESAFÍO DE INOCUIDAD 2026'],
     [`PODIO DE HONOR - FASE ${phase}`],
     [],
-    ['Medalla', 'Puesto', 'Legajo', 'Participante', 'Sector', 'Puntaje', 'Aciertos', 'Tiempo Total']
+    ['Medalla', 'Puesto', 'Legajo', 'Participante', 'Sector', 'Grupo', 'Puntaje', 'Aciertos', 'Tiempo Total']
   ];
 
   const medallas = ['ORO (1° Campeón)', 'PLATA (2° Puesto)', 'BRONCE (3° Puesto)'];
@@ -163,6 +169,7 @@ export function exportClassificationToExcel({
       p.legajo || '',
       `${p.apellido || ''}, ${p.nombre || ''}`.trim(),
       p.sector || 'Planta',
+      p.grupo || '-',
       p.score || 0,
       p.correctCount || 0,
       formatTime(p.totalTime)
@@ -176,6 +183,7 @@ export function exportClassificationToExcel({
     { wch: 12 },
     { wch: 32 },
     { wch: 24 },
+    { wch: 18 }, // Grupo
     { wch: 14 },
     { wch: 14 },
     { wch: 18 }
@@ -195,4 +203,121 @@ export function exportClassificationToExcel({
 
   XLSX.writeFile(wb, fileName);
   return { success: true, fileName };
+}
+
+/**
+ * Exporta una selección específica de participantes a un archivo Excel (.xlsx) nativo
+ * Don Yeyo S.A. | Trivia Inocuidad 2026
+ */
+export function exportSelectedParticipantsToExcel({
+  participants = [],
+  activePhase = 1,
+  adminUsername = 'admin'
+}) {
+  if (!Array.isArray(participants) || participants.length === 0) {
+    throw new Error('No hay participantes seleccionados para exportar.');
+  }
+
+  const fechaDescarga = new Date().toLocaleString('es-AR');
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://dy-inocuidad.netlify.app';
+
+  const rows = [
+    ['DON YEYO S.A. - DESAFÍO DE INOCUIDAD 2026'],
+    [`NÓMINA DE PARTICIPANTES SELECCIONADOS (FASE ${activePhase})`],
+    [`Exportado por: @${adminUsername}`, ``, `Fecha: ${fechaDescarga}`, `Total Seleccionados: ${participants.length}`],
+    [], // Fila vacía
+    [
+      'Legajo',
+      'Apellido',
+      'Nombre',
+      'Sector',
+      'Grupo',
+      'Email',
+      'Teléfono',
+      'Estado',
+      'Clasificado',
+      'Puesto (Ranking)',
+      'Puntaje',
+      'Resp. Correctas',
+      'Tiempo (seg)',
+      'Tiempo Total',
+      'Estado Trivia',
+      'Email Invitación',
+      'Email Resultados',
+      'Token Hash',
+      'Link de Participación'
+    ]
+  ];
+
+  participants.forEach(p => {
+    const isActivo = p.activo !== false;
+    let clasificadoText = 'SIN JUGAR';
+    if (p.hasPlayed) {
+      clasificadoText = p.isQualified ? 'SÍ (CLASIFICADO)' : 'NO CLASIFICADO';
+    }
+
+    let triviaText = 'Sin jugar';
+    const count = Number(p.answersCount ?? 0);
+    if (count >= 15) triviaText = 'Completado (15/15)';
+    else if (count > 0) triviaText = `Parcial (${count}/15)`;
+
+    const participationUrl = p.token_hash
+      ? `${origin}/?token=${encodeURIComponent(p.token_hash)}`
+      : 'Sin hash generado';
+
+    rows.push([
+      p.legajo || '',
+      p.apellido || '',
+      p.nombre || '',
+      p.sector || 'Planta',
+      p.grupo || '-',
+      p.email || '',
+      p.telefono || '',
+      isActivo ? 'ACTIVO' : 'INACTIVO',
+      clasificadoText,
+      p.rank ? `#${p.rank}` : '-',
+      p.hasPlayed ? (p.score || 0) : '-',
+      p.hasPlayed ? (p.correctCount || 0) : '-',
+      p.hasPlayed ? (p.totalTime || 0) : '-',
+      p.hasPlayed ? formatTime(p.totalTime) : '-',
+      triviaText,
+      p.email_enviado ? 'SÍ' : 'NO',
+      p.email_resultado_enviado ? 'SÍ' : 'NO',
+      p.token_hash || '',
+      participationUrl
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  ws['!cols'] = [
+    { wch: 12 }, // Legajo
+    { wch: 20 }, // Apellido
+    { wch: 20 }, // Nombre
+    { wch: 22 }, // Sector
+    { wch: 18 }, // Grupo
+    { wch: 28 }, // Email
+    { wch: 16 }, // Teléfono
+    { wch: 12 }, // Estado (Activo/Inactivo)
+    { wch: 20 }, // Clasificado
+    { wch: 16 }, // Puesto
+    { wch: 12 }, // Puntaje
+    { wch: 15 }, // Resp. Correctas
+    { wch: 14 }, // Tiempo (seg)
+    { wch: 16 }, // Tiempo Total
+    { wch: 20 }, // Estado Trivia
+    { wch: 16 }, // Email Invitación
+    { wch: 16 }, // Email Resultados
+    { wch: 32 }, // Token Hash
+    { wch: 55 }  // Link de Participación
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Participantes Seleccionados');
+
+  const safeDate = new Date().toISOString().slice(0, 10);
+  const fileName = `DonYeyo_Participantes_Seleccion_${participants.length}_${safeDate}.xlsx`;
+
+  XLSX.writeFile(wb, fileName);
+  return { success: true, fileName, count: participants.length };
 }
