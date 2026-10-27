@@ -844,4 +844,69 @@ export class SheetsAdapter extends DatabaseAdapter {
       return { success: false, error: err.message };
     }
   }
+
+  /**
+   * Obtiene parámetros de mailing en SheetsAdapter (con soporte de memoria y defaults)
+   */
+  async getMailingParams(emailTipo = null) {
+    if (!global._sheetsMailingParams) {
+      global._sheetsMailingParams = {
+        INVITACION: {
+          TITULO_EMAIL: '¡DESAFÍO DE INOCUIDAD 2026!',
+          SUBTITULO: 'Poné a prueba tus conocimientos en Calidad e Inocuidad y ganá importantes premios.',
+          MENSAJE_PRINCIPAL: '<p>Llegó el momento de demostrar todo lo que sabés sobre nuestras Buenas Prácticas de Manufactura (BPM), higiene y calidad alimentaria en Don Yeyo.</p>\n<p>🏆 <strong>Cada respuesta suma puntos para clasificar a la siguiente fase y competir por increíbles premios.</strong></p>\n<p>⏱️ Recordá que el tiempo también cuenta: cuanto más rápido y preciso seas, más alto estarás en el ranking.</p>',
+          MENSAJE_SECUNDARIO: '⚠️ <strong>Muy importante:</strong> si abandonás la trivia y volvés a ingresar, continuarás desde la siguiente pregunta disponible y no podrás regresar a las anteriores para responderlas.',
+          CALL_TO_ACTION_TEXTO: 'INGRESAR A LA TRIVIA AHORA',
+          EMPRESA_NOMBRE: 'Don Yeyo S.A. • Departamento de Calidad e Inocuidad',
+          CONTACTO_SOPORTE: 'Para consultas o inconvenientes de acceso, comunicate con el área de RR.HH. o Calidad.',
+          ANIO_ACTUAL: String(new Date().getFullYear()),
+          URL_LOGO: 'https://dy-inocuidad.netlify.app/logo-donyeyo.svg',
+          URL_FONDO: 'https://dy-inocuidad.netlify.app/mailing/fondo-rayos.png'
+        },
+        RESULTADOS: {
+          TITULO_EMAIL: '¡RESULTADOS DEL DESAFÍO DE INOCUIDAD 2026!',
+          SUBTITULO: 'La etapa ha finalizado. Mirá cómo te fue, revisá tus respuestas y conocé el podio oficial.',
+          MENSAJE_PRINCIPAL: '<p>🎉 <strong>¡Muchas gracias por haber participado con tu compromiso diario hacia la inocuidad alimentaria!</strong></p>\n<p>Cada respuesta representa tu conocimiento en las Buenas Prácticas de Manufactura (BPM) y los estándares de calidad que hacen grande a Don Yeyo.</p>\n<p>🏆 <strong>Ya podés consultar la tabla general de clasificación y el Podio oficial de ganadores.</strong></p>',
+          MENSAJE_PRINCIPAL_ALTERNATIVO: '<p>Aunque no hayas tenido la oportunidad de completar esta fase de la trivia, <strong>tu compromiso diario con la calidad y la inocuidad alimentaria sigue siendo fundamental para Don Yeyo</strong>.</p>\n<p>💡 Te compartimos a continuación el cuestionario con todas las preguntas correctas y sus fundamentos técnicos para que puedas capacitarte y repasar las Buenas Prácticas de Manufactura (BPM).</p>\n<p>🏆 <strong>¡También podés consultar el Podio oficial de ganadores y la tabla de posiciones!</strong></p>',
+          MENSAJE_SECUNDARIO: 'ℹ️ <strong>Importante:</strong> Los clasificados a las instancias finales serán contactados por el Departamento de Calidad y Recursos Humanos.',
+          CALL_TO_ACTION_TEXTO: 'VER PODIO Y CLASIFICADOS',
+          EMPRESA_NOMBRE: 'Don Yeyo S.A. • Departamento de Calidad e Inocuidad',
+          CONTACTO_SOPORTE: 'Por dudas sobre tu puntaje o clasificación, comunicate con el área de Calidad.',
+          ANIO_ACTUAL: String(new Date().getFullYear()),
+          URL_LOGO: 'https://dy-inocuidad.netlify.app/logo-donyeyo.svg',
+          URL_FONDO: 'https://dy-inocuidad.netlify.app/mailing/fondo-rayos.png'
+        }
+      };
+    }
+
+    const tipos = emailTipo ? [emailTipo.toUpperCase()] : ['INVITACION', 'RESULTADOS'];
+    const resultRows = [];
+    for (const t of tipos) {
+      const pMap = global._sheetsMailingParams[t] || {};
+      for (const [k, v] of Object.entries(pMap)) {
+        resultRows.push({
+          id: null,
+          email_tipo: t,
+          nombre_parametro: k,
+          valor: String(v ?? '')
+        });
+      }
+    }
+    return resultRows;
+  }
+
+  /**
+   * Guarda parámetros de mailing en SheetsAdapter
+   */
+  async saveMailingParams(emailTipo, paramsMap) {
+    const cleanTipo = String(emailTipo || 'INVITACION').trim().toUpperCase();
+    if (!global._sheetsMailingParams) {
+      await this.getMailingParams();
+    }
+    global._sheetsMailingParams[cleanTipo] = {
+      ...(global._sheetsMailingParams[cleanTipo] || {}),
+      ...(paramsMap || {})
+    };
+    return { success: true };
+  }
 }

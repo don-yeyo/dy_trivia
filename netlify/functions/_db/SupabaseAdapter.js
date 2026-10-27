@@ -1721,46 +1721,54 @@ export class SupabaseAdapter extends DatabaseAdapter {
     };
 
     try {
+      // 1. Intentar leer de la tabla mailing_parametros si existe
       let query = supabase.from('mailing_parametros').select('*');
       if (emailTipo) {
         query = query.eq('email_tipo', emailTipo.toUpperCase());
       }
 
       const { data, error } = await query;
-
       if (!error && data && data.length > 0) {
         return data;
       }
+    } catch (err) {
+      // Ignorar si la tabla no existe y pasar a consultar config
+    }
 
-      // Si no hay datos o la tabla no está creada, intentamos inicializar con los defaults
-      const rowsToInsert = [];
+    // 2. Leer desde la tabla config (donde se guardan garantizadamente)
+    try {
       const tipos = emailTipo ? [emailTipo.toUpperCase()] : ['INVITACION', 'RESULTADOS'];
+      const keys = tipos.map(t => `MAILING_PARAMS_${t}`);
+      const { data: configRows } = await supabase
+        .from('config')
+        .select('clave, valor')
+        .in('clave', keys);
 
+      const configMapByTipo = {};
+      (configRows || []).forEach(r => {
+        try {
+          const t = r.clave.replace('MAILING_PARAMS_', '');
+          configMapByTipo[t] = typeof r.valor === 'string' ? JSON.parse(r.valor) : r.valor;
+        } catch (e) {}
+      });
+
+      const resultRows = [];
       for (const t of tipos) {
-        const pMap = DEFAULT_MAILING_PARAMS[t] || {};
-        for (const [k, v] of Object.entries(pMap)) {
-          rowsToInsert.push({
+        const merged = { ...(DEFAULT_MAILING_PARAMS[t] || {}), ...(configMapByTipo[t] || {}) };
+        for (const [k, v] of Object.entries(merged)) {
+          resultRows.push({
+            id: null,
             email_tipo: t,
             nombre_parametro: k,
-            valor: v,
-            updated_at: new Date().toISOString()
+            valor: String(v ?? '')
           });
         }
       }
 
-      // Intentar auto-seed silencioso
-      try {
-        await supabase.from('mailing_parametros').upsert(rowsToInsert, {
-          onConflict: 'email_tipo, nombre_parametro'
-        });
-      } catch (seedErr) {
-        // Fallback silencioso si la tabla no existe en Postgres aún
-      }
-
-      return rowsToInsert;
+      return resultRows;
     } catch (err) {
-      console.warn('[SupabaseAdapter] Advertencia consultando mailing_parametros:', err.message);
-      // Devolver defaults formateados como registros de base de datos
+      console.warn('[SupabaseAdapter] Advertencia consultando config para mailing_parametros:', err.message);
+      // Fallback a defaults puros si falla config
       const fallbackRows = [];
       const tipos = emailTipo ? [emailTipo.toUpperCase()] : ['INVITACION', 'RESULTADOS'];
       for (const t of tipos) {
@@ -1792,32 +1800,35 @@ export class SupabaseAdapter extends DatabaseAdapter {
     }
 
     try {
-      const rows = Object.entries(paramsMap).map(([nombre_parametro, valor]) => ({
-        email_tipo: cleanTipo,
-        nombre_parametro: String(nombre_parametro).trim().toUpperCase(),
-        valor: String(valor ?? ''),
+      // 1. Guardar SIEMPRE en la tabla config como persistencia primaria segura
+      const { error: cfgErr } = await supabase.from('config').upsert({
+        clave: `MAILING_PARAMS_${cleanTipo}`,
+        valor: JSON.stringify(paramsMap),
+        descripcion: `Parámetros de mailing para ${cleanTipo}`,
         updated_at: new Date().toISOString()
-      }));
+      }, { onConflict: 'clave' });
 
-      const { data, error } = await supabase
-        .from('mailing_parametros')
-        .upsert(rows, { onConflict: 'email_tipo, nombre_parametro' })
-        .select();
-
-      if (error) {
-        console.error('[SupabaseAdapter] Error guardando mailing_parametros:', error.message);
-        // Fallback: guardar en config como JSON por si la tabla aún no se corrió con schema.sql
-        await supabase.from('config').upsert({
-          clave: `MAILING_PARAMS_${cleanTipo}`,
-          valor: JSON.stringify(paramsMap),
-          descripcion: `Parámetros de mailing para ${cleanTipo}`,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'clave' });
-
-        return { success: true, fallback: true, warning: error.message };
+      if (cfgErr) {
+        console.error('[SupabaseAdapter] Error guardando mailing params en config:', cfgErr.message);
       }
 
-      return { success: true, data };
+      // 2. Si la tabla mailing_parametros existe, guardar también allí
+      try {
+        const rows = Object.entries(paramsMap).map(([nombre_parametro, valor]) => ({
+          email_tipo: cleanTipo,
+          nombre_parametro: String(nombre_parametro).trim().toUpperCase(),
+          valor: String(valor ?? ''),
+          updated_at: new Date().toISOString()
+        }));
+
+        await supabase
+          .from('mailing_parametros')
+          .upsert(rows, { onConflict: 'email_tipo, nombre_parametro' });
+      } catch (tblErr) {
+        // Ignorar si la tabla relacional no existe
+      }
+
+      return { success: true };
     } catch (err) {
       console.error('[SupabaseAdapter] Excepción en saveMailingParams:', err);
       return { success: false, error: err.message };

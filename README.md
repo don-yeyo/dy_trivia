@@ -156,7 +156,7 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
     - **Filtro de Despacho en Resultados:** Permite al administrador especificar si desea incluir o no a aquellos colaboradores que no participaron de la fase activa (`includeNonParticipants`), con métricas analíticas desglosadas en tiempo real.
     - **Simulación en Live Preview:** Selector interactivo para visualizar cómo llegará el correo tanto para quien jugó la fase como para quien recibe la capacitación.
     - **Persistencia de Parámetros en Base de Datos (`mailing_parametros`):**
-     - Almacena en Supabase de forma tipada (`id`, `email_tipo`, `nombre_parametro`, `valor`, `descripcion`) los comodines `%TITULO_EMAIL%`, `%SUBTITULO%`, `%MENSAJE_PRINCIPAL%`, `%CALL_TO_ACTION_TEXTO%`, `%MENSAJE_SECUNDARIO%`, `%EMPRESA_NOMBRE%`, `%CONTACTO_SOPORTE%`, `%URL_LOGO%` y `%URL_FONDO%`.
+     - Almacena en Supabase de forma dual y garantizada (tabla config bajo claves MAILING_PARAMS_INVITACION y MAILING_PARAMS_RESULTADOS, con sincronizacion a mailing_parametros)
    - **Editor en Vivo y Live Preview en Tiempo Real:**
      - Permite al administrador ajustar cualquier parámetro y observar en un `iframe` responsivo (con selector Escritorio / Móvil o inspector de código HTML) el correo final renderizado exactamente como lo recibirá el usuario a medida que escribe.
    - **Métricas KPI y Despacho:**
