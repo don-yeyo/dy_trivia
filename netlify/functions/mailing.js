@@ -372,7 +372,7 @@ function renderEmailHtml(user, emailTipo = 'INVITACION', paramsMap = {}, smtpCfg
   const token = (user.token_hash || '').trim();
   const linkTrivia = token ? `${cfg.appBaseUrl}/?token=${encodeURIComponent(token)}` : cfg.appBaseUrl;
   const linkPodio = `${cfg.appBaseUrl}/?view=clasificacion`;
-  const totalPreguntas = user.total_preguntas ?? 15;
+  const totalPreguntas = user.total_preguntas ?? (user.fase === 2 ? 10 : 15);
   const rankingPuesto = user.ranking_puesto ?? (haParticipado ? '-' : null);
   const cupoClasificados = user.cupo_clasificados ?? 30;
   const esClasificado = Boolean(user.es_clasificado);
@@ -1018,7 +1018,7 @@ export async function handler(event, context) {
           if (hasPlayedPhase) {
             user.ha_participado = true;
             user.correctas = rList.filter(r => r.es_correcta).length;
-            user.total_preguntas = Math.max(questions.length, rList.length, 15);
+            user.total_preguntas = questions.length > 0 ? questions.length : Math.max(rList.length, activePhase === 2 ? 10 : 15);
             user.puntaje = rList.reduce((acc, r) => acc + (r.puntos_obtenidos || 0), 0);
             user.tiempo_total = rList.reduce((acc, r) => acc + (r.tiempo_tardado || 0), 0);
             user.feedback_detalle = buildFeedbackDetalleHtml(questions, rList, false);
@@ -1171,7 +1171,7 @@ export async function handler(event, context) {
               if (hasPlayed) {
                 user.ha_participado = true;
                 user.correctas = rList.filter(r => r.es_correcta).length;
-                user.total_preguntas = Math.max(questions.length, rList.length, 15);
+                user.total_preguntas = questions.length > 0 ? questions.length : Math.max(rList.length, activePhase === 2 ? 10 : 15);
                 user.puntaje = rList.reduce((acc, r) => acc + (r.puntos_obtenidos || 0), 0);
                 user.tiempo_total = rList.reduce((acc, r) => acc + (r.tiempo_tardado || 0), 0);
                 user.feedback_detalle = buildFeedbackDetalleHtml(questions, rList, false);

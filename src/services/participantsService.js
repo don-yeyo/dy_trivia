@@ -584,3 +584,30 @@ export async function assignGroupBatch(legajos = [], grupo = '', token = '') {
   }
 }
 
+/**
+ * Consulta el detalle completo de preguntas y respuestas de un participante para una fase dada
+ * @param {string|number} legajo Número de legajo
+ * @param {number} phase Número de fase (default: 1)
+ * @param {string} token Token de admin opcional
+ */
+export async function fetchParticipantResponsesDetail(legajo, phase = 1, token = '') {
+  const adminToken = resolveToken(token);
+  try {
+    const cleanLegajo = encodeURIComponent(String(legajo || '').trim());
+    const res = await fetch(`/api/participants?action=RESPONSES_DETAIL&legajo=${cleanLegajo}&phase=${phase}`, {
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      return data;
+    }
+    return { success: false, error: data.error || 'Error al obtener detalle de respuestas' };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+

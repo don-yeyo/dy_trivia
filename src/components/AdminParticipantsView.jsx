@@ -28,6 +28,7 @@ import {
   Eye,
   X,
   MailCheck,
+  MailX,
   Clock,
   Play,
   SendHorizontal,
@@ -48,7 +49,8 @@ import {
   Tag,
   Plus,
   BookmarkPlus,
-  Layers
+  Layers,
+  FileSpreadsheet
 } from 'lucide-react';
 import {
   fetchParticipantsAdmin,
@@ -71,7 +73,8 @@ import {
   clearParticipantHash,
   clearParticipantHashBatch,
   regenerateParticipantHashBatch,
-  toggleEmailSentBatch
+  toggleEmailSentBatch,
+  fetchParticipantResponsesDetail
 } from '../services/participantsService';
 import {
   sendSingleParticipantEmail,
@@ -79,7 +82,10 @@ import {
   sendBatchMailing,
   markAllEmailsSent
 } from '../services/mailingService';
-import { exportSelectedParticipantsToExcel } from '../services/exportExcelService';
+import {
+  exportSelectedParticipantsToExcel,
+  exportParticipantPhaseResponsesToExcel
+} from '../services/exportExcelService';
 
 export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv }) {
   const [participants, setParticipants] = useState([]);
@@ -175,6 +181,17 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
   const [newGroupDescInput, setNewGroupDescInput] = useState('');
   const [isAssigningGroupLoading, setIsAssigningGroupLoading] = useState(false);
 
+  // 6. Modal Descarga de Respuestas por Fase (Auditoría Excel)
+  const [downloadModalData, setDownloadModalData] = useState({
+    isOpen: false,
+    participant: null,
+    isDownloading: false,
+    downloadingPhase: null
+  });
+
+  // Filtro de visualización de fases en la tabla ('ALL' = F1, F2, F3... o número de fase '1', '2', '3')
+  const [phaseViewFilter, setPhaseViewFilter] = useState('ALL');
+
   // Bloquear scroll de la página cuando algún modal esté abierto
   useEffect(() => {
     const isAnyModalOpen =
@@ -182,7 +199,8 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
       resetModalParticipants.length > 0 ||
       Boolean(deleteModalParticipant) ||
       isMailingModalOpen ||
-      isAssignGroupModalOpen;
+      isAssignGroupModalOpen ||
+      downloadModalData.isOpen;
     if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -191,7 +209,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isEditModalOpen, resetModalParticipants, deleteModalParticipant, isMailingModalOpen, isAssignGroupModalOpen]);
+  }, [isEditModalOpen, resetModalParticipants, deleteModalParticipant, isMailingModalOpen, isAssignGroupModalOpen, downloadModalData.isOpen]);
 
   // Mostrar mensaje tipo Toast autodescartable
   const notify = (msg) => {
@@ -201,20 +219,122 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
     }, 4500);
   };
 
+  // Helper para formatear segundos
+  const formatTime = (seconds) => {
+    if (!seconds && seconds !== 0) return '—';
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  };
+
+  // Fases disponibles detectadas en los participantes
+  const availablePhases = useMemo(() => {
+    const set = new Set([1, 2, 3]);
+    participants.forEach((p) => {
+      if (Array.isArray(p.detectedPhases)) {
+        p.detectedPhases.forEach((ph) => set.add(Number(ph)));
+      }
+      if (p.phasesData) {
+        Object.keys(p.phasesData).forEach((ph) => set.add(Number(ph)));
+      }
+      if (Array.isArray(p.phasesPlayed)) {
+        p.phasesPlayed.forEach((ph) => set.add(Number(ph)));
+      }
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  }, [participants]);
+
+  // Fases que se mostrarán en las columnas según el filtro seleccionado
+  const activeColumnsPhases = useMemo(() => {
+    if (phaseViewFilter === 'ALL') {
+      return availablePhases;
+    }
+    const target = Number(phaseViewFilter);
+    return [target];
+  }, [phaseViewFilter, availablePhases]);
+
+  // Manejador para descargar respuestas de un participante en Excel
+  const handleDownloadResponses = async (participant, targetPhase = null) => {
+    if (!participant || !participant.legajo) return;
+
+    // Detectar fases que el participante jugó
+    const playedPhases = (participant.phasesPlayed && participant.phasesPlayed.length > 0)
+      ? participant.phasesPlayed
+      : (participant.phasesData
+          ? Object.keys(participant.phasesData).filter((f) => participant.phasesData[f]?.hasPlayed).map(Number)
+          : []);
+
+    // Si no se especificó fase:
+    if (!targetPhase) {
+      if (playedPhases.length > 1) {
+        // Jugó más de 1 fase: abrir modal para elegir cuál descargar o descargar todas
+        setDownloadModalData({
+          isOpen: true,
+          participant,
+          isDownloading: false,
+          downloadingPhase: null
+        });
+        return;
+      }
+      // Si jugó exactamente 1 fase, descargar esa; si no jugó ninguna, intentar la fase activa
+      targetPhase = playedPhases[0] || (phaseViewFilter !== 'ALL' ? Number(phaseViewFilter) : activePhase) || 1;
+    }
+
+    try {
+      setDownloadModalData((prev) => ({
+        ...prev,
+        isDownloading: true,
+        downloadingPhase: targetPhase
+      }));
+      notify(`Iniciando descarga de respuestas de Fase ${targetPhase} para ${participant.nombre} ${participant.apellido}...`);
+
+      const detail = await fetchParticipantResponsesDetail(participant.legajo, targetPhase);
+      if (!detail || !detail.success) {
+        alert(`No se pudo obtener el detalle de respuestas: ${detail?.error || 'Sin datos de respuestas'}`);
+        return;
+      }
+
+      exportParticipantPhaseResponsesToExcel({
+        participant: detail.participant || participant,
+        phase: detail.phase || targetPhase,
+        questions: detail.questions || [],
+        summary: detail.summary || {}
+      });
+
+      notify(`✅ Auditoría de Fase ${targetPhase} descargada correctamente (.xlsx).`);
+      if (downloadModalData.isOpen) {
+        setDownloadModalData({ isOpen: false, participant: null, isDownloading: false, downloadingPhase: null });
+      }
+    } catch (err) {
+      console.error('Error al descargar respuestas en Excel:', err);
+      alert(`Error al generar Excel de respuestas: ${err.message}`);
+    } finally {
+      setDownloadModalData((prev) => ({
+        ...prev,
+        isDownloading: false,
+        downloadingPhase: null
+      }));
+    }
+  };
+
   // Helper para determinar el estado de la trivia de un participante
-  const getParticipantTriviaStatus = (p) => {
+  const getParticipantTriviaStatus = (p, targetPhase = null) => {
+    const ph = targetPhase || activePhase || 1;
+    const phData = p?.phasesData?.[ph];
+    const totalQ = phData?.totalQuestions || p?.totalQuestions || (ph === 2 ? 10 : 15);
     const count = Number(
-      p.answersCount ??
-      p.total_responses ??
-      (Array.isArray(p.responses) ? p.responses.length : 0)
+      phData?.answersCount ??
+      p?.answersCount ??
+      p?.total_responses ??
+      (Array.isArray(p?.responses) ? p.responses.length : 0)
     );
-    if (count >= 15) {
-      return { code: 'COMPLETED', label: 'Completado', count };
+    if (count >= totalQ) {
+      return { code: 'COMPLETED', label: 'Completado', count, total: totalQ };
     }
     if (count > 0) {
-      return { code: 'PARTIAL', label: 'Parcial', count };
+      return { code: 'PARTIAL', label: 'Parcial', count, total: totalQ };
     }
-    return { code: 'NOT_PLAYED', label: 'Sin jugar', count: 0 };
+    return { code: 'NOT_PLAYED', label: 'Sin jugar', count: 0, total: totalQ };
   };
 
   // Carga inicial y refresco
@@ -404,8 +524,34 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
           res = resB - resA;
           break;
         }
-        default:
-          res = 0;
+        default: {
+          // Soporte dinámico para ordenamiento por columnas de fases individuales (fase_X_puntaje, etc.)
+          if (sortColumn.startsWith('fase_') && sortColumn.endsWith('_puntaje')) {
+            const f = sortColumn.split('_')[1];
+            const scA = Number(a.phasesData?.[f]?.score || 0);
+            const scB = Number(b.phasesData?.[f]?.score || 0);
+            res = scA - scB;
+          } else if (sortColumn.startsWith('fase_') && sortColumn.endsWith('_puesto')) {
+            const f = sortColumn.split('_')[1];
+            const rA = a.phasesData?.[f]?.rank || 99999;
+            const rB = b.phasesData?.[f]?.rank || 99999;
+            res = rA - rB;
+          } else if (sortColumn.startsWith('fase_') && sortColumn.endsWith('_tiempo')) {
+            const f = sortColumn.split('_')[1];
+            const tA = Number(a.phasesData?.[f]?.totalTime || 0);
+            const tB = Number(b.phasesData?.[f]?.totalTime || 0);
+            res = tA - tB;
+          } else if (sortColumn.startsWith('fase_') && sortColumn.endsWith('_trivia')) {
+            const f = sortColumn.split('_')[1];
+            const stA = a.phasesData?.[f]?.triviaStatus?.code;
+            const stB = b.phasesData?.[f]?.triviaStatus?.code;
+            const wA = stA === 'COMPLETED' ? 3 : (stA === 'PARTIAL' ? 2 : 1);
+            const wB = stB === 'COMPLETED' ? 3 : (stB === 'PARTIAL' ? 2 : 1);
+            res = wB - wA;
+          } else {
+            res = 0;
+          }
+        }
       }
       return sortDirection === 'asc' ? res : -res;
     });
@@ -419,7 +565,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortColumn(colKey);
-      setSortDirection(colKey === 'puntaje' ? 'desc' : 'asc');
+      setSortDirection(colKey.includes('puntaje') || colKey.includes('score') ? 'desc' : 'asc');
     }
   };
 
@@ -843,6 +989,68 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
     }
     setResetModalParticipants(selectedList);
     setResetPhaseOption('ACTIVE');
+  };
+
+  // Estado de tildado de invitaciones y resultados de los participantes seleccionados
+  const selectionEmailStats = useMemo(() => {
+    if (selectedLegajos.size === 0) {
+      return { allInvSent: false, allResSent: false, anyInvSent: false, anyResSent: false };
+    }
+    const selectedList = participants.filter((p) => selectedLegajos.has(String(p.legajo)));
+    const allInvSent = selectedList.length > 0 && selectedList.every((p) => Boolean(p.email_enviado));
+    const anyInvSent = selectedList.some((p) => Boolean(p.email_enviado));
+    const allResSent = selectedList.length > 0 && selectedList.every((p) => Boolean(p.email_resultado_enviado));
+    const anyResSent = selectedList.some((p) => Boolean(p.email_resultado_enviado));
+    return { allInvSent, allResSent, anyInvSent, anyResSent };
+  }, [selectedLegajos, participants]);
+
+  // ACCIÓN MASIVA: Tildar o Destildar estado de Invitación o Resultados masivamente
+  const handleBatchToggleEmail = async (tipo = 'INVITACION', explicitValue = null) => {
+    const legajosArray = Array.from(selectedLegajos);
+    if (legajosArray.length === 0) return;
+
+    const isResult = String(tipo).toUpperCase() === 'RESULTADOS';
+    const tipoLabel = isResult ? 'Resultados' : 'Invitación';
+    const field = isResult ? 'email_resultado_enviado' : 'email_enviado';
+
+    // Determinar nuevo estado (si explicitValue es null, invertir basándose en si están todos tildados)
+    let newStatus = explicitValue;
+    if (newStatus === null) {
+      const selectedList = participants.filter((p) => legajosArray.includes(String(p.legajo)));
+      const allAreChecked = selectedList.length > 0 && selectedList.every((p) => Boolean(p[field]));
+      newStatus = !allAreChecked;
+    }
+
+    const actionText = newStatus ? 'TILDAR (marcar como enviado)' : 'DESTILDAR (marcar como pendiente)';
+    if (
+      !window.confirm(
+        `¿Confirmas que deseas ${actionText} la marca de "${tipoLabel}" para los ${legajosArray.length} participante(s) seleccionados?`
+      )
+    ) {
+      return;
+    }
+
+    setIsBulkActionRunning(true);
+    // Optimistic update
+    setParticipants((prev) =>
+      prev.map((item) =>
+        legajosArray.includes(String(item.legajo)) ? { ...item, [field]: newStatus } : item
+      )
+    );
+
+    const res = await toggleEmailSentBatch(legajosArray, newStatus, tipo);
+    setIsBulkActionRunning(false);
+
+    if (res.success) {
+      notify(
+        newStatus
+          ? `✅ Se tildó "${tipoLabel} Enviado" para ${res.updatedCount || legajosArray.length} participante(s).`
+          : `⏳ Se destildó "${tipoLabel}" (marcado como pendiente) para ${res.updatedCount || legajosArray.length} participante(s).`
+      );
+    } else {
+      alert(`Error al actualizar estado de email masivo: ${res.error}`);
+      await loadParticipants();
+    }
   };
 
   // ACCIÓN MASIVA 7 & INDIVIDUAL: Abrir modal de asignación de grupo
@@ -1530,7 +1738,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             className="px-2.5 py-1.5 rounded-lg bg-slate-900/80 border border-white/15 text-white font-semibold focus:outline-none focus:ring-1 focus:ring-red-500"
           >
             <option value="ALL">Trivia: Todos</option>
-            <option value="COMPLETED">Completados 15/15 ({metrics.completedCount})</option>
+            <option value="COMPLETED">Completados ({metrics.completedCount})</option>
             <option value="PARTIAL">En Curso / Parcial ({metrics.partialCount})</option>
             <option value="NOT_PLAYED">Sin Jugar ({metrics.notPlayedCount})</option>
           </select>
@@ -1663,6 +1871,21 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             )}
           </div>
 
+          {/* Selector de Columnas de Fase para la grilla con scroll */}
+          <select
+            value={phaseViewFilter}
+            onChange={(e) => setPhaseViewFilter(e.target.value)}
+            className="px-2.5 py-1.5 rounded-lg bg-indigo-950/70 border border-indigo-400/40 text-indigo-200 font-bold focus:outline-none focus:ring-1 focus:ring-indigo-400 shadow-sm cursor-pointer"
+            title="Seleccionar qué fases visualizar en las columnas de la tabla con scroll horizontal"
+          >
+            <option value="ALL">📊 Columnas: Todas las Fases ({availablePhases.map(ph => `F${ph}`).join(', ')})</option>
+            {availablePhases.map((ph) => (
+              <option key={ph} value={String(ph)}>
+                🎯 Columnas: Solo Fase {ph}
+              </option>
+            ))}
+          </select>
+
           {/* Contador de resultados */}
           <span className="ml-auto text-slate-400 font-medium flex items-center gap-2">
             <span>
@@ -1731,6 +1954,26 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                 <span>Enviar Invitación</span>
               </button>
 
+              {/* Botón Destildar / Tildar Invitación Enviada */}
+              <button
+                type="button"
+                onClick={() => handleBatchToggleEmail('INVITACION')}
+                disabled={isBulkActionRunning}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all shadow ${
+                  selectionEmailStats.allInvSent
+                    ? 'bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border-amber-500/40'
+                    : 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border-emerald-500/40'
+                }`}
+                title={
+                  selectionEmailStats.allInvSent
+                    ? 'Destildar Invitación: Cambiar marca a no enviada (pendiente) para los seleccionados'
+                    : 'Tildar Invitación: Marcar como enviada para los seleccionados'
+                }
+              >
+                {selectionEmailStats.allInvSent ? <MailX size={13} /> : <MailCheck size={13} />}
+                <span>{selectionEmailStats.allInvSent ? 'Destildar Invitación' : 'Tildar Invitación'}</span>
+              </button>
+
               {/* Botón Enviar Resultados */}
               <button
                 type="button"
@@ -1741,6 +1984,26 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
               >
                 <Award size={13} />
                 <span>Enviar Resultados</span>
+              </button>
+
+              {/* Botón Destildar / Tildar Resultados Enviados */}
+              <button
+                type="button"
+                onClick={() => handleBatchToggleEmail('RESULTADOS')}
+                disabled={isBulkActionRunning}
+                className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all shadow ${
+                  selectionEmailStats.allResSent
+                    ? 'bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border-amber-500/40'
+                    : 'bg-yellow-600/30 hover:bg-yellow-600/50 text-yellow-200 border-yellow-500/40'
+                }`}
+                title={
+                  selectionEmailStats.allResSent
+                    ? 'Destildar Resultados: Cambiar marca a no enviado (pendiente) para los seleccionados'
+                    : 'Tildar Resultados: Marcar como enviado para los seleccionados'
+                }
+              >
+                {selectionEmailStats.allResSent ? <XCircle size={13} /> : <Award size={13} />}
+                <span>{selectionEmailStats.allResSent ? 'Destildar Resultados' : 'Tildar Resultados'}</span>
               </button>
 
               {/* Botón Activar */}
@@ -1869,12 +2132,12 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-x-auto relative w-full border border-white/10 rounded-2xl shadow-inner scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+            <table className="w-full text-left border-collapse min-w-[1380px]">
               <thead>
-                <tr className="bg-slate-900/80 border-b border-white/15 text-[11px] font-black uppercase tracking-wider text-slate-300">
-                  {/* Checkbox de Selección Masiva */}
-                  <th className="py-3.5 px-3 w-10 text-center">
+                <tr className="bg-slate-900 border-b border-white/15 text-[11px] font-black uppercase tracking-wider text-slate-300">
+                  {/* Checkbox de Selección Masiva (Fijo a Izquierda) */}
+                  <th className="sticky left-0 z-30 bg-slate-900 border-r border-white/10 py-3.5 px-3 w-12 min-w-[48px] max-w-[48px] text-center shadow-[2px_0_6px_rgba(0,0,0,0.5)]">
                     <input
                       type="checkbox"
                       checked={sortedParticipants.length > 0 && selectedLegajos.size === sortedParticipants.length}
@@ -1888,10 +2151,10 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                     />
                   </th>
 
-                  {/* Participante */}
+                  {/* Participante (Fijo a Izquierda) */}
                   <th
                     onClick={() => handleSort('participante')}
-                    className="py-3.5 px-4 cursor-pointer select-none hover:text-white transition-colors group"
+                    className="sticky left-[48px] z-30 bg-slate-900 border-r border-white/10 py-3.5 px-4 min-w-[240px] max-w-[280px] cursor-pointer select-none hover:text-white transition-colors group shadow-[4px_0_12px_rgba(0,0,0,0.5)]"
                     title="Clic para ordenar por Nombre / Apellido"
                   >
                     <div className="flex items-center gap-1.5">
@@ -1903,7 +2166,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                   {/* Sector */}
                   <th
                     onClick={() => handleSort('sector')}
-                    className="py-3.5 px-4 cursor-pointer select-none hover:text-white transition-colors group"
+                    className="py-3.5 px-4 min-w-[130px] cursor-pointer select-none hover:text-white transition-colors group"
                     title="Clic para ordenar por Sector"
                   >
                     <div className="flex items-center gap-1.5">
@@ -1915,7 +2178,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                   {/* Columna Grupo */}
                   <th
                     onClick={() => handleSort('grupo')}
-                    className="py-3.5 px-3 text-center cursor-pointer select-none hover:text-white transition-colors group"
+                    className="py-3.5 px-3 min-w-[130px] text-center cursor-pointer select-none hover:text-white transition-colors group"
                     title="Clic para ordenar por Grupo"
                   >
                     <div className="flex items-center justify-center gap-1.5">
@@ -1927,7 +2190,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                   {/* Estado (Activo / Inactivo) */}
                   <th
                     onClick={() => handleSort('activo')}
-                    className="py-3.5 px-3 text-center cursor-pointer select-none hover:text-white transition-colors group"
+                    className="py-3.5 px-3 min-w-[105px] text-center cursor-pointer select-none hover:text-white transition-colors group"
                     title="Clic para ordenar por Estado Activo/Inactivo"
                   >
                     <div className="flex items-center justify-center gap-1.5">
@@ -1936,34 +2199,65 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                     </div>
                   </th>
 
-                  {/* Puntaje */}
-                  <th
-                    onClick={() => handleSort('puntaje')}
-                    className="py-3.5 px-3 text-center cursor-pointer select-none hover:text-white transition-colors group"
-                    title="Clic para ordenar por Puntaje"
-                  >
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span>Puntaje</span>
-                      {renderSortIcon('puntaje')}
-                    </div>
-                  </th>
+                  {/* Columnas dinámicas por Fase (Puntaje, Clasificación, Tiempo, Trivia) */}
+                  {activeColumnsPhases.map((ph) => (
+                    <React.Fragment key={`th_phase_${ph}`}>
+                      {/* Puntaje Fase */}
+                      <th
+                        onClick={() => handleSort(`fase_${ph}_puntaje`)}
+                        className="py-3.5 px-3 min-w-[115px] text-center cursor-pointer select-none hover:text-white transition-colors group bg-indigo-950/20"
+                        title={`Clic para ordenar por Puntaje de Fase ${ph}`}
+                      >
+                        <div className="flex items-center justify-center gap-1 text-yellow-300">
+                          <Award size={12} className="text-yellow-400" />
+                          <span>F{ph} Puntos</span>
+                          {renderSortIcon(`fase_${ph}_puntaje`)}
+                        </div>
+                      </th>
 
-                  {/* Clasificación */}
-                  <th
-                    onClick={() => handleSort('clasificado')}
-                    className="py-3.5 px-3 text-center cursor-pointer select-none hover:text-white transition-colors group"
-                    title="Clic para ordenar por Clasificación"
-                  >
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span>Clasificación</span>
-                      {renderSortIcon('clasificado')}
-                    </div>
-                  </th>
+                      {/* Clasificación Fase */}
+                      <th
+                        onClick={() => handleSort(`fase_${ph}_puesto`)}
+                        className="py-3.5 px-3 min-w-[125px] text-center cursor-pointer select-none hover:text-white transition-colors group bg-indigo-950/20"
+                        title={`Clic para ordenar por Clasificación de Fase ${ph}`}
+                      >
+                        <div className="flex items-center justify-center gap-1 text-amber-200">
+                          <span>F{ph} Posición</span>
+                          {renderSortIcon(`fase_${ph}_puesto`)}
+                        </div>
+                      </th>
+
+                      {/* Tiempo Fase */}
+                      <th
+                        onClick={() => handleSort(`fase_${ph}_tiempo`)}
+                        className="py-3.5 px-3 min-w-[105px] text-center cursor-pointer select-none hover:text-white transition-colors group bg-indigo-950/20"
+                        title={`Clic para ordenar por Tiempo de Fase ${ph}`}
+                      >
+                        <div className="flex items-center justify-center gap-1 text-cyan-300">
+                          <Clock size={12} className="text-cyan-400" />
+                          <span>F{ph} Tiempo</span>
+                          {renderSortIcon(`fase_${ph}_tiempo`)}
+                        </div>
+                      </th>
+
+                      {/* Estado Trivia Fase */}
+                      <th
+                        onClick={() => handleSort(`fase_${ph}_trivia`)}
+                        className="py-3.5 px-3 min-w-[135px] text-center cursor-pointer select-none hover:text-white transition-colors group bg-indigo-950/20"
+                        title={`Clic para ordenar por Estado de Trivia en Fase ${ph}`}
+                      >
+                        <div className="flex items-center justify-center gap-1 text-emerald-300">
+                          <span>F{ph} Trivia</span>
+                          {renderSortIcon(`fase_${ph}_trivia`)}
+                        </div>
+                      </th>
+                    </React.Fragment>
+                  ))}
 
                   {/* Link de Acceso / Hash */}
                   <th
                     onClick={() => handleSort('hash')}
-                    className="py-3.5 px-4 text-center cursor-pointer select-none hover:text-white transition-colors group"
+                    className="py-3.5 px-4 min-w-[145px] text-center cursor-pointer select-none hover:text-white transition-colors group"
                     title="Clic para ordenar por Link / Hash"
                   >
                     <div className="flex items-center justify-center gap-1.5">
@@ -1975,7 +2269,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                   {/* Emails Despachados */}
                   <th
                     onClick={() => handleSort('invitacion')}
-                    className="py-3.5 px-4 text-center cursor-pointer select-none hover:text-white transition-colors group"
+                    className="py-3.5 px-4 min-w-[110px] text-center cursor-pointer select-none hover:text-white transition-colors group"
                     title="Clic para ordenar por estado de envío de Invitación"
                   >
                     <div className="flex items-center justify-center gap-1.5">
@@ -1984,20 +2278,10 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                     </div>
                   </th>
 
-                  {/* Estado Trivia */}
-                  <th
-                    onClick={() => handleSort('trivia')}
-                    className="py-3.5 px-4 text-center cursor-pointer select-none hover:text-white transition-colors group"
-                    title="Clic para ordenar por Estado de la Trivia"
-                  >
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span>Trivia</span>
-                      {renderSortIcon('trivia')}
-                    </div>
+                  {/* Acciones (Fija a Derecha) */}
+                  <th className="sticky right-0 z-30 bg-slate-900 border-l border-white/10 py-3.5 px-4 text-right min-w-[250px] shadow-[-4px_0_12px_rgba(0,0,0,0.5)]">
+                    Acciones
                   </th>
-
-                  {/* Acciones */}
-                  <th className="py-3.5 px-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-xs">
@@ -2007,18 +2291,17 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                   const isRowLoading = actionLoadingLegajo === p.legajo;
                   const isSelected = selectedLegajos.has(String(p.legajo));
                   const participationUrl = hasHash ? buildParticipationUrl(p.token_hash) : '';
-                  const triviaStatus = getParticipantTriviaStatus(p);
                   const isActive = p.activo !== false;
 
                   return (
                     <tr
                       key={p.legajo}
-                      className={`hover:bg-white/5 transition-colors group ${
-                        isSelected ? 'bg-red-950/20' : ''
-                      } ${!isActive ? 'opacity-70 bg-black/20' : ''}`}
+                      className={`hover:bg-slate-800/60 transition-colors group ${
+                        isSelected ? 'bg-red-950/30' : 'bg-slate-900/60'
+                      } ${!isActive ? 'opacity-70 bg-black/30' : ''}`}
                     >
-                      {/* Checkbox de fila */}
-                      <td className="py-3.5 px-3 text-center">
+                      {/* Checkbox de fila (Fijo a Izquierda) */}
+                      <td className="sticky left-0 z-20 py-3.5 px-3 text-center border-r border-white/5 bg-slate-900 group-hover:bg-slate-800 transition-colors">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -2027,8 +2310,8 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                         />
                       </td>
 
-                      {/* Participante (con email integrado abajo del nombre) */}
-                      <td className="py-3.5 px-4">
+                      {/* Participante (Fijo a Izquierda con Sombra) */}
+                      <td className="sticky left-[48px] z-20 py-3.5 px-4 border-r border-white/10 shadow-[4px_0_12px_rgba(0,0,0,0.5)] bg-slate-900 group-hover:bg-slate-800 transition-colors min-w-[240px] max-w-[280px]">
                         <div className="flex items-center gap-3">
                           <div
                             className={`w-9 h-9 rounded-xl font-black text-xs flex items-center justify-center shrink-0 shadow ${
@@ -2056,7 +2339,7 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                               </span>
                               {p.email ? (
                                 <span
-                                  className="text-[11px] text-slate-400 font-medium truncate max-w-[200px]"
+                                  className="text-[11px] text-slate-400 font-medium truncate max-w-[190px]"
                                   title={p.email}
                                 >
                                   {p.email}
@@ -2131,35 +2414,86 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                         </button>
                       </td>
 
-                      {/* Puntaje */}
-                      <td className="py-3.5 px-3 text-center">
-                        {p.hasPlayed ? (
-                          <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-yellow-500/15 text-yellow-300 font-mono font-bold text-xs border border-yellow-500/30">
-                            <Award size={12} className="text-yellow-400" />
-                            <span>{(p.score || 0).toLocaleString()} pts</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 font-mono text-xs">—</span>
-                        )}
-                      </td>
+                      {/* Columnas dinámicas de Fases (Puntaje, Clasificación, Tiempo, Trivia) */}
+                      {activeColumnsPhases.map((ph) => {
+                        const phData = p.phasesData?.[ph];
+                        const hasPlayedPh = phData ? phData.hasPlayed : false;
+                        const scorePh = phData ? phData.score : 0;
+                        const rankPh = phData ? phData.rank : null;
+                        const isQualPh = phData ? phData.isQualified : false;
+                        const timePh = phData ? phData.totalTime : 0;
+                        const triviaSt = phData ? phData.triviaStatus : null;
 
-                      {/* Clasificación */}
-                      <td className="py-3.5 px-3 text-center">
-                        {p.hasPlayed ? (
-                          p.isQualified ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-yellow-300 border border-yellow-500/40 text-[11px] font-black shadow-sm">
-                              <span>🏆 Clasificado</span>
-                              {p.rank && <span className="text-[10px] opacity-80">#{p.rank}</span>}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-400 border border-white/10 text-[10px] font-semibold">
-                              No clasificado
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-[10px] text-slate-500 italic">Sin jugar</span>
-                        )}
-                      </td>
+                        return (
+                          <React.Fragment key={`td_phase_${ph}_${p.legajo}`}>
+                            {/* Puntaje Fase */}
+                            <td className="py-3.5 px-3 text-center bg-indigo-950/5">
+                              {hasPlayedPh ? (
+                                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-yellow-500/15 text-yellow-300 font-mono font-bold text-xs border border-yellow-500/30 shadow-sm">
+                                  <Award size={12} className="text-yellow-400" />
+                                  <span>{scorePh.toLocaleString()} pts</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-600 font-mono text-xs">—</span>
+                              )}
+                            </td>
+
+                            {/* Clasificación Fase */}
+                            <td className="py-3.5 px-3 text-center bg-indigo-950/5">
+                              {hasPlayedPh ? (
+                                isQualPh ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-yellow-300 border border-yellow-500/40 text-[11px] font-black shadow-sm">
+                                    <span>🏆 Top</span>
+                                    {rankPh && <span className="opacity-90">#{rankPh}</span>}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-400 border border-white/10 text-[10px] font-semibold">
+                                    {rankPh ? `Puesto #${rankPh}` : 'No clasificado'}
+                                  </span>
+                                )
+                              ) : (
+                                <span className="text-[10px] text-slate-600 italic">Sin jugar</span>
+                              )}
+                            </td>
+
+                            {/* Tiempo Fase */}
+                            <td className="py-3.5 px-3 text-center font-mono text-xs text-slate-300 bg-indigo-950/5">
+                              {hasPlayedPh ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/60 border border-white/5">
+                                  <Clock size={11} className="text-slate-400" />
+                                  {formatTime(timePh)}
+                                </span>
+                              ) : (
+                                <span className="text-slate-600 font-mono text-xs">—</span>
+                              )}
+                            </td>
+
+                            {/* Estado Trivia Fase */}
+                            <td className="py-3.5 px-3 text-center bg-indigo-950/5">
+                              {(() => {
+                                const totalQ = phData?.totalQuestions || triviaSt?.total || (ph === 2 ? 10 : 15);
+                                if (!triviaSt || triviaSt.code === 'NOT_PLAYED') {
+                                  return <span className="text-[10px] text-slate-600 italic">Sin jugar (0/{totalQ})</span>;
+                                }
+                                if (triviaSt.code === 'COMPLETED') {
+                                  return (
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold text-[10px]">
+                                      <CheckCircle2 size={11} className="text-emerald-400" />
+                                      <span>Completado ({triviaSt.count || totalQ}/{totalQ})</span>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[10px]">
+                                    <Zap size={11} className="text-amber-400" />
+                                    <span>Parcial ({triviaSt.count || 0}/{totalQ})</span>
+                                  </div>
+                                );
+                              })()}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
 
                       {/* Link de Acceso / Hash */}
                       <td className="py-3.5 px-4 text-center">
@@ -2279,32 +2613,19 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                         </div>
                       </td>
 
-                      {/* Estado Trivia */}
-                      <td className="py-3.5 px-4 text-center">
-                        {triviaStatus.code === 'COMPLETED' ? (
-                          <div
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold text-[11px]"
-                            title="Completó las 15 preguntas de la trivia"
-                          >
-                            <CheckCircle2 size={13} className="text-emerald-400" />
-                            <span>Completado ({triviaStatus.count}/15)</span>
-                          </div>
-                        ) : triviaStatus.code === 'PARTIAL' ? (
-                          <div
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[11px]"
-                            title={`En curso: respondió ${triviaStatus.count} de 15 preguntas`}
-                          >
-                            <Zap size={13} className="text-amber-400" />
-                            <span>Parcial ({triviaStatus.count}/15)</span>
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-slate-500 italic">Sin jugar (0/15)</span>
-                        )}
-                      </td>
-
-                      {/* Acciones */}
-                      <td className="py-3.5 px-4 text-right">
+                      {/* Acciones (Fijo a Derecha con Sombra) */}
+                      <td className="sticky right-0 z-20 py-3.5 px-4 text-right border-l border-white/10 shadow-[-4px_0_12px_rgba(0,0,0,0.5)] bg-slate-900 group-hover:bg-slate-800 transition-colors min-w-[250px]">
                         <div className="inline-flex items-center gap-1">
+                          {/* Descargar Respuestas en Excel (.xlsx) */}
+                          <button
+                            onClick={() => handleDownloadResponses(p)}
+                            disabled={isRowLoading || downloadModalData.isDownloading}
+                            className="p-2 rounded-lg text-emerald-400 hover:text-white hover:bg-emerald-500/20 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors cursor-pointer"
+                            title="Descargar respuestas de la trivia en Excel (.xlsx) por fase"
+                          >
+                            <FileSpreadsheet size={15} />
+                          </button>
+
                           {/* Reenviar Correo de Invitación */}
                           <button
                             onClick={() => handleSendSingleEmail(p, 'INVITACION')}
@@ -3208,6 +3529,176 @@ export default function AdminParticipantsView({ activePhase = 1, onOpenImportCsv
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 6. Modal Descargar Respuestas de Trivia en Excel por Fase */}
+      {downloadModalData.isOpen && downloadModalData.participant && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg rounded-2xl bg-slate-950 border border-emerald-500/50 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Header del Modal */}
+            <div className="p-4 sm:p-5 border-b border-white/10 bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-950 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shadow">
+                  <FileSpreadsheet size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Auditoría de Respuestas</h3>
+                  <p className="text-xs text-emerald-400/90 font-medium">
+                    Descargar detalle de respuestas en Excel (.xlsx) por fase
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDownloadModalData({ isOpen: false, participant: null, isDownloading: false, downloadingPhase: null })}
+                disabled={downloadModalData.isDownloading}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Cuerpo del Modal */}
+            <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Tarjeta del participante */}
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-white/10 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow">
+                  {downloadModalData.participant.nombre ? downloadModalData.participant.nombre[0].toUpperCase() : 'U'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-white text-sm truncate">
+                    {downloadModalData.participant.apellido}, {downloadModalData.participant.nombre}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 flex-wrap">
+                    <span className="text-yellow-300 font-mono font-bold">Leg. {downloadModalData.participant.legajo}</span>
+                    <span>•</span>
+                    <span>{downloadModalData.participant.sector || 'Planta'}</span>
+                    {downloadModalData.participant.grupo && (
+                      <>
+                        <span>•</span>
+                        <span className="text-indigo-300 font-bold">🏷️ {downloadModalData.participant.grupo}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-300">
+                Selecciona la fase de la que deseas generar y descargar la planilla Excel con el desglose de cada consigna (correctas, incorrectas, opciones elegidas y fundamento pedagógico):
+              </p>
+
+              {/* Lista de Fases */}
+              <div className="space-y-2.5">
+                {availablePhases.map((ph) => {
+                  const phData = downloadModalData.participant.phasesData?.[ph];
+                  const hasPlayed = phData ? phData.hasPlayed : false;
+                  const score = phData ? phData.score : 0;
+                  const correctCount = phData ? phData.correctCount : 0;
+                  const answersCount = phData ? phData.answersCount : 0;
+                  const isCurrentPhaseDownloading = downloadModalData.isDownloading && downloadModalData.downloadingPhase === ph;
+
+                  return (
+                    <div
+                      key={`phase_opt_${ph}`}
+                      className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                        hasPlayed
+                          ? 'bg-slate-900/70 border-emerald-500/30 hover:border-emerald-500/60'
+                          : 'bg-slate-900/30 border-white/5 opacity-70'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-white text-sm">Fase {ph}</span>
+                          {hasPlayed ? (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                              {answersCount >= (phData?.totalQuestions || (ph === 2 ? 10 : 15)) ? 'Completada' : 'Parcial'} ({answersCount}/{phData?.totalQuestions || (ph === 2 ? 10 : 15)})
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-white/5 text-[10px] italic">
+                              Sin respuestas
+                            </span>
+                          )}
+                        </div>
+                        {hasPlayed ? (
+                          <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-400">
+                            <span className="text-yellow-300 font-mono font-bold">{score.toLocaleString()} pts</span>
+                            <span>•</span>
+                            <span className="text-emerald-400 font-semibold">{correctCount} aciertos</span>
+                            <span>•</span>
+                            <span>{formatTime(phData.totalTime)}</span>
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-500 mt-1 italic">
+                            No se registran respuestas en la base de datos
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadResponses(downloadModalData.participant, ph)}
+                        disabled={downloadModalData.isDownloading}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition-all shadow flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                          hasPlayed
+                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
+                            : 'bg-white/10 hover:bg-white/20 text-slate-300'
+                        }`}
+                        title={`Descargar respuestas de Fase ${ph}`}
+                      >
+                        {isCurrentPhaseDownloading ? (
+                          <>
+                            <RefreshCw size={13} className="animate-spin" />
+                            <span>Descargando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download size={13} />
+                            <span>Descargar F{ph}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 sm:p-5 border-t border-white/10 bg-slate-950/90 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={async () => {
+                  // Descargar todas las fases que el participante jugó
+                  const played = availablePhases.filter(
+                    (ph) => downloadModalData.participant.phasesData?.[ph]?.hasPlayed
+                  );
+                  if (played.length === 0) {
+                    alert('El participante no tiene fases jugadas para exportar.');
+                    return;
+                  }
+                  for (const ph of played) {
+                    await handleDownloadResponses(downloadModalData.participant, ph);
+                  }
+                }}
+                disabled={downloadModalData.isDownloading}
+                className="px-3 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-400/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Layers size={13} />
+                <span>Descargar Todas las Jugadas</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDownloadModalData({ isOpen: false, participant: null, isDownloading: false, downloadingPhase: null })}
+                disabled={downloadModalData.isDownloading}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>,
         document.body

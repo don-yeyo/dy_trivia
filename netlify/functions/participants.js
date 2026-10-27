@@ -33,10 +33,29 @@ export async function handler(event, context) {
   }
 
   // --------------------------------------------------------------------------
-  // GET: Obtener nómina completa de participantes con estadísticas
+  // GET: Obtener nómina completa de participantes o detalle de respuestas
   // --------------------------------------------------------------------------
   if (event.httpMethod === 'GET') {
     try {
+      const action = event.queryStringParameters?.action;
+      if (action === 'RESPONSES_DETAIL') {
+        const legajo = event.queryStringParameters.legajo;
+        const phase = parseInt(event.queryStringParameters.phase || '1', 10);
+        if (!legajo) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ success: false, error: 'Legajo requerido' })
+          };
+        }
+        const result = await db.getParticipantResponsesDetail(legajo, phase);
+        return {
+          statusCode: result.success ? 200 : 400,
+          headers,
+          body: JSON.stringify(result)
+        };
+      }
+
       const targetPhase = event.queryStringParameters?.phase ? parseInt(event.queryStringParameters.phase, 10) : null;
       const [participants, groups] = await Promise.all([
         db.getParticipantsAdmin(targetPhase),

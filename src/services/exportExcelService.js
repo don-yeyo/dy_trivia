@@ -256,10 +256,12 @@ export function exportSelectedParticipantsToExcel({
       clasificadoText = p.isQualified ? 'SÍ (CLASIFICADO)' : 'NO CLASIFICADO';
     }
 
-    let triviaText = 'Sin jugar';
+    const targetPhase = p.fase || activePhase || 1;
+    const totalQ = p.phasesData?.[targetPhase]?.totalQuestions || p.totalQuestions || (targetPhase === 2 ? 10 : 15);
     const count = Number(p.answersCount ?? 0);
-    if (count >= 15) triviaText = 'Completado (15/15)';
-    else if (count > 0) triviaText = `Parcial (${count}/15)`;
+    let triviaText = `Sin jugar (0/${totalQ})`;
+    if (count >= totalQ) triviaText = `Completado (${totalQ}/${totalQ})`;
+    else if (count > 0) triviaText = `Parcial (${count}/${totalQ})`;
 
     const participationUrl = p.token_hash
       ? `${origin}/?token=${encodeURIComponent(p.token_hash)}`
@@ -321,3 +323,145 @@ export function exportSelectedParticipantsToExcel({
   XLSX.writeFile(wb, fileName);
   return { success: true, fileName, count: participants.length };
 }
+
+/**
+ * Exporta el detalle completo de respuestas de un participante para una fase dada a un archivo Excel (.xlsx)
+ * Don Yeyo S.A. | Trivia Inocuidad 2026
+ */
+export function exportParticipantPhaseResponsesToExcel({
+  participant = {},
+  phase = 1,
+  questions = [],
+  summary = {}
+}) {
+  if (!participant || !participant.legajo) {
+    throw new Error('Datos del participante incompletos para exportar.');
+  }
+
+  const safeLegajo = participant.legajo;
+  const fullName = `${participant.apellido || ''} ${participant.nombre || ''}`.trim() || `Legajo ${safeLegajo}`;
+  const sector = participant.sector || 'Planta';
+  const grupo = participant.grupo || '-';
+  const fechaDescarga = new Date().toLocaleString('es-AR');
+  const safeDate = new Date().toISOString().slice(0, 10);
+
+  const totalQ = summary.totalQuestions || questions.length || 0;
+  const correctCount = summary.correctCount || 0;
+  const incorrectCount = summary.incorrectCount || 0;
+  const unansweredCount = summary.unansweredCount || (totalQ - correctCount - incorrectCount);
+  const totalScore = summary.score !== undefined ? summary.score : 0;
+  const totalTimeSec = summary.totalTime || 0;
+
+  const rows = [
+    ['DON YEYO S.A. - TRIVIA INOCUIDAD ALIMENTARIA 2026'],
+    [`AUDITORÍA DE RESPUESTAS INDIVIDUAL - FASE ${phase}`],
+    [],
+    ['DATOS DEL PARTICIPANTE', '', 'MÉTRICAS DE RENDIMIENTO (FASE ' + phase + ')'],
+    [`Legajo:`, safeLegajo, `Puntaje Total:`, totalScore],
+    [`Nombre y Apellido:`, fullName, `Aciertos:`, `${correctCount} de ${totalQ} (${totalQ > 0 ? Math.round((correctCount / totalQ) * 100) : 0}%)`],
+    [`Sector / Área:`, sector, `Respuestas Incorrectas:`, incorrectCount],
+    [`Grupo:`, grupo, `Sin Responder:`, unansweredCount],
+    [`Email:`, participant.email || '-', `Tiempo Total Empleado:`, `${formatTime(totalTimeSec)} (${totalTimeSec} seg)`],
+    [`Fecha de Auditoría:`, fechaDescarga, `Estado Evaluación:`, summary.answeredCount >= totalQ ? 'TRIVIA COMPLETA' : (summary.answeredCount > 0 ? 'TRIVIA PARCIAL' : 'SIN RESPUESTAS REGISTRADAS')],
+    [],
+    [
+      'N° Consigna',
+      'Categoría',
+      'Pregunta / Consigna Pedagógica',
+      'Evaluación',
+      'Opción Elegida',
+      'Respuesta del Participante',
+      'Opción Correcta',
+      'Respuesta Correcta',
+      'Puntos Obtenidos',
+      'Puntos Máximos',
+      'Tiempo Tardado (Seg)',
+      'Fundamento Técnico de Inocuidad / Explicación'
+    ]
+  ];
+
+  const extractCleanText = (val, defaultVal = '') => {
+    if (val === null || val === undefined) return defaultVal;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      return trimmed === '[object Object]' ? defaultVal : (trimmed || defaultVal);
+    }
+    if (typeof val === 'object') {
+      const extracted = val.texto || val.text || val.opcion || val.label || val.descripcion || val.title || '';
+      if (typeof extracted === 'string' && extracted.trim()) {
+        return extracted.trim();
+      }
+      return defaultVal;
+    }
+    return String(val);
+  };
+
+  const extractCleanLetter = (letraVal, optObj, fallback = '-') => {
+    if (letraVal && typeof letraVal === 'string' && letraVal.trim() && letraVal !== '[object Object]') {
+      return letraVal.trim();
+    }
+    if (optObj && typeof optObj === 'object' && optObj.letra && typeof optObj.letra === 'string') {
+      return optObj.letra.trim();
+    }
+    return fallback;
+  };
+
+  questions.forEach(q => {
+    let evalText = 'SIN RESPONDER';
+    if (q.estado === 'CORRECTA' || q.esCorrecta) evalText = 'CORRECTA (ACIERTO)';
+    else if (q.estado === 'INCORRECTA') evalText = 'INCORRECTA (ERROR)';
+
+    const respPartLetra = extractCleanLetter(q.opcionRespondidaLetra, q.respuestaSeleccionada, '-');
+    const respPartTexto = extractCleanText(
+      q.opcionRespondidaTexto ?? q.respuestaSeleccionada?.texto ?? q.respuestaSeleccionada,
+      '(Sin responder)'
+    );
+
+    const respCorrLetra = extractCleanLetter(q.opcionCorrectaLetra, q.respuestaCorrecta, '-');
+    const respCorrTexto = extractCleanText(
+      q.opcionCorrectaTexto ?? q.respuestaCorrecta?.texto ?? q.respuestaCorrecta,
+      ''
+    );
+
+    rows.push([
+      q.numero || q.numeroPregunta || q.id || '-',
+      q.categoria || 'Inocuidad',
+      q.pregunta || q.consigna || '',
+      evalText,
+      respPartLetra,
+      respPartTexto,
+      respCorrLetra,
+      respCorrTexto,
+      q.puntosObtenidos !== undefined ? q.puntosObtenidos : 0,
+      q.puntosMaximos || 10,
+      q.tiempoTardado !== undefined ? q.tiempoTardado : (q.tiempoSegundos || 0),
+      q.explicacion || ''
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  ws['!cols'] = [
+    { wch: 12 }, // N° Consigna
+    { wch: 20 }, // Categoría
+    { wch: 55 }, // Pregunta
+    { wch: 22 }, // Evaluación
+    { wch: 15 }, // Opción Elegida (Letra)
+    { wch: 45 }, // Respuesta del Participante
+    { wch: 15 }, // Opción Correcta (Letra)
+    { wch: 45 }, // Respuesta Correcta
+    { wch: 16 }, // Puntos Obtenidos
+    { wch: 16 }, // Puntos Máximos
+    { wch: 20 }, // Tiempo Tardado
+    { wch: 65 }  // Explicación
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, `Respuestas_F${phase}`);
+
+  const fileName = `DonYeyo_Respuestas_Legajo_${safeLegajo}_Fase${phase}_${safeDate}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+
+  return { success: true, fileName, legajo: safeLegajo, phase };
+}
+

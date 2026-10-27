@@ -287,6 +287,17 @@ export class DatabaseAdapter {
   }
 
   /**
+   * Obtiene el detalle completo de respuestas de un participante para una fase específica,
+   * cruzando las preguntas con las respuestas seleccionadas y su estado.
+   * @param {string} legajo
+   * @param {number} phase
+   * @returns {Promise<{success: boolean, participant?: Object, phase: number, questions: Array<Object>, error?: string}>}
+   */
+  async getParticipantResponsesDetail(legajo, phase) {
+    throw new Error(`${this.name}.getParticipantResponsesDetail() no implementado`);
+  }
+
+  /**
    * Obtiene la lista de grupos creados y la cantidad de miembros asignados.
    * @returns {Promise<Array<{nombre: string, descripcion?: string, color?: string, count: number}>>}
    */

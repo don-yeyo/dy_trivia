@@ -674,12 +674,29 @@ export class SupabaseAdapter extends DatabaseAdapter {
       rFrom += PAGE_SIZE;
     }
 
+    // 3b. Conteo dinámico de preguntas registradas por fase
+    const phaseQuestionsCount = new Map();
+    try {
+      const { data: qRows = [] } = await supabase
+        .from('questions')
+        .select('fase');
+      (qRows || []).forEach(q => {
+        const f = parseInt(q.fase, 10) || 1;
+        phaseQuestionsCount.set(f, (phaseQuestionsCount.get(f) || 0) + 1);
+      });
+    } catch (e) {
+      console.warn('[SupabaseAdapter] Error contando preguntas por fase:', e.message);
+    }
+
     const statsByLegajo = new Map();
     const statsPhaseByLegajo = new Map();
+    const statsByPhaseAndLegajo = new Map(); // key: `${fase}_${legajo}`
+    const detectedPhasesSet = new Set([1, 2, 3, activePhase]); // Garantizar al menos Fases 1, 2 y 3
 
     responses.forEach(r => {
       const leg = String(r.legajo || '').trim();
       const rFase = parseInt(r.fase, 10) || 1;
+      detectedPhasesSet.add(rFase);
 
       // Stats globales
       if (!statsByLegajo.has(leg)) {
@@ -697,6 +714,27 @@ export class SupabaseAdapter extends DatabaseAdapter {
       st.rawPoints += (parseInt(r.puntos_obtenidos, 10) || 0);
       st.totalTime += (parseInt(r.tiempo_tardado, 10) || 0);
       if (r.fase) st.phasesPlayed.add(rFase);
+
+      // Stats por cada fase individual
+      const phaseLegKey = `${rFase}_${leg}`;
+      if (!statsByPhaseAndLegajo.has(phaseLegKey)) {
+        statsByPhaseAndLegajo.set(phaseLegKey, {
+          fase: rFase,
+          answersCount: 0,
+          correctCount: 0,
+          rawPoints: 0,
+          totalTime: 0,
+          fechaHora: ''
+        });
+      }
+      const stPh = statsByPhaseAndLegajo.get(phaseLegKey);
+      stPh.answersCount++;
+      if (r.es_correcta) stPh.correctCount++;
+      stPh.rawPoints += (parseInt(r.puntos_obtenidos, 10) || 0);
+      stPh.totalTime += (parseInt(r.tiempo_tardado, 10) || 0);
+      if (r.fecha_hora_respuesta && (!stPh.fechaHora || r.fecha_hora_respuesta > stPh.fechaHora)) {
+        stPh.fechaHora = r.fecha_hora_respuesta;
+      }
 
       // Stats específicas de la fase evaluada para ranking y puntaje
       if (rFase === activePhase) {
@@ -720,40 +758,41 @@ export class SupabaseAdapter extends DatabaseAdapter {
       }
     });
 
-    // 4. Calcular ranking gamer de la fase activa para clasificados
-    const playedRanking = [];
-    participants.forEach(p => {
-      const leg = String(p.legajo || '').trim();
-      const stP = statsPhaseByLegajo.get(leg);
-      if (stP && stP.answersCount > 0) {
-        const finalScore = calculateScore(stP.rawPoints || 0, stP.totalTime || 0);
-        playedRanking.push({
-          legajo: leg,
-          score: finalScore,
-          totalTime: stP.totalTime || 0,
-          correctCount: stP.correctCount || 0,
-          fechaHora: stP.fechaHora || '',
-          apellido: p.apellido || '',
-          nombre: p.nombre || ''
+    const detectedPhases = Array.from(detectedPhasesSet).sort((a, b) => a - b);
+
+    // 4. Calcular ranking gamer para cada fase detectada
+    const phaseRanksMap = new Map(); // key: `${fase}_${legajo}` -> { rank, isQualified, score }
+    detectedPhases.forEach((f) => {
+      const phaseRanking = [];
+      participants.forEach((p) => {
+        const leg = String(p.legajo || '').trim();
+        const stF = statsByPhaseAndLegajo.get(`${f}_${leg}`);
+        if (stF && stF.answersCount > 0) {
+          const finalScore = calculateScore(stF.rawPoints || 0, stF.totalTime || 0);
+          phaseRanking.push({
+            legajo: leg,
+            score: finalScore,
+            totalTime: stF.totalTime || 0,
+            correctCount: stF.correctCount || 0,
+            fechaHora: stF.fechaHora || ''
+          });
+        }
+      });
+
+      phaseRanking.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (a.totalTime !== b.totalTime) return a.totalTime - b.totalTime;
+        if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
+        return String(a.fechaHora).localeCompare(String(b.fechaHora));
+      });
+
+      phaseRanking.forEach((item, index) => {
+        const rank = index + 1;
+        phaseRanksMap.set(`${f}_${item.legajo}`, {
+          rank,
+          isQualified: rank <= topCount,
+          score: item.score
         });
-      }
-    });
-
-    // Ordenamiento gamer: Puntaje DESC, Tiempo ASC, Aciertos DESC, Fecha ASC
-    playedRanking.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (a.totalTime !== b.totalTime) return a.totalTime - b.totalTime;
-      if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
-      return String(a.fechaHora).localeCompare(String(b.fechaHora));
-    });
-
-    const rankMap = new Map();
-    playedRanking.forEach((item, index) => {
-      const rank = index + 1;
-      rankMap.set(item.legajo, {
-        rank,
-        isQualified: rank <= topCount,
-        score: item.score
       });
     });
 
@@ -762,7 +801,7 @@ export class SupabaseAdapter extends DatabaseAdapter {
       const leg = String(p.legajo || '').trim();
       const st = statsByLegajo.get(leg);
       const stP = statsPhaseByLegajo.get(leg);
-      const rankInfo = rankMap.get(leg);
+      const activeRankInfo = phaseRanksMap.get(`${activePhase}_${leg}`);
 
       const isEmailSent = p.email_enviado !== undefined && p.email_enviado !== null
         ? Boolean(p.email_enviado)
@@ -776,10 +815,44 @@ export class SupabaseAdapter extends DatabaseAdapter {
       const isInactive = Boolean(inactivosMap[leg]) || p.activo === false;
       const isActivo = !isInactive;
 
-      // Puntaje calculado
-      const score = rankInfo
-        ? rankInfo.score
+      // Puntaje calculado para la fase activa
+      const score = activeRankInfo
+        ? activeRankInfo.score
         : (stP ? calculateScore(stP.rawPoints || 0, stP.totalTime || 0) : (st ? calculateScore(st.rawPoints || 0, st.totalTime || 0) : 0));
+
+      // Métricas individuales por cada fase
+      const phasesData = {};
+      detectedPhases.forEach((f) => {
+        const stF = statsByPhaseAndLegajo.get(`${f}_${leg}`);
+        const rInfo = phaseRanksMap.get(`${f}_${leg}`);
+        const hasPlayedFase = stF ? stF.answersCount > 0 : false;
+        const count = stF ? stF.answersCount : 0;
+        const totalQ = phaseQuestionsCount.get(f) || (f === 2 ? 10 : 15);
+        let statusCode = 'NOT_PLAYED';
+        let statusLabel = 'Sin jugar';
+        if (count >= totalQ) {
+          statusCode = 'COMPLETED';
+          statusLabel = 'Completado';
+        } else if (count > 0) {
+          statusCode = 'PARTIAL';
+          statusLabel = 'Parcial';
+        }
+
+        phasesData[f] = {
+          fase: f,
+          hasPlayed: hasPlayedFase,
+          answersCount: count,
+          totalQuestions: totalQ,
+          correctCount: stF ? stF.correctCount : 0,
+          totalTime: stF ? stF.totalTime : 0,
+          score: rInfo ? rInfo.score : (stF ? calculateScore(stF.rawPoints || 0, stF.totalTime || 0) : 0),
+          rank: rInfo ? rInfo.rank : null,
+          isQualified: rInfo ? rInfo.isQualified : false,
+          triviaStatus: { code: statusCode, label: statusLabel, count, total: totalQ }
+        };
+      });
+
+      const activeTotalQ = phaseQuestionsCount.get(activePhase) || (activePhase === 2 ? 10 : 15);
 
       return {
         id: p.id,
@@ -798,12 +871,15 @@ export class SupabaseAdapter extends DatabaseAdapter {
         hasPlayed: st ? st.answersCount > 0 : false,
         hasPlayedActivePhase: stP ? stP.answersCount > 0 : false,
         answersCount: st ? st.answersCount : 0,
+        totalQuestions: activeTotalQ,
         correctCount: st ? st.correctCount : 0,
         totalTime: st ? st.totalTime : 0,
         phasesPlayed: st ? Array.from(st.phasesPlayed) : [],
         score,
-        isQualified: rankInfo ? rankInfo.isQualified : false,
-        rank: rankInfo ? rankInfo.rank : null,
+        isQualified: activeRankInfo ? activeRankInfo.isQualified : false,
+        rank: activeRankInfo ? activeRankInfo.rank : null,
+        phasesData,
+        detectedPhases,
         created_at: p.created_at,
         updated_at: p.updated_at
       };
@@ -2056,6 +2132,200 @@ export class SupabaseAdapter extends DatabaseAdapter {
       console.error('[SupabaseAdapter] Excepción en resetParticipantTriviaBatch:', err.message);
       return { success: false, error: err.message };
     }
+  }
+
+  /**
+   * Obtiene el detalle completo de respuestas de un participante para una fase específica,
+   * cruzando las preguntas con las respuestas seleccionadas y su estado.
+   */
+  async getParticipantResponsesDetail(legajo, phase = 1) {
+    const supabase = this.getClient();
+    const cleanLegajo = String(legajo || '').trim();
+    const targetPhase = parseInt(phase, 10) || 1;
+    if (!cleanLegajo) {
+      return { success: false, error: 'Número de legajo requerido' };
+    }
+
+    // 1. Obtener datos del participante
+    let { data: user } = await supabase
+      .from('participants')
+      .select('id, legajo, nombre, apellido, sector, email, telefono')
+      .eq('legajo', cleanLegajo)
+      .maybeSingle();
+
+    if (!user) {
+      user = { legajo: cleanLegajo, nombre: 'Participante', apellido: cleanLegajo, sector: '', email: '' };
+    }
+
+    // Obtener grupo del participante (desde tabla o config)
+    let userGroup = '';
+    try {
+      const { data: cfgGrupo } = await supabase
+        .from('config')
+        .select('valor')
+        .eq('clave', 'PARTICIPANTES_GRUPOS')
+        .maybeSingle();
+      if (cfgGrupo && cfgGrupo.valor) {
+        const gMap = JSON.parse(cfgGrupo.valor);
+        userGroup = gMap[cleanLegajo] || '';
+      }
+    } catch (e) {}
+
+    // 2. Obtener preguntas de la fase ordenadas por id
+    const { data: questions = [], error: qErr } = await supabase
+      .from('questions')
+      .select('*')
+      .eq('fase', targetPhase)
+      .order('id', { ascending: true });
+
+    if (qErr) {
+      return { success: false, error: `Error obteniendo preguntas de Fase ${targetPhase}: ${qErr.message}` };
+    }
+
+    // Obtener mapa de explicaciones pedagógicas desde config o columnas
+    const explanationsMap = await this._getExplanationsMap();
+
+    // 3. Obtener respuestas registradas para este participante y fase
+    const { data: responses = [], error: rErr } = await supabase
+      .from('responses')
+      .select('pregunta_id, respuesta_seleccionada, es_correcta, puntos_obtenidos, tiempo_tardado, fecha_hora_respuesta')
+      .eq('legajo', cleanLegajo)
+      .eq('fase', targetPhase);
+
+    if (rErr) {
+      return { success: false, error: `Error obteniendo respuestas: ${rErr.message}` };
+    }
+
+    const responsesMap = new Map();
+    responses.forEach(r => {
+      responsesMap.set(parseInt(r.pregunta_id, 10), r);
+    });
+
+    let totalPoints = 0;
+    let totalTime = 0;
+    let correctCount = 0;
+    let answeredCount = 0;
+
+    // Helper para obtener texto y letra de opción
+    const getOptionInfo = (opciones, optionId) => {
+      if (optionId === null || optionId === undefined || optionId === '') {
+        return { texto: '(Sin responder)', letra: '-' };
+      }
+      let optList = [];
+      if (Array.isArray(opciones)) {
+        optList = opciones;
+      } else if (typeof opciones === 'string') {
+        try { optList = JSON.parse(opciones); } catch (e) { optList = []; }
+      }
+
+      const optIndex = parseInt(optionId, 10);
+      let foundIdx = optList.findIndex(o => {
+        if (!o || typeof o !== 'object') return false;
+        const oId = parseInt(o.id ?? o.opcion_id, 10);
+        return !isNaN(oId) && oId === optIndex;
+      });
+
+      if (foundIdx === -1) {
+        if (optIndex >= 1 && optIndex <= optList.length) {
+          foundIdx = optIndex - 1;
+        } else if (optIndex >= 0 && optIndex < optList.length) {
+          foundIdx = optIndex;
+        }
+      }
+
+      const opt = foundIdx >= 0 ? optList[foundIdx] : null;
+      const letra = foundIdx >= 0
+        ? String.fromCharCode(65 + foundIdx)
+        : (optIndex >= 1 && optIndex <= 26 ? String.fromCharCode(64 + optIndex) : '-');
+
+      let texto = '';
+      if (typeof opt === 'string') {
+        texto = opt;
+      } else if (opt && typeof opt === 'object') {
+        texto = opt.text || opt.texto || opt.opcion || opt.label || opt.descripcion || opt.title || '';
+        if (!texto && typeof opt.toString === 'function' && opt.toString() !== '[object Object]') {
+          texto = opt.toString();
+        }
+      }
+
+      if (!texto) {
+        texto = `Opción ${letra !== '-' ? letra : optIndex}`;
+      }
+
+      return { texto, letra };
+    };
+
+    const questionsDetail = questions.map((q, idx) => {
+      const qId = parseInt(q.id, 10);
+      const r = responsesMap.get(qId);
+      const hasAnswered = Boolean(r && r.respuesta_seleccionada !== null && r.respuesta_seleccionada !== undefined);
+
+      if (hasAnswered) {
+        answeredCount++;
+        totalTime += (parseInt(r.tiempo_tardado, 10) || 0);
+        totalPoints += (parseInt(r.puntos_obtenidos, 10) || 0);
+        if (r.es_correcta) correctCount++;
+      }
+
+      const selectedOptInfo = hasAnswered ? getOptionInfo(q.opciones, r.respuesta_seleccionada) : { texto: '(Sin responder)', letra: '-' };
+      const correctOptInfo = getOptionInfo(q.opciones, q.respuesta_correcta);
+      const expl = q.explicacion || explanationsMap[`${targetPhase}_${qId}`] || 'Buenas prácticas de inocuidad alimentaria Don Yeyo S.A.';
+
+      return {
+        numero: idx + 1,
+        numeroPregunta: idx + 1,
+        id: qId,
+        preguntaId: qId,
+        categoria: q.categoria || 'Inocuidad',
+        pregunta: q.pregunta,
+        consigna: q.pregunta,
+        respuestaSeleccionada: {
+          indice: hasAnswered ? parseInt(r.respuesta_seleccionada, 10) : null,
+          letra: selectedOptInfo.letra,
+          texto: selectedOptInfo.texto
+        },
+        opcionRespondidaTexto: selectedOptInfo.texto,
+        opcionRespondidaLetra: selectedOptInfo.letra,
+        respuestaCorrecta: {
+          indice: parseInt(q.respuesta_correcta, 10),
+          letra: correctOptInfo.letra,
+          texto: correctOptInfo.texto
+        },
+        opcionCorrectaTexto: correctOptInfo.texto,
+        opcionCorrectaLetra: correctOptInfo.letra,
+        esCorrecta: Boolean(r?.es_correcta),
+        estado: !hasAnswered ? 'SIN_RESPONDER' : (r.es_correcta ? 'CORRECTA' : 'INCORRECTA'),
+        puntosObtenidos: hasAnswered ? (parseInt(r.puntos_obtenidos, 10) || 0) : 0,
+        puntosMaximos: parseInt(q.puntos || 10, 10),
+        tiempoTardado: hasAnswered ? (parseInt(r.tiempo_tardado, 10) || 0) : 0,
+        tiempoSegundos: hasAnswered ? (parseInt(r.tiempo_tardado, 10) || 0) : 0,
+        explicacion: expl,
+        fechaHoraRespuesta: r?.fecha_hora_respuesta || ''
+      };
+    });
+
+    const finalScore = calculateScore(totalPoints, totalTime);
+
+    return {
+      success: true,
+      participant: {
+        ...user,
+        grupo: userGroup
+      },
+      phase: targetPhase,
+      summary: {
+        totalQuestions: questions.length,
+        answeredCount,
+        correctCount,
+        incorrectCount: answeredCount - correctCount,
+        unansweredCount: questions.length - answeredCount,
+        totalTime,
+        totalPoints,
+        finalScore,
+        isCompleted: answeredCount >= questions.length && questions.length > 0
+      },
+      questions: questionsDetail
+    };
   }
 }
 

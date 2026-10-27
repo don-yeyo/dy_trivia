@@ -87,17 +87,42 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
      - Opción de desasignar / remover de grupo en lote.
    - **Barra Contextual Integrada de Acciones Masivas en Lote:**
      - Al seleccionar uno o más colaboradores con casillas de verificación, se activa una barra contextual superior directamente sobre la tabla sin superponer la grilla:
-       1. **Asignar a Grupo:** Asigna en lote los participantes seleccionados a un grupo existente o permite crear uno nuevo en el acto.
-       2. **Exportar Selección (.xlsx):** Genera una planilla Excel profesional Don Yeyo con toda la información de los seleccionados (legajo, nombre, sector, grupo, email, estado, enlace único, puntaje y clasificación).
-       3. **Enviar Invitación:** Despacha en lote la plantilla de invitación a los seleccionados activos.
-       4. **Enviar Resultados:** Despacha en lote la devolución y podio oficial a los seleccionados activos.
-       5. **Activar:** Marca en lote como activos a todos los seleccionados.
-       6. **Desactivar:** Marca en lote como inactivos a los seleccionados.
-       7. **Reestablecer Hash:** Regenera de forma masiva los hashes y enlaces únicos criptográficos.
-       8. **Blanquear Hash:** Deja sin acceso el token hash de los seleccionados de forma individual o masiva para invalidar accesos previos o preparar reasignación (con fallback automático para esquemas con o sin restricción NOT NULL/UNIQUE).
-       9. **Resetear Trivia:** Permite resetear masivamente las respuestas de todos los participantes seleccionados mediante un modal con preview de nómina, permitiendo elegir entre reiniciar la fase activa o todas las fases simultáneamente.
+        1. **Asignar a Grupo:** Asigna en lote los participantes seleccionados a un grupo existente o permite crear uno nuevo en el acto.
+        2. **Exportar Selección (.xlsx):** Genera una planilla Excel profesional Don Yeyo con toda la información de los seleccionados (legajo, nombre, sector, grupo, email, estado, enlace único, puntaje y clasificación).
+        3. **Enviar Invitación:** Despacha en lote la plantilla de invitación a los seleccionados activos.
+        4. **Enviar Resultados:** Despacha en lote la devolución y podio oficial a los seleccionados activos.
+        5. **Destildar / Tildar Invitación Enviada:** Permite alternar o forzar masivamente la marca de estado de invitación (enviada vs pendiente) para todos los colaboradores seleccionados, con confirmación de seguridad y actualización optimista.
+        6. **Destildar / Tildar Resultados Enviados:** Permite alternar o forzar masivamente la marca de estado de reporte de resultados (enviado vs pendiente) para todos los colaboradores seleccionados, con confirmación de seguridad y actualización optimista.
+        7. **Activar:** Marca en lote como activos a todos los seleccionados.
+        8. **Desactivar:** Marca en lote como inactivos a los seleccionados.
+        9. **Reestablecer Hash:** Regenera de forma masiva los hashes y enlaces únicos criptográficos.
+        10. **Blanquear Hash:** Deja sin acceso el token hash de los seleccionados de forma individual o masiva para invalidar accesos previos o preparar reasignación (con fallback automático para esquemas con o sin restricción NOT NULL/UNIQUE).
+        11. **Resetear Trivia:** Permite resetear masivamente las respuestas de todos los participantes seleccionados mediante un modal con preview de nómina, permitiendo elegir entre reiniciar la fase activa o todas las fases simultáneamente.
    - **Copia y prueba de enlaces:** Botón de un solo clic para copiar la URL de participación al portapapeles con confirmación visual instantánea y botón para abrir directamente en nueva pestaña.
    - **Seguimiento de invitaciones (`Email Enviado`):** Switch interactivo en tiempo real para auditar qué colaboradores ya recibieron su link y cuáles están pendientes.
+    - **Grilla Avanzada con Columnas Fijas (Sticky Left & Right) y Scroll Horizontal:**
+      - Las columnas del **Checkbox de selección múltiple** y de **Participante** (con legajo, apellido, nombre y email integrado) se mantienen fijas a la izquierda (`sticky left`) con sombra divisoria de profundidad.
+      - La columna de **Acciones** se mantiene fija a la derecha (`sticky right`) con sombra divisoria.
+      - Las columnas intermedias (`Sector`, `Grupo`, `Estado Activo`, métricas de fases individuales F1, F2, F3, `Link / Hash`, `Emails`) se desplazan fluidamente en un contenedor con scroll horizontal dedicado (`scrollbar-thin`), evitando desbordes o compresión de celdas en cualquier resolución de pantalla.
+    - **Visualización Dinámica de Métricas Individuales por Fase (F1, F2, F3...):**
+      - Muestra para cada fase evaluada de manera independiente:
+        - **Puntaje por Fase:** Puntos obtenidos consolidados en la fase correspondiente.
+        - **Posición / Clasificación por Fase:** Puesto numérico gamer (`#1`, `#2`...) y distinción de clasificación (`🏆 Top`).
+        - **Tiempo por Fase:** Cronometraje exacto total acumulado en minutos y segundos.
+        - **Estado Trivia por Fase:** Estado de completitud de consignas (`15/15`, parcial o sin jugar).
+      - **Selector de Columnas de Fase:** Selector interactivo en la barra superior para alternar entre "Todas las Fases (F1, F2, F3)" o enfocar una fase específica ("Solo Fase 1", "Solo Fase 2", "Solo Fase 3").
+      - **Ordenamiento Dinámico:** Clic en cualquier encabezado de fase para ordenar a los participantes de mayor a menor puntaje, por puesto, por menor tiempo empleado o por grado de avance.
+    - **Descarga de Auditoría de Respuestas en Excel (.xlsx) por Participante por Fase:**
+      - Nuevo botón de descarga (`FileSpreadsheet`) en la columna de acciones de cada fila.
+      - Si el participante jugó múltiples fases, abre un modal interactivo con el resumen de rendimiento por fase para elegir cuál descargar o descargar todas las fases jugadas de forma consecutiva.
+      - Genera una planilla Excel nativa (`.xlsx`) profesional con el estándar Don Yeyo que incluye:
+        - Membrete y encabezado de inocuidad alimentaria.
+        - Datos de auditoría del participante (legajo, nombre completo, sector, grupo, email, fecha y hora).
+        - Tarjeta de indicadores (puntaje total, aciertos con porcentaje, errores, consignas sin responder, tiempo total).
+        - Desglose pormenorizado consigna por consigna: número de consigna, categoría, enunciado pedagógico, resultado evaluativo (`CORRECTA (ACIERTO)`, `INCORRECTA (ERROR)`, `SIN RESPONDER`), opción y texto elegido por el participante, opción y texto de la respuesta correcta, puntos obtenidos, puntos máximos, tiempo en segundos por consigna y la **fundamentación técnica de inocuidad alimentaria**.
+   - **Conteo Dinamico de Preguntas por Fase (Fase 1: 15, Fase 2: 10, etc.):**
+      - Se elimino cualquier valor fijo de preguntas (/15). El sistema calcula en tiempo real las consignas reales configuradas por fase en Supabase y Sheets.
+      - Si una fase contiene 10 preguntas (como la Fase 2), el estado de progreso mostrara (10/10), se marcara como Completado al responder las 10 consignas y el Excel calculara sobre dicha base.
    - **Reset de Trivia Individual o Masivo:** Permite habilitar a un participante o a una selección múltiple a volver a responder la trivia desde cero (borrando sus respuestas en la fase activa o en todas las fases).
    - **Métricas y Filtros en Tiempo Real:** Tarjetas KPI con totales de nómina, activos, inactivos, clasificados, cobertura de hashes, % de emails enviados y tasa de participación, con búsqueda libre y filtros combinados.
 
@@ -107,7 +132,7 @@ Permite evaluar los conocimientos del personal sobre Buenas Prácticas de Manufa
    - **Header Sobrio y Limpio (`AdminHeader`):** Barra superior fija con isotipo Don Yeyo, marca parametrizable por variable de entorno (`VITE_ADMIN_BRAND_NAME`), versión dinámica de la trivia vinculada a `package.json` (`v1.0.0`), badge de motor de base de datos (`Supabase`) y menú de usuario con logout.
    - **Modales con React Portals (`createPortal` en `document.body`) y Máxima Prioridad (`z-[9999]`):** Todos los modales (participantes, preguntas, importación, mailing y links) se montan directamente en la raíz del DOM (`document.body`) mediante React Portals. Esto elimina interferencias de apilamiento causadas por animaciones `transform` en componentes padres, garantiza que el modal siempre aparezca centrado en el viewport visible independientemente del scroll previo del usuario, cubre por completo el Header (`z-[9999]`), bloquea el scroll de fondo del `body` e integra un scrollbar estético interno (`.custom-modal-scrollbar`).
    - **Menú Drawer Deslizable (`AdminDrawer`):** Menú lateral categorizado con overlay y efecto `backdrop-blur`, estructurado en las siguientes 6 secciones clave:
-     1. **Dashboard:** Vista por defecto al ingresar, con KPIs de inscriptos, progreso de participación, estado de fase y podio provisional.
+        12. **Dashboard:** Vista por defecto al ingresar, con KPIs de inscriptos, progreso de participación, estado de fase y podio provisional.
      2. **Preguntas:** Gestor CRUD integral de preguntas por fase con opciones dinámicas y explicaciones pedagógicas.
      3. **Participantes:** Auditoría de colaboradores, generación de links únicos con hash, seguimiento de mailing y resets.
      4. **Participación:** Control de auditoría y publicación oficial, podio 3D Gamer y exportación a planilla Excel.

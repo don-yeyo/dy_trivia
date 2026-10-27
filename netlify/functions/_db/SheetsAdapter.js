@@ -435,7 +435,51 @@ export class SheetsAdapter extends DatabaseAdapter {
         answersCount: res ? res.answersCount : 0,
         correctCount: res ? res.answersCount : 0,
         totalTime: res ? res.totalTime : 0,
-        phasesPlayed: res ? [1] : []
+        score: res ? res.score : 0,
+        phasesPlayed: res ? [1] : [],
+        phasesData: {
+          1: {
+            fase: 1,
+            hasPlayed: Boolean(res),
+            answersCount: res ? res.answersCount : 0,
+            totalQuestions: 15,
+            correctCount: res ? res.answersCount : 0,
+            totalTime: res ? res.totalTime : 0,
+            score: res ? res.score : 0,
+            rank: null,
+            isQualified: false,
+            triviaStatus: {
+              code: (res && res.answersCount >= 15) ? 'COMPLETED' : (res && res.answersCount > 0) ? 'PARTIAL' : 'NOT_PLAYED',
+              label: (res && res.answersCount >= 15) ? 'Completado' : (res && res.answersCount > 0) ? 'Parcial' : 'Sin jugar',
+              count: res ? res.answersCount : 0,
+              total: 15
+            }
+          },
+          2: {
+            fase: 2,
+            hasPlayed: false,
+            answersCount: 0,
+            totalQuestions: 10,
+            correctCount: 0,
+            totalTime: 0,
+            score: 0,
+            rank: null,
+            isQualified: false,
+            triviaStatus: { code: 'NOT_PLAYED', label: 'Sin jugar', count: 0, total: 10 }
+          },
+          3: {
+            fase: 3,
+            hasPlayed: false,
+            answersCount: 0,
+            correctCount: 0,
+            totalTime: 0,
+            score: 0,
+            rank: null,
+            isQualified: false,
+            triviaStatus: { code: 'NOT_PLAYED', label: 'Sin jugar', count: 0 }
+          }
+        },
+        detectedPhases: [1, 2, 3]
       };
     });
   }
@@ -465,13 +509,15 @@ export class SheetsAdapter extends DatabaseAdapter {
     return { success: true, updatedCount: 0 };
   }
 
-  async toggleEmailSent(legajo, emailSent) {
-    return await this.updateParticipant(legajo, { email_enviado: emailSent ? 'TRUE' : 'FALSE' });
+  async toggleEmailSent(legajo, emailSent, tipo = 'INVITACION') {
+    const isResult = String(tipo).toUpperCase() === 'RESULTADOS';
+    const field = isResult ? 'email_resultado_enviado' : 'email_enviado';
+    return await this.updateParticipant(legajo, { [field]: emailSent ? 'TRUE' : 'FALSE' });
   }
 
-  async toggleEmailSentBatch(legajos = [], emailSent = true) {
+  async toggleEmailSentBatch(legajos = [], emailSent = true, tipo = 'INVITACION') {
     for (const leg of legajos) {
-      await this.toggleEmailSent(leg, emailSent);
+      await this.toggleEmailSent(leg, emailSent, tipo);
     }
     return { success: true, updatedCount: legajos.length };
   }
@@ -672,5 +718,130 @@ export class SheetsAdapter extends DatabaseAdapter {
     });
 
     return { success: true, updatedCount: cleanLegajos.length, grupo: cleanGroup };
+  }
+
+  async getParticipantResponsesDetail(legajo, phase = 1) {
+    const cleanLegajo = String(legajo || '').trim();
+    const targetPhase = parseInt(phase, 10) || 1;
+    if (!cleanLegajo) {
+      return { success: false, error: 'Número de legajo requerido' };
+    }
+
+    try {
+      // 1. Obtener datos de preguntas sin sanitizar
+      const rawQuestions = await this.getQuestions(targetPhase, false);
+      const progress = await this.getUserProgress(cleanLegajo, targetPhase);
+
+      // Obtener datos del participante
+      let user = { legajo: cleanLegajo, nombre: 'Participante', apellido: cleanLegajo, sector: '', email: '' };
+      try {
+        const adminParticipants = await this.getParticipantsAdmin();
+        const found = adminParticipants.find(p => String(p.legajo).trim() === cleanLegajo);
+        if (found) user = found;
+      } catch (e) {}
+
+      const answersMap = new Map();
+      if (progress.answers && Array.isArray(progress.answers)) {
+        progress.answers.forEach(a => {
+          answersMap.set(parseInt(a.questionId, 10), a);
+        });
+      }
+
+      let answeredCount = 0;
+      let correctCount = 0;
+      let totalPoints = 0;
+      let totalTime = progress.totalTime || 0;
+
+      const questionsDetail = rawQuestions.map((q, idx) => {
+        const qId = parseInt(q.id || idx + 1, 10);
+        const ans = answersMap.get(qId);
+        const correctIndex = parseInt(q.correctAnswer ?? q.respuesta_correcta ?? 0, 10);
+        const optionsList = Array.isArray(q.options) ? q.options : (Array.isArray(q.opciones) ? q.opciones : []);
+
+        const getOptText = (opt, defaultIdx) => {
+          if (!opt) return `Opción ${defaultIdx + 1}`;
+          if (typeof opt === 'string') return opt;
+          if (typeof opt === 'object') {
+            return opt.text || opt.texto || opt.opcion || opt.label || opt.title || `Opción ${defaultIdx + 1}`;
+          }
+          return String(opt);
+        };
+
+        const correctOpt = optionsList[correctIndex];
+        const correctInfo = {
+          letra: String.fromCharCode(65 + Math.max(0, correctIndex)),
+          texto: getOptText(correctOpt, correctIndex)
+        };
+
+        let isAnswered = false;
+        let isCorrect = false;
+        let selectedIndex = null;
+        let selectedInfo = { letra: '-', texto: '(Sin responder)' };
+        let timeSpent = 0;
+        let points = 0;
+
+        if (ans) {
+          isAnswered = true;
+          answeredCount++;
+          isCorrect = !!ans.isCorrect;
+          if (isCorrect) correctCount++;
+          selectedIndex = ans.selectedAnswer !== undefined ? parseInt(ans.selectedAnswer, 10) : null;
+          timeSpent = parseInt(ans.timeSpent || 0, 10);
+          points = parseInt(ans.pointsEarned || (isCorrect ? (q.points || 10) : 0), 10);
+          totalPoints += points;
+
+          if (selectedIndex !== null && !isNaN(selectedIndex)) {
+            const selOpt = optionsList[selectedIndex];
+            selectedInfo = {
+              letra: String.fromCharCode(65 + Math.max(0, selectedIndex)),
+              texto: getOptText(selOpt, selectedIndex)
+            };
+          }
+        }
+
+        return {
+          numero: idx + 1,
+          id: qId,
+          pregunta: q.question || q.pregunta || `Pregunta ${idx + 1}`,
+          categoria: q.category || q.categoria || 'Inocuidad',
+          puntosMaximos: parseInt(q.points || 10, 10),
+          puntosObtenidos: points,
+          tiempoTardado: timeSpent,
+          estado: !isAnswered ? 'SIN_RESPONDER' : (isCorrect ? 'CORRECTA' : 'INCORRECTA'),
+          esCorrecta: isCorrect,
+          respuestaSeleccionada: {
+            indice: selectedIndex,
+            letra: selectedInfo.letra,
+            texto: selectedInfo.texto
+          },
+          respuestaCorrecta: {
+            indice: correctIndex,
+            letra: correctInfo.letra,
+            texto: correctInfo.texto
+          },
+          explicacion: q.explanation || q.explicacion || ''
+        };
+      });
+
+      return {
+        success: true,
+        participant: user,
+        phase: targetPhase,
+        summary: {
+          totalQuestions: rawQuestions.length,
+          answeredCount,
+          correctCount,
+          incorrectCount: answeredCount - correctCount,
+          unansweredCount: rawQuestions.length - answeredCount,
+          rawPoints: totalPoints,
+          totalTime,
+          score: progress.score || 0
+        },
+        questions: questionsDetail
+      };
+    } catch (err) {
+      console.error('[SheetsAdapter] Error getParticipantResponsesDetail:', err);
+      return { success: false, error: err.message };
+    }
   }
 }
